@@ -1,3 +1,3 @@
-export const CIVITA_SYSTEM_PROMPT = `
-[TODO] Pega aquí el rol/sistema de Onda Civita
-`;
+import { GLOBAL_RULES_ONDA, EJE_PROMPTS } from '../shared';
+
+export const CIVITA_SYSTEM_PROMPT = `${GLOBAL_RULES_ONDA}\n\n${EJE_PROMPTS.CIVITA}`;
