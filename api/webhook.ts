@@ -8,7 +8,11 @@ export default function handler(req: VercelRequest, res: VercelResponse) {
 
     const VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN;
 
-    if (mode === "subscribe" && token === VERIFY_TOKEN && typeof challenge === "string") {
+    if (
+      mode === "subscribe" &&
+      token === VERIFY_TOKEN &&
+      typeof challenge === "string"
+    ) {
       return res.status(200).send(challenge);
     }
 
