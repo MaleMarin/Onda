@@ -1,26 +1,35 @@
 export default function handler(req: any, res: any) {
-  if (req.method === "GET") {
-    const mode = req.query["hub.mode"];
-    const token = req.query["hub.verify_token"];
-    const challenge = req.query["hub.challenge"];
+  // Parse seguro de query (sin depender de req.query)
+  const base = `https://${req.headers?.host || "localhost"}`;
+  const url = new URL(req.url || "", base);
+
+  const method = (req.method || "GET").toUpperCase();
+
+  // 1) Verificación (Meta llama con GET + hub.challenge)
+  if (method === "GET") {
+    const mode = url.searchParams.get("hub.mode");
+    const token = url.searchParams.get("hub.verify_token");
+    const challenge = url.searchParams.get("hub.challenge");
 
     const VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN;
 
-    if (
-      mode === "subscribe" &&
-      token === VERIFY_TOKEN &&
-      typeof challenge === "string"
-    ) {
-      return res.status(200).send(challenge);
+    if (mode === "subscribe" && token && VERIFY_TOKEN && token === VERIFY_TOKEN && challenge) {
+      res.statusCode = 200;
+      res.setHeader("Content-Type", "text/plain");
+      return res.end(challenge);
     }
-    return res.sendStatus(403);
+
+    res.statusCode = 403;
+    return res.end("Forbidden");
   }
 
-  if (req.method === "POST") {
-    // WhatsApp enviará eventos aquí. Por ahora respondemos OK para que no falle.
-    return res.sendStatus(200);
+  // 2) Recepción de eventos (Meta manda POST)
+  if (method === "POST") {
+    res.statusCode = 200;
+    return res.end("OK");
   }
 
+  res.statusCode = 405;
   res.setHeader("Allow", "GET, POST");
-  return res.sendStatus(405);
+  return res.end("Method Not Allowed");
 }
