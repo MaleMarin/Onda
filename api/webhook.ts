@@ -8,28 +8,30 @@ function asString(q: any) {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  console.log(`[ONDA] Webhook llamado: ${req.method} ${req.url || ""}`);
-  // ✅ Verificación Webhook (GET)
+  console.log(`[ONDA] Webhook llamado: ${req.method}`);
+  
+  // ✅ VERIFICACIÓN WEBHOOK (GET) - Esto es lo que Meta usa para validar la URL
   if (req.method === "GET") {
     const mode = asString(req.query["hub.mode"]);
     const token = asString(req.query["hub.verify_token"]);
     const challenge = asString(req.query["hub.challenge"]);
 
-    if (mode === "subscribe" && token === process.env.WHATSAPP_VERIFY_TOKEN) {
-      console.log("✅ Webhook verificado");
+    // Ajustado para usar el nombre exacto que tienes en Vercel
+    const verifyToken = process.env.TOKEN_DE_VERIFICACIÓN_DE_WHATSAPP;
+
+    if (mode === "subscribe" && token === verifyToken) {
+      console.log("✅ Webhook verificado correctamente");
       return res.status(200).send(challenge);
     }
-    console.log("❌ Token incorrecto");
+    
+    console.error("❌ Falló la verificación: Token incorrecto");
     return res.status(403).send("Forbidden");
   }
 
-  // ✅ Recepción de mensajes (POST)
+  // ✅ RECEPCIÓN DE MENSAJES (POST)
   if (req.method === "POST") {
     try {
-      const payload =
-        typeof req.body === "string" ? JSON.parse(req.body) : req.body;
-      console.log("[ONDA] POST recibido, entries:", payload?.entry?.length ?? 0);
-
+      const payload = req.body;
       const entries = payload?.entry ?? [];
 
       for (const entry of entries) {
@@ -40,8 +42,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             const text = msg?.text?.body;
 
             if (from && text) {
-              console.log(`📩 ${from} dice: ${text}`);
+              console.log(`📩 Mensaje de ${from}: ${text}`);
+              
+              // Aquí tu lógica de Onda a Mano, Cívita o Profes
               const response = await getOndaReply(text);
+              
+              // Envío de la respuesta usando lib/whatsapp.ts
               await sendWhatsAppText(from, response);
             }
           }
@@ -50,8 +56,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       return res.status(200).json({ ok: true });
     } catch (e: any) {
-      console.error("❌ Error en el webhook:", e.message || e);
-      return res.status(200).json({ ok: true });
+      console.error("❌ Error procesando mensaje:", e.message);
+      return res.status(200).json({ ok: true }); // Siempre responder 200 a Meta
     }
   }
 
