@@ -1,46 +1,47 @@
 import express, { Request, Response } from 'express';
 import cors from 'cors';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const app = express();
-
-// Middlewares
 app.use(cors());
-app.use(express.json());
+app.use(express.json()); // 👈 Esto es importante para que Express pueda leer JSON
 
-// Tipo de los datos que esperaremos desde Botpress / cliente
-interface OndaRequestBody {
-  message: string;
-  eje?: 'mano' | 'civita' | 'profes';
-  userId?: string;
-  canal?: 'whatsapp' | 'web' | 'otro';
-}
+// ✅ VERIFICACIÓN WEBHOOK (GET)
+app.get('/webhook', (req: Request, res: Response) => {
+  const mode = req.query['hub.mode'];
+  const token = req.query['hub.verify_token'];
+  const challenge = req.query['hub.challenge'];
 
-// Endpoint principal
-app.post('/onda', async (req: Request, res: Response) => {
-  const body = req.body as OndaRequestBody;
-
-  if (!body.message) {
-    return res.status(400).json({ error: 'message es obligatorio' });
+  if (mode === 'subscribe' && token === process.env.WHATSAPP_VERIFY_TOKEN) {
+    console.log('✅ Webhook verificado');
+    res.status(200).send(challenge);
+  } else {
+    console.log('❌ Webhook no autorizado');
+    res.sendStatus(403);
   }
-
-  const eje = body.eje ?? 'general';
-
-  const replyText =
-    `👋 Soy Onda (${eje}). Recibí tu mensaje: “${body.message}”. ` +
-    `Por ahora esta es una respuesta de prueba desde el backend.`;
-
-  return res.json({
-    replyText,
-    meta: {
-      eje,
-      canal: body.canal ?? 'desconocido',
-      userId: body.userId ?? null
-    }
-  });
 });
 
-// Arrancar servidor
+// ✅ RECEPCIÓN DE MENSAJES (POST)
+app.post('/webhook', (req: Request, res: Response) => {
+  console.log('📩 Webhook recibido:');
+  console.dir(req.body, { depth: null });
+
+  // Podés procesar el mensaje si querés, por ejemplo:
+  const entry = req.body.entry?.[0];
+  const changes = entry?.changes?.[0];
+  const message = changes?.value?.messages?.[0];
+  const text = message?.text?.body;
+
+  if (text) {
+    console.log('💬 Mensaje recibido:', text);
+  }
+
+  res.sendStatus(200);
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`✅ Onda backend escuchando en http://localhost:${PORT}`);
+  console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
 });
