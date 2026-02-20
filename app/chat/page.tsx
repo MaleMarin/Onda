@@ -185,14 +185,13 @@ export default function ChatPage() {
         style={{
           flex: 1,
           minWidth: 0,
-          minHeight: 0,
+          minHeight: isEmbed ? 260 : 0,
           maxWidth: isEmbed ? "100%" : "28rem",
           margin: isEmbed ? 0 : "0 auto",
           width: "100%",
           padding: mainPadding,
           display: "flex",
           flexDirection: "column",
-          minHeight: isEmbed ? 260 : undefined,
           background: "transparent",
           overflow: "hidden",
         }}
