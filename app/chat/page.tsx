@@ -60,26 +60,100 @@ export default function ChatPage() {
     }
   }
 
-  return (
-    <div
-      style={{
-        minHeight: embed ? "100%" : "100vh",
-        height: embed ? "100%" : undefined,
+  const isEmbed = embed;
+
+  // Glassmorphism: azul suave como acento, fondos translúcidos
+  const blue = "#3b82f6";
+  const glassWhite = "rgba(255, 255, 255, 0.75)";
+  const glassBorder = "rgba(255, 255, 255, 0.9)";
+  const glassShadow = "0 8px 32px rgba(0, 0, 0, 0.06)";
+
+  const embedWrapperStyle: React.CSSProperties = {
+    padding: "12px",
+    height: "100%",
+    minHeight: 400,
+    boxSizing: "border-box",
+    background: "linear-gradient(160deg, #e0e7ff 0%, #f0f4ff 50%, #e8f0fe 100%)",
+  };
+
+  const containerStyle: React.CSSProperties = isEmbed
+    ? {
+        height: "100%",
+        minHeight: 380,
         display: "flex",
         flexDirection: "column",
-        fontFamily: "system-ui, sans-serif",
-        background: "#f5f5f5",
-      }}
-    >
-      {!embed && (
-        <header
-          style={{
-            background: "#1a1a2e",
-            color: "white",
-            padding: "1rem 1.5rem",
-            textAlign: "center",
-          }}
-        >
+        fontFamily: "'Segoe UI', system-ui, -apple-system, sans-serif",
+        background: glassWhite,
+        backdropFilter: "blur(20px)",
+        WebkitBackdropFilter: "blur(20px)",
+        borderRadius: 20,
+        boxShadow: glassShadow + ", 0 0 0 1px " + glassBorder,
+        overflow: "hidden",
+        border: "1px solid rgba(255,255,255,0.6)",
+      }
+    : {
+        minHeight: "100vh",
+        display: "flex",
+        flexDirection: "column",
+        fontFamily: "'Segoe UI', system-ui, -apple-system, sans-serif",
+        background: "linear-gradient(160deg, #e0e7ff 0%, #f0f4ff 50%, #e8f0fe 100%)",
+      };
+
+  const embedHeaderStyle: React.CSSProperties = {
+    background: "rgba(255, 255, 255, 0.5)",
+    backdropFilter: "blur(12px)",
+    WebkitBackdropFilter: "blur(12px)",
+    color: "#1e3a5f",
+    padding: "14px 20px",
+    fontSize: "0.95rem",
+    fontWeight: 600,
+    letterSpacing: "0.02em",
+    borderBottom: "1px solid rgba(255,255,255,0.7)",
+    boxShadow: "0 1px 0 rgba(255,255,255,0.8)",
+  };
+
+  const headerFullStyle: React.CSSProperties = {
+    background: "rgba(255, 255, 255, 0.6)",
+    backdropFilter: "blur(12px)",
+    WebkitBackdropFilter: "blur(12px)",
+    color: "#1e3a5f",
+    padding: "1rem 1.5rem",
+    textAlign: "center",
+    borderBottom: "1px solid rgba(255,255,255,0.6)",
+  };
+
+  const bubbleBotStyle: React.CSSProperties = {
+    background: "rgba(255, 255, 255, 0.7)",
+    backdropFilter: "blur(12px)",
+    WebkitBackdropFilter: "blur(12px)",
+    color: "#334155",
+    boxShadow: "0 2px 12px rgba(0,0,0,0.04), 0 0 0 1px rgba(255,255,255,0.8)",
+    border: "1px solid rgba(255,255,255,0.9)",
+  };
+
+  const bubbleUserStyle: React.CSSProperties = {
+    background: "rgba(59, 130, 246, 0.35)",
+    backdropFilter: "blur(12px)",
+    WebkitBackdropFilter: "blur(12px)",
+    color: "#1e3a5f",
+    boxShadow: "0 2px 12px rgba(59, 130, 246, 0.2), 0 0 0 1px rgba(255,255,255,0.5)",
+    border: "1px solid rgba(255,255,255,0.6)",
+  };
+
+  const inputGlassStyle: React.CSSProperties = {
+    background: "rgba(255, 255, 255, 0.7)",
+    backdropFilter: "blur(12px)",
+    WebkitBackdropFilter: "blur(12px)",
+    border: "1px solid rgba(255,255,255,0.9)",
+    boxShadow: "0 2px 12px rgba(0,0,0,0.04)",
+  };
+
+  const content = (
+    <div style={containerStyle}>
+      {isEmbed ? (
+        <div style={embedHeaderStyle}>Chatea con ONDA · Fundación Precisar</div>
+      ) : (
+        <header style={headerFullStyle}>
           <h1 style={{ margin: 0, fontSize: "1.25rem" }}>ONDA – Fundación Precisar</h1>
           <p style={{ margin: "0.25rem 0 0", fontSize: "0.875rem", opacity: 0.9 }}>
             Alfabetización Mediática e Informacional (AMI)
@@ -90,13 +164,14 @@ export default function ChatPage() {
       <main
         style={{
           flex: 1,
-          maxWidth: embed ? "100%" : "42rem",
-          margin: embed ? 0 : "0 auto",
+          maxWidth: isEmbed ? "100%" : "42rem",
+          margin: isEmbed ? 0 : "0 auto",
           width: "100%",
-          padding: "1rem",
+          padding: isEmbed ? "18px" : "1rem",
           display: "flex",
           flexDirection: "column",
-          minHeight: embed ? 320 : undefined,
+          minHeight: isEmbed ? 280 : undefined,
+          background: isEmbed ? "transparent" : "transparent",
         }}
       >
         <div
@@ -105,8 +180,8 @@ export default function ChatPage() {
             overflowY: "auto",
             display: "flex",
             flexDirection: "column",
-            gap: "0.75rem",
-            marginBottom: "1rem",
+            gap: "14px",
+            marginBottom: "14px",
           }}
         >
           {messages.map((msg, i) => (
@@ -115,11 +190,11 @@ export default function ChatPage() {
               style={{
                 alignSelf: msg.role === "user" ? "flex-end" : "flex-start",
                 maxWidth: "85%",
-                padding: "0.75rem 1rem",
-                borderRadius: "1rem",
-                background: msg.role === "user" ? "#1a1a2e" : "white",
-                color: msg.role === "user" ? "white" : "#1a1a2e",
-                boxShadow: "0 1px 2px rgba(0,0,0,0.08)",
+                padding: "14px 18px",
+                borderRadius: 16,
+                fontSize: "0.9375rem",
+                lineHeight: 1.55,
+                ...(msg.role === "user" ? bubbleUserStyle : bubbleBotStyle),
               }}
             >
               <div style={{ whiteSpace: "pre-wrap" }}>{msg.text}</div>
@@ -129,11 +204,12 @@ export default function ChatPage() {
             <div
               style={{
                 alignSelf: "flex-start",
-                padding: "0.75rem 1rem",
-                borderRadius: "1rem",
-                background: "white",
-                color: "#666",
+                padding: "14px 18px",
+                borderRadius: 16,
+                color: "#64748b",
                 fontStyle: "italic",
+                fontSize: "0.9rem",
+                ...bubbleBotStyle,
               }}
             >
               ONDA está escribiendo...
@@ -142,7 +218,7 @@ export default function ChatPage() {
           <div ref={bottomRef} />
         </div>
 
-        <form onSubmit={handleSend} style={{ display: "flex", gap: "0.5rem" }}>
+        <form onSubmit={handleSend} style={{ display: "flex", gap: "10px" }}>
           <input
             type="text"
             value={input}
@@ -151,23 +227,27 @@ export default function ChatPage() {
             disabled={loading}
             style={{
               flex: 1,
-              padding: "0.75rem 1rem",
-              borderRadius: "1.5rem",
-              border: "1px solid #ddd",
-              fontSize: "1rem",
+              padding: "14px 18px",
+              borderRadius: 20,
+              fontSize: "0.9375rem",
+              outline: "none",
+              color: "#334155",
+              ...inputGlassStyle,
             }}
           />
           <button
             type="submit"
             disabled={loading || !input.trim()}
             style={{
-              padding: "0.75rem 1.25rem",
-              borderRadius: "1.5rem",
+              padding: "14px 22px",
+              borderRadius: 20,
               border: "none",
-              background: "#1a1a2e",
+              background: blue,
               color: "white",
               fontWeight: 600,
               cursor: loading ? "not-allowed" : "pointer",
+              fontSize: "0.9375rem",
+              boxShadow: "0 4px 14px rgba(59, 130, 246, 0.4)",
             }}
           >
             Enviar
@@ -175,5 +255,11 @@ export default function ChatPage() {
         </form>
       </main>
     </div>
+  );
+
+  return isEmbed ? (
+    <div style={embedWrapperStyle}>{content}</div>
+  ) : (
+    content
   );
 }
