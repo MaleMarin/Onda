@@ -16,27 +16,48 @@ Así el visitante ve el chat dentro de precisar.net.
    - Clic en **"Añadir"** (+) → **"Integrar"** o **"Más"**.
    - Busca **"HTML iframe"** o **"Incrustar"** / **"Embed"** / **"Código personalizado"**.
    - El nombre puede ser: *Embed HTML*, *HTML iframe*, *Código personalizado*.
-4. **Pega este código** en el cuadro de HTML:
+4. **Pega uno de estos códigos** en el cuadro de HTML.
+
+### Código profesional (recomendado)
+
+Incluye un contenedor con tamaño fijo para que el iframe se abra bien en cualquier editor. Puedes cambiar `400` y `600` por el ancho y alto que quieras (en píxeles).
+
+```html
+<div class="onda-chat-container" style="width:100%;max-width:400px;height:600px;min-height:400px;margin:0 auto;border-radius:16px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.12);">
+  <iframe
+    src="https://onda2026.vercel.app/chat?embed=1"
+    title="Chat ONDA - Fundación Precisar"
+    width="100%"
+    height="100%"
+    style="display:block;border:0;"
+    loading="lazy"
+  ></iframe>
+</div>
+```
+
+### Código mínimo (solo iframe)
+
+Si el editor solo acepta un iframe suelto, usa este. Luego en Wix redimensiona el elemento para darle ancho y alto.
 
 ```html
 <iframe
   src="https://onda2026.vercel.app/chat?embed=1"
   title="Chat ONDA - Fundación Precisar"
-  width="100%"
-  height="100%"
-  style="border: none; border-radius: 12px; box-shadow: 0 4px 24px rgba(0,0,0,0.08);"
+  width="400"
+  height="600"
+  style="border:0;border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,0.12);"
+  loading="lazy"
 ></iframe>
 ```
 
-El chat **se adapta al tamaño** del recuadro: ocupa el 100% del ancho y alto del iframe.
-
-5. **Encajar en Wix:** arrastra las esquinas del elemento de incrustación (las asas azules) hasta tener el tamaño que quieras. El chat se rellenará y encajará dentro. Si quieres unos 10 cm × 20 cm, pon el recuadro en Wix a ese tamaño (o aprox. 378 × 756 px).
+5. **Encajar en Wix:** con el código profesional, el chat ya tiene tamaño definido. Con el mínimo, arrastra las esquinas del elemento en Wix hasta ver bien el chat.
 6. **Guarda y publica** el sitio.
 
 ### Importante
 
 - La URL del iframe debe ser: **`https://onda2026.vercel.app/chat?embed=1`**
-- El **`?embed=1`** hace que el chat se vea más compacto (sin cabecera grande), ideal para embeber.
+- El **`?embed=1`** hace que el chat se vea compacto y con el botón "Enviar" correcto.
+- El servidor permite que esta página se abra dentro de iframes (Wix, etc.).
 
 ---
 
