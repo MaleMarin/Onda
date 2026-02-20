@@ -23,14 +23,14 @@ Así el visitante ve el chat dentro de precisar.net.
   src="https://onda2026.vercel.app/chat?embed=1"
   title="Chat ONDA - Fundación Precisar"
   width="100%"
-  height="560"
-  style="border: none; border-radius: 16px; box-shadow: 0 4px 24px rgba(0,0,0,0.08);"
+  height="100%"
+  style="border: none; border-radius: 12px; box-shadow: 0 4px 24px rgba(0,0,0,0.08);"
 ></iframe>
 ```
 
-El chat en modo embed se muestra como una **tarjeta** con bordes redondeados y barra superior “Chatea con ONDA · Fundación Precisar”, para que se integre mejor en la página.
+El chat **se adapta al tamaño** del recuadro: ocupa el 100% del ancho y alto del iframe.
 
-5. **Ajusta el tamaño** del elemento en Wix (ancho y alto). Recomendado: altura mínima **560px** para que se vea bien en desktop y móvil.
+5. **Encajar en Wix:** arrastra las esquinas del elemento de incrustación (las asas azules) hasta tener el tamaño que quieras. El chat se rellenará y encajará dentro. Si quieres unos 10 cm × 20 cm, pon el recuadro en Wix a ese tamaño (o aprox. 378 × 756 px).
 6. **Guarda y publica** el sitio.
 
 ### Importante

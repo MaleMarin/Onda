@@ -62,100 +62,120 @@ export default function ChatPage() {
 
   const isEmbed = embed;
 
-  // Glassmorphism: azul suave como acento, fondos translúcidos
-  const blue = "#3b82f6";
-  const glassWhite = "rgba(255, 255, 255, 0.75)";
-  const glassBorder = "rgba(255, 255, 255, 0.9)";
-  const glassShadow = "0 8px 32px rgba(0, 0, 0, 0.06)";
+  // Tamaños compactos en embed
+  const compact = isEmbed;
+  const blue = "#2563eb";
+  const glassWhite = "rgba(255, 255, 255, 0.82)";
+  const glassBorder = "rgba(255, 255, 255, 0.95)";
+  const glassShadow = "0 4px 24px rgba(0, 0, 0, 0.06)";
 
   const embedWrapperStyle: React.CSSProperties = {
-    padding: "12px",
+    width: "100%",
     height: "100%",
-    minHeight: 400,
+    minHeight: "320px",
+    padding: compact ? "6px" : "12px",
     boxSizing: "border-box",
-    background: "linear-gradient(160deg, #e0e7ff 0%, #f0f4ff 50%, #e8f0fe 100%)",
+    background: "linear-gradient(165deg, #dbeafe 0%, #eff6ff 45%, #e0e7ff 100%)",
   };
 
   const containerStyle: React.CSSProperties = isEmbed
     ? {
+        flex: 1,
+        minHeight: 0,
         height: "100%",
-        minHeight: 380,
         display: "flex",
         flexDirection: "column",
         fontFamily: "'Segoe UI', system-ui, -apple-system, sans-serif",
         background: glassWhite,
-        backdropFilter: "blur(20px)",
-        WebkitBackdropFilter: "blur(20px)",
-        borderRadius: 20,
+        backdropFilter: "blur(16px)",
+        WebkitBackdropFilter: "blur(16px)",
+        borderRadius: compact ? 14 : 20,
         boxShadow: glassShadow + ", 0 0 0 1px " + glassBorder,
         overflow: "hidden",
-        border: "1px solid rgba(255,255,255,0.6)",
+        border: "1px solid rgba(255,255,255,0.7)",
       }
     : {
         minHeight: "100vh",
         display: "flex",
         flexDirection: "column",
         fontFamily: "'Segoe UI', system-ui, -apple-system, sans-serif",
-        background: "linear-gradient(160deg, #e0e7ff 0%, #f0f4ff 50%, #e8f0fe 100%)",
+        background: "linear-gradient(165deg, #dbeafe 0%, #eff6ff 50%, #e0e7ff 100%)",
       };
 
   const embedHeaderStyle: React.CSSProperties = {
-    background: "rgba(255, 255, 255, 0.5)",
-    backdropFilter: "blur(12px)",
-    WebkitBackdropFilter: "blur(12px)",
-    color: "#1e3a5f",
-    padding: "14px 20px",
-    fontSize: "0.95rem",
+    background: "rgba(255, 255, 255, 0.6)",
+    backdropFilter: "blur(10px)",
+    WebkitBackdropFilter: "blur(10px)",
+    color: "#1e40af",
+    padding: compact ? "8px 12px" : "14px 20px",
+    fontSize: compact ? "0.8rem" : "0.95rem",
     fontWeight: 600,
-    letterSpacing: "0.02em",
-    borderBottom: "1px solid rgba(255,255,255,0.7)",
-    boxShadow: "0 1px 0 rgba(255,255,255,0.8)",
+    letterSpacing: "0.03em",
+    borderBottom: "1px solid rgba(255,255,255,0.8)",
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
   };
 
   const headerFullStyle: React.CSSProperties = {
     background: "rgba(255, 255, 255, 0.6)",
-    backdropFilter: "blur(12px)",
-    WebkitBackdropFilter: "blur(12px)",
-    color: "#1e3a5f",
-    padding: "1rem 1.5rem",
+    backdropFilter: "blur(10px)",
+    WebkitBackdropFilter: "blur(10px)",
+    color: "#1e40af",
+    padding: "0.75rem 1rem",
     textAlign: "center",
     borderBottom: "1px solid rgba(255,255,255,0.6)",
   };
 
   const bubbleBotStyle: React.CSSProperties = {
-    background: "rgba(255, 255, 255, 0.7)",
-    backdropFilter: "blur(12px)",
-    WebkitBackdropFilter: "blur(12px)",
+    background: "rgba(255, 255, 255, 0.85)",
+    backdropFilter: "blur(10px)",
+    WebkitBackdropFilter: "blur(10px)",
     color: "#334155",
-    boxShadow: "0 2px 12px rgba(0,0,0,0.04), 0 0 0 1px rgba(255,255,255,0.8)",
-    border: "1px solid rgba(255,255,255,0.9)",
+    boxShadow: "0 1px 8px rgba(0,0,0,0.04), 0 0 0 1px rgba(255,255,255,0.9)",
+    border: "1px solid rgba(255,255,255,0.95)",
   };
 
   const bubbleUserStyle: React.CSSProperties = {
-    background: "rgba(59, 130, 246, 0.35)",
-    backdropFilter: "blur(12px)",
-    WebkitBackdropFilter: "blur(12px)",
-    color: "#1e3a5f",
-    boxShadow: "0 2px 12px rgba(59, 130, 246, 0.2), 0 0 0 1px rgba(255,255,255,0.5)",
-    border: "1px solid rgba(255,255,255,0.6)",
+    background: "rgba(37, 99, 235, 0.2)",
+    backdropFilter: "blur(10px)",
+    WebkitBackdropFilter: "blur(10px)",
+    color: "#1e40af",
+    boxShadow: "0 1px 8px rgba(37, 99, 235, 0.15), 0 0 0 1px rgba(255,255,255,0.6)",
+    border: "1px solid rgba(255,255,255,0.7)",
   };
 
-  const inputGlassStyle: React.CSSProperties = {
-    background: "rgba(255, 255, 255, 0.7)",
-    backdropFilter: "blur(12px)",
-    WebkitBackdropFilter: "blur(12px)",
-    border: "1px solid rgba(255,255,255,0.9)",
-    boxShadow: "0 2px 12px rgba(0,0,0,0.04)",
-  };
+  const bubblePadding = compact ? "10px 14px" : "12px 16px";
+  const bubbleRadius = compact ? 12 : 14;
+  const bubbleFontSize = compact ? "0.8125rem" : "0.875rem";
+  const bubbleMaxWidth = compact ? "min(88%, 300px)" : "min(88%, 340px)";
+  const messagesGap = compact ? 8 : 10;
+  const mainPadding = compact ? "12px" : "16px";
+  const inputPadding = compact ? "10px 14px" : "12px 16px";
+  const inputRadius = compact ? 14 : 18;
+  const inputFontSize = compact ? "0.8125rem" : "0.875rem";
+  const btnPadding = compact ? "10px 16px" : "12px 18px";
+  const btnFontSize = compact ? "0.8125rem" : "0.875rem";
 
   const content = (
     <div style={containerStyle}>
       {isEmbed ? (
-        <div style={embedHeaderStyle}>Chatea con ONDA · Fundación Precisar</div>
+        <div style={embedHeaderStyle}>
+          <span
+            style={{
+              width: 6,
+              height: 6,
+              borderRadius: "50%",
+              background: blue,
+              boxShadow: "0 0 0 2px rgba(37, 99, 235, 0.3)",
+            }}
+          />
+          Chatea con ONDA · Fundación Precisar
+        </div>
       ) : (
         <header style={headerFullStyle}>
-          <h1 style={{ margin: 0, fontSize: "1.25rem" }}>ONDA – Fundación Precisar</h1>
-          <p style={{ margin: "0.25rem 0 0", fontSize: "0.875rem", opacity: 0.9 }}>
+          <h1 style={{ margin: 0, fontSize: "1.1rem" }}>ONDA – Fundación Precisar</h1>
+          <p style={{ margin: "0.2rem 0 0", fontSize: "0.8rem", opacity: 0.9 }}>
             Alfabetización Mediática e Informacional (AMI)
           </p>
         </header>
@@ -164,14 +184,17 @@ export default function ChatPage() {
       <main
         style={{
           flex: 1,
-          maxWidth: isEmbed ? "100%" : "42rem",
+          minWidth: 0,
+          minHeight: 0,
+          maxWidth: isEmbed ? "100%" : "28rem",
           margin: isEmbed ? 0 : "0 auto",
           width: "100%",
-          padding: isEmbed ? "18px" : "1rem",
+          padding: mainPadding,
           display: "flex",
           flexDirection: "column",
-          minHeight: isEmbed ? 280 : undefined,
-          background: isEmbed ? "transparent" : "transparent",
+          minHeight: isEmbed ? 260 : undefined,
+          background: "transparent",
+          overflow: "hidden",
         }}
       >
         <div
@@ -180,8 +203,8 @@ export default function ChatPage() {
             overflowY: "auto",
             display: "flex",
             flexDirection: "column",
-            gap: "14px",
-            marginBottom: "14px",
+            gap: messagesGap,
+            marginBottom: messagesGap,
           }}
         >
           {messages.map((msg, i) => (
@@ -189,11 +212,11 @@ export default function ChatPage() {
               key={i}
               style={{
                 alignSelf: msg.role === "user" ? "flex-end" : "flex-start",
-                maxWidth: "85%",
-                padding: "14px 18px",
-                borderRadius: 16,
-                fontSize: "0.9375rem",
-                lineHeight: 1.55,
+                maxWidth: bubbleMaxWidth,
+                padding: bubblePadding,
+                borderRadius: bubbleRadius,
+                fontSize: bubbleFontSize,
+                lineHeight: 1.5,
                 ...(msg.role === "user" ? bubbleUserStyle : bubbleBotStyle),
               }}
             >
@@ -204,11 +227,12 @@ export default function ChatPage() {
             <div
               style={{
                 alignSelf: "flex-start",
-                padding: "14px 18px",
-                borderRadius: 16,
+                maxWidth: bubbleMaxWidth,
+                padding: bubblePadding,
+                borderRadius: bubbleRadius,
                 color: "#64748b",
                 fontStyle: "italic",
-                fontSize: "0.9rem",
+                fontSize: bubbleFontSize,
                 ...bubbleBotStyle,
               }}
             >
@@ -218,7 +242,15 @@ export default function ChatPage() {
           <div ref={bottomRef} />
         </div>
 
-        <form onSubmit={handleSend} style={{ display: "flex", gap: "10px" }}>
+        <form
+          onSubmit={handleSend}
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: compact ? 6 : 8,
+            minWidth: 0,
+          }}
+        >
           <input
             type="text"
             value={input}
@@ -226,28 +258,35 @@ export default function ChatPage() {
             placeholder="Escribe tu pregunta..."
             disabled={loading}
             style={{
-              flex: 1,
-              padding: "14px 18px",
-              borderRadius: 20,
-              fontSize: "0.9375rem",
+              flex: "1 1 100px",
+              minWidth: 0,
+              padding: inputPadding,
+              borderRadius: inputRadius,
+              fontSize: inputFontSize,
               outline: "none",
               color: "#334155",
-              ...inputGlassStyle,
+              background: "rgba(255, 255, 255, 0.8)",
+              backdropFilter: "blur(10px)",
+              WebkitBackdropFilter: "blur(10px)",
+              border: "1px solid rgba(255,255,255,0.95)",
+              boxShadow: "0 1px 6px rgba(0,0,0,0.03)",
             }}
           />
           <button
             type="submit"
             disabled={loading || !input.trim()}
             style={{
-              padding: "14px 22px",
-              borderRadius: 20,
+              padding: btnPadding,
+              borderRadius: inputRadius,
               border: "none",
               background: blue,
               color: "white",
               fontWeight: 600,
               cursor: loading ? "not-allowed" : "pointer",
-              fontSize: "0.9375rem",
-              boxShadow: "0 4px 14px rgba(59, 130, 246, 0.4)",
+              fontSize: btnFontSize,
+              boxShadow: "0 2px 10px rgba(37, 99, 235, 0.35)",
+              flexShrink: 0,
+              minWidth: "fit-content",
             }}
           >
             Enviar
