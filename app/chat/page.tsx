@@ -245,7 +245,8 @@ export default function ChatPage() {
           onSubmit={handleSend}
           style={{
             display: "flex",
-            flexWrap: "wrap",
+            flexDirection: compact ? "column" : "row",
+            flexWrap: compact ? "nowrap" : "wrap",
             gap: compact ? 6 : 8,
             minWidth: 0,
           }}
@@ -257,7 +258,8 @@ export default function ChatPage() {
             placeholder="Escribe tu pregunta..."
             disabled={loading}
             style={{
-              flex: "1 1 100px",
+              flex: compact ? "0 0 auto" : "1 1 100px",
+              width: compact ? "100%" : undefined,
               minWidth: 0,
               padding: inputPadding,
               borderRadius: inputRadius,
@@ -269,12 +271,14 @@ export default function ChatPage() {
               WebkitBackdropFilter: "blur(10px)",
               border: "1px solid rgba(255,255,255,0.95)",
               boxShadow: "0 1px 6px rgba(0,0,0,0.03)",
+              boxSizing: "border-box",
             }}
           />
           <button
             type="submit"
             disabled={loading || !input.trim()}
             style={{
+              width: compact ? "100%" : undefined,
               padding: btnPadding,
               borderRadius: inputRadius,
               border: "none",
@@ -285,7 +289,7 @@ export default function ChatPage() {
               fontSize: btnFontSize,
               boxShadow: "0 2px 10px rgba(37, 99, 235, 0.35)",
               flexShrink: 0,
-              minWidth: "fit-content",
+              boxSizing: "border-box",
             }}
           >
             Enviar
