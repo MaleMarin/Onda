@@ -3,24 +3,38 @@
  * Requiere: WHATSAPP_ACCESS_TOKEN, WHATSAPP_PHONE_NUMBER_ID
  */
 
-const API_VERSION = "v21.0";
-const BASE_URL = `https://graph.facebook.com/${API_VERSION}`;
+function getEnv(...names: string[]): string {
+  for (const n of names) {
+    const v = process.env[n];
+    if (v && v.trim().length) return v.trim();
+  }
+  return "";
+}
 
 export async function sendWhatsAppText(
   to: string,
   text: string
 ): Promise<{ ok: boolean; error?: string }> {
-  const token = process.env.TOKEN_DE_ACCESO_A_WHATSAPP;
-  const phoneNumberId = "61586767326040";
+  const accessToken = getEnv(
+    "WHATSAPP_ACCESS_TOKEN",
+    "WHATSAPP_TOKEN",
+    "TOKEN_DE_ACCESO_A_WHATSAPP"
+  );
+  const phoneNumberId = getEnv("WHATSAPP_PHONE_NUMBER_ID", "PHONE_NUMBER_ID");
+  const graphVersion = getEnv("GRAPH_VERSION") || "v24.0";
 
-  if (!token || !phoneNumberId) {
-    console.error(
-      "❌ Falta WHATSAPP_ACCESS_TOKEN o WHATSAPP_PHONE_NUMBER_ID en el entorno"
-    );
+  if (!accessToken || !phoneNumberId) {
+    console.error("Missing envs", {
+      hasAccessToken: Boolean(accessToken),
+      hasPhoneNumberId: Boolean(phoneNumberId),
+      hasVerifyToken: Boolean(getEnv("WHATSAPP_VERIFY_TOKEN", "VERIFY_TOKEN")),
+      graphVersion,
+    });
     return { ok: false, error: "Missing WhatsApp config" };
   }
 
-  const url = `${BASE_URL}/${phoneNumberId}/messages`;
+  const baseUrl = `https://graph.facebook.com/${graphVersion}`;
+  const url = `${baseUrl}/${phoneNumberId}/messages`;
   const body = {
     messaging_product: "whatsapp",
     to: String(to).replace(/\D/g, ""),
@@ -32,7 +46,7 @@ export async function sendWhatsAppText(
     const res = await fetch(url, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${token}`,//EAASIuZAjP4eQBQhSzdRHoZCD0jMtqZC4WfYtLQFQ9bkfZCAHsPyTWkn0TZAoERwZBojKSr9ZCQtjl4KZCwdfFZAT9d1rHF93DKkhwqHLKu0kmHRLLC47mo0L83w7GjLZCHcBNUkY1So03LZBD9McYbE1eJ6GueeSrpXNdO4Qc3dchTo7ZAZBO6Dvye9ck7bWAThd3ccJLH9bi5M3K4MjeAfV20WsNnDRgLc83rUZAZC2x6R
+        Authorization: `Bearer ${accessToken}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify(body),
@@ -44,14 +58,19 @@ export async function sendWhatsAppText(
     };
 
     if (!res.ok) {
-      console.error("❌ WhatsApp API error:", data?.error?.message ?? res.statusText);
+      console.error("WhatsApp API error", {
+        status: res.status,
+        code: data?.error?.code,
+        message: data?.error?.message,
+      });
       return { ok: false, error: data?.error?.message };
     }
 
+    console.log("sendMessage status:", res.status);
     return { ok: true };
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);
-    console.error("❌ Error enviando WhatsApp:", msg);
+    console.error("Error enviando WhatsApp:", msg);
     return { ok: false, error: msg };
   }
 }

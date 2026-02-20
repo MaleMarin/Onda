@@ -5,7 +5,11 @@ import {
   RAW_PROFES_FULL,
 } from "../content/raw/ondaRaw";
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+function getOpenAI(): OpenAI {
+  const key = process.env.OPENAI_API_KEY;
+  if (!key) throw new Error("Missing credentials. Please set the OPENAI_API_KEY environment variable.");
+  return new OpenAI({ apiKey: key });
+}
 
 const SYSTEM_PROMPT_FUSIONADO = `
 Eres ONDA, un asistente de la Fundación Precisar. Tu misión es la Alfabetización Mediática e Informacional (AMI).
@@ -26,6 +30,7 @@ Si no entiendes, saluda y ofrece las 3 opciones: A Mano, Civita o Profes.
  * Obtiene la respuesta de ONDA para un mensaje de usuario (lógica central reutilizable).
  */
 export async function getOndaReply(userText: string): Promise<string> {
+  const openai = getOpenAI();
   const completion = await openai.chat.completions.create({
     messages: [
       { role: "system", content: SYSTEM_PROMPT_FUSIONADO },

@@ -1,3 +1,10 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "ONDA - Precisar",
+  description: "Webhook WhatsApp para ONDA",
+};
+
 export default function RootLayout({
   children,
 }: {
@@ -5,7 +12,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="es">
-      <body>{children}</body>
+      <body style={{ margin: 0 }}>{children}</body>
     </html>
   );
 }
