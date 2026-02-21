@@ -73,16 +73,19 @@ export default function ChatPage() {
     width: "100%",
     height: "100%",
     minHeight: "320px",
-    padding: compact ? "6px" : "12px",
+    display: isEmbed ? "flex" : "block",
+    flexDirection: "column",
     boxSizing: "border-box",
-    background: "linear-gradient(165deg, #dbeafe 0%, #eff6ff 45%, #e0e7ff 100%)",
+    padding: compact ? "0" : "12px",
+    background: isEmbed ? "transparent" : "linear-gradient(165deg, #dbeafe 0%, #eff6ff 45%, #e0e7ff 100%)",
+    overflow: "hidden",
   };
 
   const containerStyle: React.CSSProperties = isEmbed
     ? {
         flex: 1,
         minHeight: 0,
-        height: "100%",
+        minWidth: 0,
         display: "flex",
         flexDirection: "column",
         fontFamily: "'Segoe UI', system-ui, -apple-system, sans-serif",
@@ -93,6 +96,7 @@ export default function ChatPage() {
         boxShadow: glassShadow + ", 0 0 0 1px " + glassBorder,
         overflow: "hidden",
         border: "1px solid rgba(255,255,255,0.7)",
+        boxSizing: "border-box",
       }
     : {
         minHeight: "100vh",
@@ -185,7 +189,7 @@ export default function ChatPage() {
         style={{
           flex: 1,
           minWidth: 0,
-          minHeight: isEmbed ? 260 : 0,
+          minHeight: 0,
           maxWidth: isEmbed ? "100%" : "28rem",
           margin: isEmbed ? 0 : "0 auto",
           width: "100%",
@@ -194,6 +198,7 @@ export default function ChatPage() {
           flexDirection: "column",
           background: "transparent",
           overflow: "hidden",
+          boxSizing: "border-box",
         }}
       >
         <div
