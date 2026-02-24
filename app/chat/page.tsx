@@ -100,7 +100,7 @@ export default function ChatPage() {
     setLoading(true);
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30_000); // 30 s si hay audio/imagen
+    const timeoutId = setTimeout(() => controller.abort(), 60_000);
 
     try {
       const res = await fetch("/api/chat/stream", {

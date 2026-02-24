@@ -6,7 +6,6 @@ import {
   RAW_CIVITA_FULL,
   RAW_PROFES_FULL,
 } from "../content/raw/ondaRaw";
-import { geminiService } from "./geminiService";
 
 function getOpenAI(): OpenAI {
   const key = process.env.OPENAI_API_KEY;
@@ -138,7 +137,7 @@ export async function* getOndaReplyStream(
 }
 
 /**
- * Respuesta ONDA cuando el usuario envía imagen (y opcional texto). Usa Gemini (visión).
+ * Respuesta ONDA cuando el usuario envía imagen (y opcional texto). Usa OpenAI GPT-4o-mini (visión).
  * Si includeSourcesList es true, el modelo incluye la sección de fuentes al final.
  */
 export async function getOndaReplyWithImage(
@@ -148,22 +147,40 @@ export async function getOndaReplyWithImage(
   history?: HistoryEntry[] | null,
   includeSourcesList?: boolean
 ): Promise<string> {
-  const historyMessages =
-    history?.map((m) => ({
-      id: "",
-      role: m.role as "user" | "model",
-      content: m.content,
-      timestamp: 0,
-    })) ?? [];
-  const flowPrompt =
+  const openai = getOpenAI();
+  const ejeContext =
+    eje != null ? `\n--- CONTEXTO ACTUAL (responde en este marco) ---\n${EJE_PROMPTS[eje]}\n` : "";
+  const sourcesBlock =
     includeSourcesList === true
-      ? `El usuario pidió fuentes. Incluí al final una sección "Fuentes" o "Referencias" con las que apliquen al tema, usando SOLO esta lista oficial ONDA (nombre + URL):\n${FUENTES_ONDA_PARA_RESPUESTA}`
-      : undefined;
-  return geminiService.sendMessage(
-    userText || "¿Qué ves en esta imagen? Responde según ONDA.",
-    historyMessages,
-    eje ?? EjeOnda.A_MANO,
-    flowPrompt,
-    imageDataUrl
+      ? `\n\n📚 EL USUARIO PIDIÓ FUENTES. Incluí al final de tu respuesta una sección "Fuentes" o "Referencias" con las que apliquen al tema, usando SOLO esta lista oficial ONDA (nombre + URL):\n${FUENTES_ONDA_PARA_RESPUESTA}\n`
+      : "";
+  const systemContent = SYSTEM_PROMPT_FUSIONADO + ejeContext + sourcesBlock;
+
+  const historySlice = (history ?? []).slice(-MAX_HISTORY_MESSAGES);
+  const historyForApi: Array<{ role: "user" | "assistant"; content: string }> = historySlice.map(
+    (m) => ({
+      role: m.role === "model" ? "assistant" : "user",
+      content: m.content,
+    })
+  );
+
+  const userContent: Array<{ type: "text"; text: string } | { type: "image_url"; image_url: { url: string } }> = [];
+  if (imageDataUrl) {
+    userContent.push({ type: "image_url", image_url: { url: imageDataUrl } });
+  }
+  userContent.push({ type: "text", text: userText || "¿Qué ves en esta imagen? Responde según ONDA." });
+
+  const completion = await openai.chat.completions.create({
+    model: "gpt-4o-mini",
+    messages: [
+      { role: "system", content: systemContent },
+      ...historyForApi,
+      { role: "user", content: userContent },
+    ],
+  });
+
+  return (
+    completion.choices[0].message.content ||
+    "Ups, no tengo una respuesta en este momento."
   );
 }

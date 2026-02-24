@@ -14,7 +14,7 @@ const VALID_EJES = new Set<string>([EjeOnda.A_MANO, EjeOnda.CIVITA, EjeOnda.PROF
  * - image (data URL base64, opcional)
  * - audio (data URL base64, opcional; se transcribe con Whisper)
  * - eje, history
- * Con imagen se usa Gemini; solo texto usa OpenAI.
+ * Con imagen se usa GPT-4o-mini (visión); solo texto usa GPT-4o-mini (streaming).
  */
 export async function POST(req: Request) {
   try {

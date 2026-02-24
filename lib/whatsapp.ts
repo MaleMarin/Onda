@@ -25,7 +25,7 @@ function getConfig(): { accessToken: string; phoneNumberId: string; graphVersion
 
 /**
  * Descarga un medio de WhatsApp por su ID y lo devuelve como data URL (base64).
- * Sirve para imagen (Gemini) y audio (Whisper).
+ * Sirve para imagen (GPT-4o-mini visión) y audio (Whisper).
  */
 export async function getWhatsAppMediaAsBase64(
   mediaId: string,
@@ -72,6 +72,8 @@ export async function getWhatsAppMediaAsBase64(
   }
 }
 
+const MAX_WA_TEXT_LENGTH = 4096;
+
 export async function sendWhatsAppText(
   to: string,
   text: string
@@ -88,11 +90,14 @@ export async function sendWhatsAppText(
   const { accessToken, phoneNumberId, graphVersion } = config;
   const baseUrl = `https://graph.facebook.com/${graphVersion}`;
   const url = `${baseUrl}/${phoneNumberId}/messages`;
+  const truncated = text.length > MAX_WA_TEXT_LENGTH
+    ? text.slice(0, MAX_WA_TEXT_LENGTH - 3) + "..."
+    : text;
   const body = {
     messaging_product: "whatsapp",
     to: String(to).replace(/\D/g, ""),
     type: "text",
-    text: { body: text },
+    text: { body: truncated },
   };
 
   try {

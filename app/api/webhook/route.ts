@@ -1,6 +1,7 @@
+import crypto from "crypto";
 import { getGuideImageBuffer } from "../../../lib/guides";
 import { getOndaReply, getOndaReplyWithImage } from "../../../lib/ondaReply";
-import { parseResponseFormat, wantsAudio, wantsImage, wantsSources } from "../../../lib/responseFormat";
+import { parseResponseFormat, wantsAudio, wantsSources } from "../../../lib/responseFormat";
 import { transcribeAudio } from "../../../lib/transcribe";
 import { generateSpeech } from "../../../lib/tts";
 import {
@@ -12,6 +13,16 @@ import {
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+function verifyWebhookSignature(rawBody: string, signatureHeader: string | null): boolean {
+  const appSecret = process.env.WHATSAPP_APP_SECRET || process.env.META_APP_SECRET;
+  if (!appSecret) return true; // skip if secret not configured
+  if (!signatureHeader) return false;
+  const [algo, sig] = signatureHeader.split("=");
+  if (algo !== "sha256" || !sig) return false;
+  const expected = crypto.createHmac("sha256", appSecret).update(rawBody, "utf8").digest("hex");
+  return crypto.timingSafeEqual(Buffer.from(sig, "hex"), Buffer.from(expected, "hex"));
+}
 
 /**
  * Webhook de WhatsApp - Versión limpia y simple
@@ -68,13 +79,17 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    // Parsear el body (Meta puede enviar JSON o texto)
     let payload: any;
+    let rawBody: string;
     try {
       const contentType = req.headers.get("content-type") || "";
-      const raw = await req.text();
-      if (raw && (contentType.includes("application/json") || raw.trim().startsWith("{"))) {
-        payload = JSON.parse(raw);
+      rawBody = await req.text();
+      if (!verifyWebhookSignature(rawBody, req.headers.get("x-hub-signature-256"))) {
+        console.error("❌ Firma de webhook inválida");
+        return new Response("Forbidden", { status: 403 });
+      }
+      if (rawBody && (contentType.includes("application/json") || rawBody.trim().startsWith("{"))) {
+        payload = JSON.parse(rawBody);
       } else {
         payload = {};
       }
@@ -121,7 +136,7 @@ export async function POST(req: Request) {
           const userMessageForFormat = (text || "").trim() || (type === "audio" ? "(mensaje de voz)" : "");
           const includeSources = wantsSources(userMessageForFormat);
 
-          // 1) Imagen: descargar → Gemini visión
+          // 1) Imagen: descargar → GPT-4o-mini visión
           if (type === "image" && imageId) {
             console.log(`🖼️ Imagen recibida de ${from}`);
             try {

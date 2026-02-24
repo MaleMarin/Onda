@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 const VALID_EJES = new Set<string>([EjeOnda.A_MANO, EjeOnda.CIVITA, EjeOnda.PROFES]);
 
-/** Emite la respuesta en trozos para simular stream (ej. cuando viene de Gemini). */
+/** Emite la respuesta en trozos para simular stream (ej. cuando viene de visión sin streaming). */
 function* chunkText(text: string, size = 40): Generator<string> {
   for (let i = 0; i < text.length; i += size) {
     yield text.slice(i, i + size);
@@ -17,7 +17,7 @@ function* chunkText(text: string, size = 40): Generator<string> {
 
 /**
  * POST con mismo body que /api/chat. Acepta message, image, audio, eje, history.
- * Con imagen usa Gemini y emite la respuesta en chunks; solo texto usa OpenAI en streaming real.
+ * Con imagen usa GPT-4o-mini (visión, sin streaming); solo texto usa GPT-4o-mini en streaming real.
  */
 export async function POST(req: Request) {
   try {
