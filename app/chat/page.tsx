@@ -1,8 +1,30 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import {
+  MAIN_WELCOME,
+  WELCOME_A_MANO,
+  WELCOME_CIVITA,
+  WELCOME_PROFES,
+  EJE_CONFIGS,
+  EJE_SUGGESTIONS,
+  ONDA_MICROCOPY,
+  ORDERED_EJES,
+} from "@/content/shared";
+import { EjeOnda, type Message } from "@/content/types";
+import { parseResponseFormat } from "@/lib/responseFormat";
+import { ChatBubble } from "./components/ChatBubble";
+import { EjeSelector } from "./components/EjeSelector";
 
-type Message = { role: "user" | "bot"; text: string };
+function newMessage(role: "user" | "model", content: string, extra?: Partial<Message>): Message {
+  return {
+    id: crypto.randomUUID(),
+    role,
+    content,
+    timestamp: Date.now(),
+    ...extra,
+  };
+}
 
 export default function ChatPage() {
   const [embed, setEmbed] = useState(false);
@@ -11,52 +33,254 @@ export default function ChatPage() {
   }, []);
 
   const [messages, setMessages] = useState<Message[]>([
-    {
-      role: "bot",
-      text: "Hola, soy ONDA, asistente de la Fundación Precisar. Puedo ayudarte con Alfabetización Mediática e Informacional (AMI). ¿Qué te gustaría saber? Puedes preguntar sobre A Mano, Civita o Profes.",
-    },
+    newMessage("model", MAIN_WELCOME),
   ]);
+  const [currentEje, setCurrentEje] = useState<EjeOnda | null>(null);
   const [input, setInput] = useState("");
+  const [attachmentImage, setAttachmentImage] = useState<string | null>(null);
+  const [attachmentAudio, setAttachmentAudio] = useState<string | null>(null);
+  const [recording, setRecording] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const [loading, setLoading] = useState(false);
+  const [showPickOndaNotice, setShowPickOndaNotice] = useState(false);
+  const [justSwitchedEje, setJustSwitchedEje] = useState<EjeOnda | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const switchHintRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  function confirmEjeSwitch(eje: EjeOnda): void {
+    setCurrentEje(eje);
+    if (switchHintRef.current) clearTimeout(switchHintRef.current);
+    setJustSwitchedEje(eje);
+    switchHintRef.current = setTimeout(() => {
+      setJustSwitchedEje(null);
+      switchHintRef.current = null;
+    }, 1500);
+  }
+
+  function pickEje(eje: EjeOnda): void {
+    setShowPickOndaNotice(false);
+    confirmEjeSwitch(eje);
+    const welcome =
+      eje === EjeOnda.A_MANO
+        ? WELCOME_A_MANO
+        : eje === EjeOnda.CIVITA
+          ? WELCOME_CIVITA
+          : WELCOME_PROFES;
+    setMessages((m) => [...m, newMessage("model", welcome)]);
+  }
+
   async function handleSend(e: React.FormEvent) {
     e.preventDefault();
     const text = input.trim();
-    if (!text || loading) return;
+    const hasContent = text || attachmentImage || attachmentAudio;
+    if (!hasContent || loading) return;
+
+    if (currentEje === null) {
+      setShowPickOndaNotice(true);
+      return;
+    }
 
     setInput("");
-    setMessages((m) => [...m, { role: "user", text }]);
+    const imageToSend = attachmentImage;
+    const audioToSend = attachmentAudio;
+    setAttachmentImage(null);
+    setAttachmentAudio(null);
+
+    const history = messages.map((m) => ({ role: m.role, content: m.content }));
+    const userMsg = newMessage("user", text || (audioToSend ? "🎤 Mensaje de voz" : "🖼️ Imagen"), {
+      image: imageToSend ?? undefined,
+      audio: !!audioToSend,
+    });
+    const placeholderMsg = newMessage("model", "");
+    setMessages((m) => [...m, userMsg, placeholderMsg]);
     setLoading(true);
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30_000); // 30 s si hay audio/imagen
+
     try {
-      const res = await fetch("/api/chat", {
+      const res = await fetch("/api/chat/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text }),
+        body: JSON.stringify({
+          message: text,
+          image: imageToSend ?? undefined,
+          audio: audioToSend ?? undefined,
+          eje: currentEje,
+          history,
+        }),
+        signal: controller.signal,
       });
-      const data = await res.json();
+      clearTimeout(timeoutId);
 
       if (!res.ok) {
-        setMessages((m) => [
-          ...m,
-          { role: "bot", text: data?.error || "Error al obtener respuesta." },
-        ]);
+        clearTimeout(timeoutId);
+        const data = await res.json().catch(() => ({}));
+        setMessages((m) =>
+          m.map((msg) =>
+            msg.id === placeholderMsg.id
+              ? { ...msg, content: data?.error || ONDA_MICROCOPY.errorGeneric }
+              : msg
+          )
+        );
+        setLoading(false);
         return;
       }
 
-      setMessages((m) => [...m, { role: "bot", text: data.reply || "" }]);
-    } catch {
-      setMessages((m) => [
-        ...m,
-        { role: "bot", text: "No pude conectar. Revisa tu conexión." },
-      ]);
+      const reader = res.body?.getReader();
+      const decoder = new TextDecoder();
+      let acc = "";
+      let fullContent = "";
+      let receivedAnyText = false;
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          const lines = (acc + decoder.decode(value, { stream: true })).split("\n");
+          acc = lines.pop() ?? "";
+          for (const line of lines) {
+            if (!line.trim()) continue;
+            try {
+              const obj = JSON.parse(line);
+              if (obj.done) break;
+              if (typeof obj.text === "string") {
+                receivedAnyText = true;
+                fullContent += obj.text;
+                setMessages((m) =>
+                  m.map((msg) =>
+                    msg.id === placeholderMsg.id ? { ...msg, content: msg.content + obj.text } : msg
+                  )
+                );
+              }
+              if (obj.error) {
+                receivedAnyText = true;
+                fullContent = obj.error;
+                setMessages((m) =>
+                  m.map((msg) =>
+                    msg.id === placeholderMsg.id ? { ...msg, content: obj.error } : msg
+                  )
+                );
+                break;
+              }
+            } catch {
+              // ignore malformed line
+            }
+          }
+        }
+      }
+      if (receivedAnyText && fullContent) {
+        const parsed = parseResponseFormat(fullContent);
+        setMessages((m) =>
+          m.map((msg) =>
+            msg.id === placeholderMsg.id
+              ? { ...msg, content: parsed.text, guideId: parsed.guideId ?? undefined }
+              : msg
+          )
+        );
+      } else if (!receivedAnyText) {
+        setMessages((m) =>
+          m.map((msg) =>
+            msg.id === placeholderMsg.id ? { ...msg, content: ONDA_MICROCOPY.errorGeneric } : msg
+          )
+        );
+      }
+      clearTimeout(timeoutId);
+    } catch (err) {
+      clearTimeout(timeoutId);
+      const isAbort = err instanceof Error && err.name === "AbortError";
+      setMessages((m) =>
+        m.map((msg) =>
+          msg.id === placeholderMsg.id
+            ? {
+                ...msg,
+                content: isAbort
+                  ? ONDA_MICROCOPY.errorTimeout
+                  : ONDA_MICROCOPY.errorConnection,
+              }
+            : msg
+        )
+      );
     } finally {
       setLoading(false);
+    }
+  }
+
+  function useSuggestion(suggestion: string) {
+    setInput(suggestion);
+    setShowPickOndaNotice(false);
+  }
+
+  function handleImageFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !file.type.startsWith("image/")) return;
+    const reader = new FileReader();
+    reader.onload = () => setAttachmentImage(reader.result as string);
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  }
+
+  function handlePaste(e: React.ClipboardEvent) {
+    const item = e.clipboardData?.items?.[0];
+    if (item?.type.startsWith("image/")) {
+      e.preventDefault();
+      const file = item.getAsFile();
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = () => setAttachmentImage(reader.result as string);
+        reader.readAsDataURL(file);
+      }
+    }
+  }
+
+  async function startRecording() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      const chunks: Blob[] = [];
+      recorder.ondataavailable = (ev) => ev.data.size && chunks.push(ev.data);
+      recorder.onstop = () => {
+        stream.getTracks().forEach((t) => t.stop());
+        const blob = new Blob(chunks, { type: "audio/webm" });
+        const reader = new FileReader();
+        reader.onload = () => setAttachmentAudio(reader.result as string);
+        reader.readAsDataURL(blob);
+      };
+      recorder.start();
+      mediaRecorderRef.current = recorder;
+      setRecording(true);
+    } catch (err) {
+      console.error("Recording failed", err);
+    }
+  }
+
+  function stopRecording() {
+    if (mediaRecorderRef.current?.state === "recording") {
+      mediaRecorderRef.current.stop();
+      mediaRecorderRef.current = null;
+    }
+    setRecording(false);
+  }
+
+  async function playTTS(text: string) {
+    if (!text.trim()) return;
+    try {
+      const res = await fetch("/api/tts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: text.slice(0, 4096) }),
+      });
+      if (!res.ok) return;
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      audio.onended = () => URL.revokeObjectURL(url);
+      audio.play();
+    } catch (err) {
+      console.error("TTS failed", err);
     }
   }
 
@@ -163,6 +387,19 @@ export default function ChatPage() {
 
   const content = (
     <div style={containerStyle}>
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
+            @keyframes bubbleIn {
+              from { opacity: 0; transform: translateY(6px); }
+              to { opacity: 1; transform: translateY(0); }
+            }
+            .bubble-in {
+              animation: bubbleIn 0.25s ease-out;
+            }
+          `,
+        }}
+      />
       {isEmbed ? (
         <div style={embedHeaderStyle}>
           <span
@@ -211,43 +448,276 @@ export default function ChatPage() {
             marginBottom: messagesGap,
           }}
         >
-          {messages.map((msg, i) => (
+          {messages.map((msg) => (
             <div
-              key={i}
+              key={msg.id}
+              className="bubble-in"
               style={{
                 alignSelf: msg.role === "user" ? "flex-end" : "flex-start",
                 maxWidth: bubbleMaxWidth,
-                padding: bubblePadding,
-                borderRadius: bubbleRadius,
-                fontSize: bubbleFontSize,
-                lineHeight: 1.5,
-                ...(msg.role === "user" ? bubbleUserStyle : bubbleBotStyle),
+                width: "100%",
               }}
             >
-              <div style={{ whiteSpace: "pre-wrap" }}>{msg.text}</div>
+              <ChatBubble
+                message={msg}
+                color={currentEje ? EJE_CONFIGS[currentEje].color : blue}
+                compact={compact}
+                onPlayTTS={msg.role === "model" && msg.content ? playTTS : undefined}
+              />
             </div>
           ))}
-          {loading && (
+          {loading &&
+            !(
+              messages.length > 0 &&
+              messages[messages.length - 1].role === "model" &&
+              messages[messages.length - 1].content === ""
+            ) && (
+              <div
+                className="bubble-in"
+                style={{
+                  alignSelf: "flex-start",
+                  maxWidth: bubbleMaxWidth,
+                  padding: bubblePadding,
+                  borderRadius: bubbleRadius,
+                  color: "#64748b",
+                  fontStyle: "italic",
+                  fontSize: bubbleFontSize,
+                  ...bubbleBotStyle,
+                }}
+              >
+                {ONDA_MICROCOPY.typing}
+              </div>
+            )}
+          {showPickOndaNotice && (
             <div
+              className="bubble-in"
               style={{
                 alignSelf: "flex-start",
                 maxWidth: bubbleMaxWidth,
                 padding: bubblePadding,
                 borderRadius: bubbleRadius,
-                color: "#64748b",
-                fontStyle: "italic",
+                background: "rgba(234, 179, 8, 0.15)",
+                border: "1px solid rgba(234, 179, 8, 0.4)",
+                color: "#854d0e",
                 fontSize: bubbleFontSize,
-                ...bubbleBotStyle,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 8,
               }}
             >
-              ONDA está escribiendo...
+              <span>{ONDA_MICROCOPY.pickOndaFirst}</span>
+              <button
+                type="button"
+                onClick={() => setShowPickOndaNotice(false)}
+                style={{
+                  flexShrink: 0,
+                  padding: "4px 10px",
+                  borderRadius: 8,
+                  border: "none",
+                  background: "rgba(234, 179, 8, 0.3)",
+                  color: "#854d0e",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  fontSize: "0.75rem",
+                }}
+              >
+                Entendido
+              </button>
+            </div>
+          )}
+          {currentEje === null && (
+            <div
+              className="bubble-in"
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: 8,
+                marginTop: 4,
+                maxWidth: bubbleMaxWidth,
+              }}
+            >
+              <div style={{ fontSize: bubbleFontSize, color: "#64748b", marginBottom: 4 }}>
+                Elige una Onda:
+              </div>
+              {ORDERED_EJES.map((eje) => {
+                const config = EJE_CONFIGS[eje];
+                return (
+                  <button
+                    key={eje}
+                    type="button"
+                    onClick={() => pickEje(eje)}
+                    style={{
+                      padding: "12px 16px",
+                      borderRadius: 12,
+                      border: `2px solid ${config.color}`,
+                      background: "rgba(255,255,255,0.9)",
+                      color: config.color,
+                      fontWeight: 600,
+                      fontSize: bubbleFontSize,
+                      cursor: "pointer",
+                      textAlign: "left",
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "flex-start",
+                      gap: 4,
+                    }}
+                  >
+                    <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <span>{config.icon}</span>
+                      <span>{config.name}</span>
+                    </span>
+                    <span
+                      style={{
+                        fontSize: "0.75rem",
+                        color: "#64748b",
+                        fontWeight: 400,
+                      }}
+                    >
+                      {config.description}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           )}
           <div ref={bottomRef} />
         </div>
 
+        {currentEje !== null && (
+          <>
+            <EjeSelector
+              currentEje={currentEje}
+              onSelect={confirmEjeSwitch}
+              compact={compact}
+            />
+            {justSwitchedEje !== null && (
+              <p
+                style={{
+                  margin: "-6px 0 8px",
+                  fontSize: compact ? "0.7rem" : "0.75rem",
+                  color: EJE_CONFIGS[justSwitchedEje].color,
+                  fontWeight: 500,
+                }}
+              >
+                Ahora en {EJE_CONFIGS[justSwitchedEje].name}
+              </p>
+            )}
+          </>
+        )}
+
+        {currentEje !== null && EJE_SUGGESTIONS[currentEje].length > 0 && (
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 6,
+              marginBottom: 8,
+              minWidth: 0,
+            }}
+          >
+            {EJE_SUGGESTIONS[currentEje].map((suggestion) => (
+              <button
+                key={suggestion}
+                type="button"
+                onClick={() => useSuggestion(suggestion)}
+                disabled={loading}
+                style={{
+                  padding: compact ? "6px 10px" : "8px 12px",
+                  borderRadius: 9999,
+                  border: `1px solid ${EJE_CONFIGS[currentEje].color}`,
+                  background: "rgba(255,255,255,0.9)",
+                  color: EJE_CONFIGS[currentEje].color,
+                  fontSize: compact ? "0.7rem" : "0.75rem",
+                  cursor: loading ? "not-allowed" : "pointer",
+                  opacity: loading ? 0.7 : 1,
+                  whiteSpace: "nowrap",
+                  maxWidth: "100%",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}
+              >
+                {suggestion}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {(attachmentImage || attachmentAudio) && (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              marginBottom: 6,
+              flexWrap: "wrap",
+            }}
+          >
+            {attachmentImage && (
+              <div style={{ position: "relative" }}>
+                <img
+                  src={attachmentImage}
+                  alt="Adjunto"
+                  style={{
+                    height: 48,
+                    borderRadius: 8,
+                    border: "1px solid #e2e8f0",
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setAttachmentImage(null)}
+                  style={{
+                    position: "absolute",
+                    top: -6,
+                    right: -6,
+                    width: 22,
+                    height: 22,
+                    borderRadius: "50%",
+                    border: "none",
+                    background: "#64748b",
+                    color: "white",
+                    cursor: "pointer",
+                    fontSize: 14,
+                    lineHeight: 1,
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+            )}
+            {attachmentAudio && (
+              <span
+                style={{
+                  fontSize: "0.75rem",
+                  color: "#64748b",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 4,
+                }}
+              >
+                🎤 Audio listo
+                <button
+                  type="button"
+                  onClick={() => setAttachmentAudio(null)}
+                  style={{
+                    padding: "2px 8px",
+                    borderRadius: 6,
+                    border: "none",
+                    background: "#e2e8f0",
+                    cursor: "pointer",
+                    fontSize: "0.7rem",
+                  }}
+                >
+                  Quitar
+                </button>
+              </span>
+            )}
+          </div>
+        )}
         <form
           onSubmit={handleSend}
+          onPaste={handlePaste}
           style={{
             display: "flex",
             flexDirection: compact ? "column" : "row",
@@ -257,10 +727,74 @@ export default function ChatPage() {
           }}
         >
           <input
+            type="file"
+            accept="image/*"
+            onChange={handleImageFile}
+            style={{ display: "none" }}
+            id="onda-image-upload"
+          />
+          <label
+            htmlFor="onda-image-upload"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: 40,
+              height: 40,
+              borderRadius: 10,
+              border: "1px solid #e2e8f0",
+              background: "rgba(255,255,255,0.9)",
+              cursor: "pointer",
+              flexShrink: 0,
+            }}
+            title="Subir imagen o pegar (Ctrl+V)"
+          >
+            🖼️
+          </label>
+          {recording ? (
+            <button
+              type="button"
+              onClick={stopRecording}
+              style={{
+                padding: "10px 16px",
+                borderRadius: 10,
+                border: "none",
+                background: "#dc2626",
+                color: "white",
+                fontWeight: 600,
+                cursor: "pointer",
+                fontSize: "0.8rem",
+              }}
+            >
+              ⏹ Detener
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={startRecording}
+              disabled={loading}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: 40,
+                height: 40,
+                borderRadius: 10,
+                border: "1px solid #e2e8f0",
+                background: "rgba(255,255,255,0.9)",
+                cursor: loading ? "not-allowed" : "pointer",
+                flexShrink: 0,
+              }}
+              title="Grabar voz"
+            >
+              🎤
+            </button>
+          )}
+          <input
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Escribe tu pregunta..."
+            placeholder={currentEje ? EJE_CONFIGS[currentEje].placeholder : "Escribe, imagen o voz..."}
             disabled={loading}
             style={{
               flex: compact ? "0 0 auto" : "1 1 100px",
@@ -281,7 +815,7 @@ export default function ChatPage() {
           />
           <button
             type="submit"
-            disabled={loading || !input.trim()}
+            disabled={loading || (!input.trim() && !attachmentImage && !attachmentAudio)}
             style={{
               width: compact ? "100%" : undefined,
               padding: btnPadding,
@@ -297,7 +831,7 @@ export default function ChatPage() {
               boxSizing: "border-box",
             }}
           >
-            Enviar
+            {ONDA_MICROCOPY.send}
           </button>
         </form>
       </main>

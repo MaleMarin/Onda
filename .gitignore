@@ -1,6 +1,8 @@
 node_modules
 dist
 .vercel
+.next
 .env
 .env.*
 .DS_Store
+tmp

@@ -25,9 +25,11 @@ git push
 
 **Espera 2-3 minutos** mientras Vercel construye y despliega tu proyecto.
 
-**Al terminar, verás una URL como:** `https://ondabot-xxxxx.vercel.app`
+**Al terminar, verás una URL como:** `https://onda2026.vercel.app` o `https://onda2026-xxxxx.vercel.app`
 
 **¡Guarda esta URL!** La necesitarás en el siguiente paso.
+
+**Nota:** Si tu proyecto ya existe en Vercel con el nombre "onda2026", simplemente conéctalo desde GitHub.
 
 ---
 
@@ -102,9 +104,9 @@ git push
 
    - **Callback URL:** 
      ```
-     https://tu-dominio.vercel.app/api/webhook
+     https://onda2026.vercel.app/api/webhook
      ```
-     (Reemplaza `tu-dominio` con la URL que te dio Vercel en el Paso 2)
+     (O la URL completa que te muestra Vercel para tu proyecto)
    
    - **Verify token:**
      ```
@@ -127,7 +129,7 @@ git push
 
 Abre en tu navegador:
 ```
-https://tu-dominio.vercel.app/api/webhook
+https://onda2026.vercel.app/api/webhook
 ```
 
 **Deberías ver un JSON** que dice algo como:

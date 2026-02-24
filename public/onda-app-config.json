@@ -1,0 +1,8 @@
+{
+  "name": "Onda - Asistente Digital Precisar",
+  "description": "Un asistente de IA empoderador diseñado para fomentar el pensamiento crítico, la ciudadanía activa y el uso responsable de la tecnología.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
