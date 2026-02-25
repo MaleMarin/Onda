@@ -1,11 +1,8 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo, type CSSProperties } from "react";
 import {
   MAIN_WELCOME,
-  WELCOME_A_MANO,
-  WELCOME_CIVITA,
-  WELCOME_PROFES,
   EJE_CONFIGS,
   EJE_SUGGESTIONS,
   EJE_MENU_OPTIONS,
@@ -15,6 +12,8 @@ import {
 } from "@/content/shared";
 import { EjeOnda, type Message } from "@/content/types";
 import { parseResponseFormat } from "@/lib/responseFormat";
+import { useOndaTheme } from "@/lib/useOndaTheme";
+import { ondaStyles } from "@/lib/ondaStyles";
 import { ChatBubble } from "./components/ChatBubble";
 import { EjeSelector } from "./components/EjeSelector";
 
@@ -29,6 +28,9 @@ function newMessage(role: "user" | "model", content: string, extra?: Partial<Mes
 }
 
 export default function ChatPage() {
+  const t = useOndaTheme();
+  const S = useMemo(() => ondaStyles(t), [t]);
+
   const [embed, setEmbed] = useState(false);
   useEffect(() => {
     setEmbed(new URLSearchParams(window.location.search).get("embed") === "1");
@@ -48,6 +50,7 @@ export default function ChatPage() {
   const [justSwitchedEje, setJustSwitchedEje] = useState<EjeOnda | null>(null);
   const [showMenu, setShowMenu] = useState(true);
   const [showIASubmenu, setShowIASubmenu] = useState(false);
+  const [inputFocused, setInputFocused] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const switchHintRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -70,13 +73,6 @@ export default function ChatPage() {
     confirmEjeSwitch(eje);
     setShowMenu(true);
     setShowIASubmenu(false);
-    const welcome =
-      eje === EjeOnda.A_MANO
-        ? WELCOME_A_MANO
-        : eje === EjeOnda.CIVITA
-          ? WELCOME_CIVITA
-          : WELCOME_PROFES;
-    setMessages((m) => [...m, newMessage("model", welcome)]);
   }
 
   function handleMenuOption(optionId: string, label: string, intro: string, isSubmenu?: boolean): void {
@@ -264,7 +260,7 @@ export default function ChatPage() {
       const chunks: Blob[] = [];
       recorder.ondataavailable = (ev) => ev.data.size && chunks.push(ev.data);
       recorder.onstop = () => {
-        stream.getTracks().forEach((t) => t.stop());
+        stream.getTracks().forEach((tr) => tr.stop());
         const blob = new Blob(chunks, { type: "audio/webm" });
         const reader = new FileReader();
         reader.onload = () => setAttachmentAudio(reader.result as string);
@@ -305,296 +301,246 @@ export default function ChatPage() {
     }
   }
 
+  /* ── derived styles from S + overrides ── */
+
   const isEmbed = embed;
-
-  // Tamaños compactos en embed
   const compact = isEmbed;
-  const blue = "#2563eb";
-  const glassWhite = "rgba(255, 255, 255, 0.82)";
-  const glassBorder = "rgba(255, 255, 255, 0.95)";
-  const glassShadow = "0 4px 24px rgba(0, 0, 0, 0.06)";
+  const ejeColor = currentEje ? EJE_CONFIGS[currentEje].color : t.c.brand;
 
-  const embedWrapperStyle: React.CSSProperties = {
-    width: "100%",
-    height: "100%",
-    minHeight: "320px",
-    display: isEmbed ? "flex" : "block",
+  const shellStyle: CSSProperties = isEmbed
+    ? { ...S.shell, maxWidth: "100%", flex: 1, minHeight: 0, borderRadius: t.r.lg }
+    : S.shell;
+
+  const embedWrap: CSSProperties | undefined = isEmbed
+    ? { width: "100%", height: "100%", minHeight: 320, display: "flex", flexDirection: "column", padding: 0, background: "transparent", overflow: "hidden" }
+    : undefined;
+
+  const headerStyle: CSSProperties = compact
+    ? { ...S.header, padding: "10px 14px" }
+    : S.header;
+
+  const chatBody: CSSProperties = {
+    ...(isEmbed ? { flex: 1, minHeight: 0 } : { height: S.chat.height as string }),
+    display: "flex",
     flexDirection: "column",
-    boxSizing: "border-box",
-    padding: compact ? "0" : "12px",
-    background: isEmbed ? "transparent" : "linear-gradient(165deg, #dbeafe 0%, #eff6ff 45%, #e0e7ff 100%)",
     overflow: "hidden",
   };
 
-  const containerStyle: React.CSSProperties = isEmbed
-    ? {
-        flex: 1,
-        minHeight: 0,
-        minWidth: 0,
-        display: "flex",
-        flexDirection: "column",
-        fontFamily: "'Segoe UI', system-ui, -apple-system, sans-serif",
-        background: glassWhite,
-        backdropFilter: "blur(16px)",
-        WebkitBackdropFilter: "blur(16px)",
-        borderRadius: compact ? 14 : 20,
-        boxShadow: glassShadow + ", 0 0 0 1px " + glassBorder,
-        overflow: "hidden",
-        border: "1px solid rgba(255,255,255,0.7)",
-        boxSizing: "border-box",
-      }
-    : {
-        minHeight: "100vh",
-        display: "flex",
-        flexDirection: "column",
-        fontFamily: "'Segoe UI', system-ui, -apple-system, sans-serif",
-        background: "linear-gradient(165deg, #dbeafe 0%, #eff6ff 50%, #e0e7ff 100%)",
-      };
+  const msgsArea: CSSProperties = {
+    ...S.messages,
+    flex: 1,
+    minHeight: 0,
+    overflowY: "auto",
+    display: "flex",
+    flexDirection: "column",
+    gap: compact ? 8 : 10,
+  };
 
-  const embedHeaderStyle: React.CSSProperties = {
-    background: "rgba(255, 255, 255, 0.6)",
-    backdropFilter: "blur(10px)",
-    WebkitBackdropFilter: "blur(10px)",
-    color: "#1e40af",
-    padding: compact ? "8px 12px" : "14px 20px",
-    fontSize: compact ? "0.8rem" : "0.95rem",
-    fontWeight: 600,
-    letterSpacing: "0.03em",
-    borderBottom: "1px solid rgba(255,255,255,0.8)",
+  const disabledCursor = loading ? "not-allowed" : "pointer";
+  const disabledOpacity = loading ? 0.55 : 1;
+
+  const noticeStyle: CSSProperties = {
+    padding: "10px 14px",
+    borderRadius: t.r.md,
+    background: t.c.warnBg,
+    border: `1px solid ${t.c.warnBorder}`,
+    color: t.c.warnText,
+    fontSize: "0.82rem",
     display: "flex",
     alignItems: "center",
-    gap: "8px",
+    justifyContent: "space-between",
+    gap: 8,
   };
 
-  const headerFullStyle: React.CSSProperties = {
-    background: "rgba(255, 255, 255, 0.6)",
-    backdropFilter: "blur(10px)",
-    WebkitBackdropFilter: "blur(10px)",
-    color: "#1e40af",
-    padding: "0.75rem 1rem",
+  const noticeBtnStyle: CSSProperties = {
+    flexShrink: 0,
+    padding: "4px 12px",
+    borderRadius: t.r.sm,
+    border: "none",
+    background: t.c.warnBorder,
+    color: t.c.warnText,
+    fontWeight: 600,
+    cursor: "pointer",
+    fontSize: "0.72rem",
+  };
+
+  const pickerBtn: CSSProperties = {
+    padding: "14px 16px",
+    borderRadius: t.r.md,
+    border: `1px solid ${t.c.border}`,
+    background: t.c.surface2,
+    cursor: "pointer",
+    textAlign: "left",
+    display: "flex",
+    flexDirection: "column",
+    gap: 4,
+    transition: "transform 180ms cubic-bezier(.2,.8,.2,1), box-shadow 180ms",
+  };
+
+  const menuList: CSSProperties = {
+    display: "flex",
+    flexDirection: "column",
+    gap: 6,
+    marginBottom: 10,
+    maxHeight: compact ? 180 : 240,
+    overflowY: "auto",
+    padding: "0 4px",
+  };
+
+  const menuBtnStyle: CSSProperties = {
+    padding: compact ? "8px 12px" : "10px 14px",
+    borderRadius: t.r.sm,
+    border: `1px solid ${t.c.border}`,
+    background: t.c.surface2,
+    color: t.c.ink,
+    fontSize: compact ? "0.75rem" : "0.8rem",
+    fontWeight: 500,
+    cursor: disabledCursor,
+    opacity: disabledOpacity,
+    textAlign: "left",
+    width: "100%",
+    transition: "transform 180ms cubic-bezier(.2,.8,.2,1), box-shadow 180ms",
+  };
+
+  const menuSec: CSSProperties = {
+    padding: compact ? "6px 10px" : "8px 12px",
+    borderRadius: t.r.sm,
+    border: `1px solid ${t.c.border}`,
+    background: t.isDark ? "rgba(130,150,210,.06)" : "rgba(110,135,190,.06)",
+    color: t.c.muted,
+    fontSize: compact ? "0.7rem" : "0.75rem",
+    cursor: "pointer",
     textAlign: "center",
-    borderBottom: "1px solid rgba(255,255,255,0.6)",
+    width: "100%",
   };
 
-  const bubbleBotStyle: React.CSSProperties = {
-    background: "rgba(255, 255, 255, 0.85)",
-    backdropFilter: "blur(10px)",
-    WebkitBackdropFilter: "blur(10px)",
-    color: "#334155",
-    boxShadow: "0 1px 8px rgba(0,0,0,0.04), 0 0 0 1px rgba(255,255,255,0.9)",
-    border: "1px solid rgba(255,255,255,0.95)",
+  const chipBase: CSSProperties = {
+    ...S.chip,
+    ...(compact ? { padding: "6px 10px", fontSize: "0.7rem" } : {}),
+    cursor: disabledCursor,
+    opacity: disabledOpacity,
+    whiteSpace: "nowrap",
+    maxWidth: "100%",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
   };
 
-  const bubbleUserStyle: React.CSSProperties = {
-    background: "rgba(37, 99, 235, 0.2)",
-    backdropFilter: "blur(10px)",
-    WebkitBackdropFilter: "blur(10px)",
-    color: "#1e40af",
-    boxShadow: "0 1px 8px rgba(37, 99, 235, 0.15), 0 0 0 1px rgba(255,255,255,0.6)",
-    border: "1px solid rgba(255,255,255,0.7)",
+  const chipMuted: CSSProperties = {
+    ...S.chip,
+    color: t.c.muted,
+    borderColor: t.isDark ? "rgba(130,150,210,.15)" : "rgba(110,135,190,.15)",
+    background: t.isDark ? "rgba(130,150,210,.06)" : "rgba(110,135,190,.06)",
+    ...(compact ? { padding: "6px 10px", fontSize: "0.7rem" } : {}),
   };
 
-  const bubblePadding = compact ? "10px 14px" : "12px 16px";
-  const bubbleRadius = compact ? 12 : 14;
-  const bubbleFontSize = compact ? "0.8125rem" : "0.875rem";
-  const bubbleMaxWidth = compact ? "min(88%, 300px)" : "min(88%, 340px)";
-  const messagesGap = compact ? 8 : 10;
-  const mainPadding = compact ? "12px" : "16px";
-  const inputPadding = compact ? "10px 14px" : "12px 16px";
-  const inputRadius = compact ? 14 : 18;
-  const inputFontSize = compact ? "0.8125rem" : "0.875rem";
-  const btnPadding = compact ? "10px 16px" : "12px 18px";
-  const btnFontSize = compact ? "0.8125rem" : "0.875rem";
+  const iconStyle: CSSProperties = {
+    ...S.iconBtn,
+    ...(compact ? { width: 38, height: 38 } : {}),
+    flexShrink: 0,
+  };
+
+  const stopStyle: CSSProperties = {
+    ...iconStyle,
+    width: "auto",
+    padding: "0 14px",
+    background: t.c.danger,
+    borderColor: t.c.danger,
+    color: "#fff",
+    fontWeight: 600,
+    fontSize: "0.78rem",
+  };
+
+  const inpStyle: CSSProperties = {
+    ...S.input,
+    ...(compact ? { height: 40, fontSize: "0.8rem" } : {}),
+    flex: 1,
+    minWidth: 0,
+    ...(inputFocused ? S.inputFocusRing : {}),
+  };
+
+  const canSend = !loading && !!(input.trim() || attachmentImage || attachmentAudio);
+  const sendStyle: CSSProperties = {
+    ...S.send,
+    ...(compact ? { height: 40, padding: "0 16px" } : {}),
+    opacity: canSend ? 1 : 0.5,
+    cursor: canSend ? "pointer" : "not-allowed",
+    flexShrink: 0,
+  };
+
+  /* ── render ── */
 
   const content = (
-    <div style={containerStyle}>
-      <style
-        dangerouslySetInnerHTML={{
-          __html: `
-            @keyframes bubbleIn {
-              from { opacity: 0; transform: translateY(6px); }
-              to { opacity: 1; transform: translateY(0); }
-            }
-            .bubble-in {
-              animation: bubbleIn 0.25s ease-out;
-            }
-          `,
-        }}
-      />
-      {isEmbed ? (
-        <div style={embedHeaderStyle}>
-          <span
-            style={{
-              width: 6,
-              height: 6,
-              borderRadius: "50%",
-              background: blue,
-              boxShadow: "0 0 0 2px rgba(37, 99, 235, 0.3)",
-            }}
-          />
-          Chatea con ONDA · Fundación Precisar
+    <div style={shellStyle}>
+      {/* Header */}
+      <div style={headerStyle}>
+        <div style={S.titleWrap}>
+          <span style={S.titleBadge} />
+          <div>
+            <div style={{ fontWeight: 700, fontSize: compact ? "0.85rem" : "1rem", letterSpacing: ".02em", color: t.c.ink }}>
+              {isEmbed ? "Chatea con ONDA · Fundación Precisar" : "ONDA – Fundación Precisar"}
+            </div>
+            {!isEmbed && (
+              <div style={{ ...S.subtitle, marginTop: 2 }}>
+                Alfabetización Mediática e Informacional (AMI)
+              </div>
+            )}
+          </div>
         </div>
-      ) : (
-        <header style={headerFullStyle}>
-          <h1 style={{ margin: 0, fontSize: "1.1rem" }}>ONDA – Fundación Precisar</h1>
-          <p style={{ margin: "0.2rem 0 0", fontSize: "0.8rem", opacity: 0.9 }}>
-            Alfabetización Mediática e Informacional (AMI)
-          </p>
-        </header>
-      )}
+      </div>
 
-      <main
-        style={{
-          flex: 1,
-          minWidth: 0,
-          minHeight: 0,
-          maxWidth: isEmbed ? "100%" : "28rem",
-          margin: isEmbed ? 0 : "0 auto",
-          width: "100%",
-          padding: mainPadding,
-          display: "flex",
-          flexDirection: "column",
-          background: "transparent",
-          overflow: "hidden",
-          boxSizing: "border-box",
-        }}
-      >
-        <div
-          style={{
-            flex: 1,
-            overflowY: "auto",
-            display: "flex",
-            flexDirection: "column",
-            gap: messagesGap,
-            marginBottom: messagesGap,
-          }}
-        >
+      {/* Chat body */}
+      <div style={chatBody}>
+        {/* Messages */}
+        <div style={msgsArea}>
           {messages.map((msg) => (
-            <div
-              key={msg.id}
-              className="bubble-in"
-              style={{
-                alignSelf: msg.role === "user" ? "flex-end" : "flex-start",
-                maxWidth: bubbleMaxWidth,
-                width: "100%",
-              }}
-            >
+            <div key={msg.id} className="bubble-in" style={S.row(msg.role === "user")}>
               <ChatBubble
                 message={msg}
-                color={currentEje ? EJE_CONFIGS[currentEje].color : blue}
+                color={ejeColor}
                 compact={compact}
                 onPlayTTS={msg.role === "model" && msg.content ? playTTS : undefined}
+                theme={t}
               />
             </div>
           ))}
+
+          {/* Loading */}
           {loading &&
-            !(
-              messages.length > 0 &&
-              messages[messages.length - 1].role === "model" &&
-              messages[messages.length - 1].content === ""
-            ) && (
-              <div
-                className="bubble-in"
-                style={{
-                  alignSelf: "flex-start",
-                  maxWidth: bubbleMaxWidth,
-                  padding: bubblePadding,
-                  borderRadius: bubbleRadius,
-                  color: "#64748b",
-                  fontStyle: "italic",
-                  fontSize: bubbleFontSize,
-                  ...bubbleBotStyle,
-                }}
-              >
-                {ONDA_MICROCOPY.typing}
+            !(messages.length > 0 && messages[messages.length - 1].role === "model" && messages[messages.length - 1].content === "") && (
+              <div className="bubble-in" style={S.row(false)}>
+                <div style={{ ...S.bubble(false), fontStyle: "italic", color: t.c.muted, animation: "pulse 1.4s ease-in-out infinite" }}>
+                  {ONDA_MICROCOPY.typing}
+                </div>
               </div>
             )}
+
+          {/* Pick onda notice */}
           {showPickOndaNotice && (
-            <div
-              className="bubble-in"
-              style={{
-                alignSelf: "flex-start",
-                maxWidth: bubbleMaxWidth,
-                padding: bubblePadding,
-                borderRadius: bubbleRadius,
-                background: "rgba(234, 179, 8, 0.15)",
-                border: "1px solid rgba(234, 179, 8, 0.4)",
-                color: "#854d0e",
-                fontSize: bubbleFontSize,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: 8,
-              }}
-            >
-              <span>{ONDA_MICROCOPY.pickOndaFirst}</span>
-              <button
-                type="button"
-                onClick={() => setShowPickOndaNotice(false)}
-                style={{
-                  flexShrink: 0,
-                  padding: "4px 10px",
-                  borderRadius: 8,
-                  border: "none",
-                  background: "rgba(234, 179, 8, 0.3)",
-                  color: "#854d0e",
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  fontSize: "0.75rem",
-                }}
-              >
-                Entendido
-              </button>
+            <div className="bubble-in" style={S.row(false)}>
+              <div style={noticeStyle}>
+                <span>{ONDA_MICROCOPY.pickOndaFirst}</span>
+                <button type="button" onClick={() => setShowPickOndaNotice(false)} style={noticeBtnStyle}>
+                  Entendido
+                </button>
+              </div>
             </div>
           )}
+
+          {/* Onda picker */}
           {currentEje === null && (
-            <div
-              className="bubble-in"
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: 8,
-                marginTop: 4,
-                maxWidth: bubbleMaxWidth,
-              }}
-            >
-              <div style={{ fontSize: bubbleFontSize, color: "#64748b", marginBottom: 4 }}>
+            <div className="bubble-in" style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 6, maxWidth: "min(88%, 420px)" }}>
+              <div style={{ fontSize: "0.82rem", color: t.c.muted, marginBottom: 2 }}>
                 Elige una Onda:
               </div>
               {ORDERED_EJES.map((eje) => {
                 const config = EJE_CONFIGS[eje];
                 return (
-                  <button
-                    key={eje}
-                    type="button"
-                    onClick={() => pickEje(eje)}
-                    style={{
-                      padding: "12px 16px",
-                      borderRadius: 12,
-                      border: `2px solid ${config.color}`,
-                      background: "rgba(255,255,255,0.9)",
-                      color: config.color,
-                      fontWeight: 600,
-                      fontSize: bubbleFontSize,
-                      cursor: "pointer",
-                      textAlign: "left",
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "flex-start",
-                      gap: 4,
-                    }}
-                  >
-                    <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <button key={eje} type="button" onClick={() => pickEje(eje)} style={pickerBtn} {...S.lift.picker}>
+                    <span style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 700, fontSize: "0.88rem", color: config.color }}>
                       <span>{config.icon}</span>
                       <span>{config.name}</span>
                     </span>
-                    <span
-                      style={{
-                        fontSize: "0.75rem",
-                        color: "#64748b",
-                        fontWeight: 400,
-                      }}
-                    >
+                    <span style={{ fontSize: "0.74rem", color: t.c.muted, fontWeight: 400 }}>
                       {config.description}
                     </span>
                   </button>
@@ -602,167 +548,75 @@ export default function ChatPage() {
               })}
             </div>
           )}
+
           <div ref={bottomRef} />
         </div>
 
+        {/* Tabs */}
         {currentEje !== null && (
           <>
-            <EjeSelector
-              currentEje={currentEje}
-              onSelect={confirmEjeSwitch}
-              compact={compact}
-            />
+            <EjeSelector currentEje={currentEje} onSelect={confirmEjeSwitch} compact={compact} theme={t} />
             {justSwitchedEje !== null && (
-              <p
-                style={{
-                  margin: "-6px 0 8px",
-                  fontSize: compact ? "0.7rem" : "0.75rem",
-                  color: EJE_CONFIGS[justSwitchedEje].color,
-                  fontWeight: 500,
-                }}
-              >
+              <p style={{ margin: "-4px 0 8px", fontSize: compact ? "0.7rem" : "0.74rem", color: EJE_CONFIGS[justSwitchedEje].color, fontWeight: 500, padding: "0 4px" }}>
                 Ahora en {EJE_CONFIGS[justSwitchedEje].name}
               </p>
             )}
           </>
         )}
 
+        {/* Menu options */}
         {currentEje !== null && showMenu && !showIASubmenu && (
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: 6,
-              marginBottom: 8,
-              maxHeight: compact ? "180px" : "220px",
-              overflowY: "auto",
-            }}
-          >
+          <div style={menuList}>
             {EJE_MENU_OPTIONS[currentEje].map((opt) => (
               <button
                 key={opt.id}
                 type="button"
                 onClick={() => handleMenuOption(opt.id, opt.label, opt.intro, opt.isSubmenu)}
                 disabled={loading}
-                style={{
-                  padding: compact ? "8px 12px" : "10px 14px",
-                  borderRadius: 10,
-                  border: `1.5px solid ${EJE_CONFIGS[currentEje].color}`,
-                  background: "rgba(255,255,255,0.92)",
-                  color: "#334155",
-                  fontSize: compact ? "0.75rem" : "0.8rem",
-                  fontWeight: 500,
-                  cursor: loading ? "not-allowed" : "pointer",
-                  opacity: loading ? 0.7 : 1,
-                  textAlign: "left",
-                  width: "100%",
-                }}
+                style={menuBtnStyle}
+                {...S.lift.menu}
               >
                 {opt.label}
               </button>
             ))}
-            <button
-              type="button"
-              onClick={() => setShowMenu(false)}
-              style={{
-                padding: compact ? "6px 10px" : "8px 12px",
-                borderRadius: 10,
-                border: "1px solid #e2e8f0",
-                background: "rgba(241,245,249,0.9)",
-                color: "#64748b",
-                fontSize: compact ? "0.7rem" : "0.75rem",
-                cursor: "pointer",
-                textAlign: "center",
-                width: "100%",
-              }}
-            >
+            <button type="button" onClick={() => setShowMenu(false)} style={menuSec}>
               💬 Escribir libremente
             </button>
           </div>
         )}
 
+        {/* IA submenu */}
         {currentEje !== null && showIASubmenu && (
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: 6,
-              marginBottom: 8,
-            }}
-          >
+          <div style={menuList}>
             {IA_SUBMENU_OPTIONS.map((opt) => (
               <button
                 key={opt.id}
                 type="button"
                 onClick={() => handleMenuOption(opt.id, opt.label, opt.intro)}
                 disabled={loading}
-                style={{
-                  padding: compact ? "8px 12px" : "10px 14px",
-                  borderRadius: 10,
-                  border: `1.5px solid ${EJE_CONFIGS[currentEje].color}`,
-                  background: "rgba(255,255,255,0.92)",
-                  color: "#334155",
-                  fontSize: compact ? "0.75rem" : "0.8rem",
-                  fontWeight: 500,
-                  cursor: loading ? "not-allowed" : "pointer",
-                  opacity: loading ? 0.7 : 1,
-                  textAlign: "left",
-                  width: "100%",
-                }}
+                style={menuBtnStyle}
+                {...S.lift.menu}
               >
                 {opt.label}
               </button>
             ))}
-            <button
-              type="button"
-              onClick={() => setShowIASubmenu(false)}
-              style={{
-                padding: compact ? "6px 10px" : "8px 12px",
-                borderRadius: 10,
-                border: "1px solid #e2e8f0",
-                background: "rgba(241,245,249,0.9)",
-                color: "#64748b",
-                fontSize: compact ? "0.7rem" : "0.75rem",
-                cursor: "pointer",
-                textAlign: "center",
-                width: "100%",
-              }}
-            >
+            <button type="button" onClick={() => setShowIASubmenu(false)} style={menuSec}>
               ↩️ Volver al menú
             </button>
           </div>
         )}
 
+        {/* Suggestion chips */}
         {currentEje !== null && !showMenu && !showIASubmenu && (
-          <div
-            style={{
-              display: "flex",
-              flexWrap: "wrap",
-              gap: 6,
-              marginBottom: 8,
-              alignItems: "center",
-            }}
-          >
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 10, padding: "0 4px", alignItems: "center" }}>
             {EJE_SUGGESTIONS[currentEje].map((suggestion) => (
               <button
                 key={suggestion}
                 type="button"
                 onClick={() => useSuggestion(suggestion)}
                 disabled={loading}
-                style={{
-                  padding: compact ? "6px 10px" : "8px 12px",
-                  borderRadius: 9999,
-                  border: `1px solid ${EJE_CONFIGS[currentEje].color}`,
-                  background: "rgba(255,255,255,0.9)",
-                  color: EJE_CONFIGS[currentEje].color,
-                  fontSize: compact ? "0.7rem" : "0.75rem",
-                  cursor: loading ? "not-allowed" : "pointer",
-                  opacity: loading ? 0.7 : 1,
-                  whiteSpace: "nowrap",
-                  maxWidth: "100%",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                }}
+                style={chipBase}
+                {...S.lift.chip}
               >
                 {suggestion}
               </button>
@@ -770,219 +624,120 @@ export default function ChatPage() {
             <button
               type="button"
               onClick={() => { setShowMenu(true); setShowIASubmenu(false); }}
-              style={{
-                padding: compact ? "6px 10px" : "8px 12px",
-                borderRadius: 9999,
-                border: "1px solid #94a3b8",
-                background: "rgba(241,245,249,0.9)",
-                color: "#64748b",
-                fontSize: compact ? "0.7rem" : "0.75rem",
-                cursor: "pointer",
-              }}
+              style={chipMuted}
+              {...S.lift.chip}
             >
               📋 Ver menú
             </button>
           </div>
         )}
 
-        {(attachmentImage || attachmentAudio) && (
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              marginBottom: 6,
-              flexWrap: "wrap",
-            }}
-          >
-            {attachmentImage && (
-              <div style={{ position: "relative" }}>
-                <img
-                  src={attachmentImage}
-                  alt="Adjunto"
-                  style={{
-                    height: 48,
-                    borderRadius: 8,
-                    border: "1px solid #e2e8f0",
-                  }}
-                />
-                <button
-                  type="button"
-                  onClick={() => setAttachmentImage(null)}
-                  style={{
-                    position: "absolute",
-                    top: -6,
-                    right: -6,
-                    width: 22,
-                    height: 22,
-                    borderRadius: "50%",
-                    border: "none",
-                    background: "#64748b",
-                    color: "white",
-                    cursor: "pointer",
-                    fontSize: 14,
-                    lineHeight: 1,
-                  }}
-                >
-                  ×
-                </button>
-              </div>
-            )}
-            {attachmentAudio && (
-              <span
-                style={{
-                  fontSize: "0.75rem",
-                  color: "#64748b",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 4,
-                }}
-              >
-                🎤 Audio listo
-                <button
-                  type="button"
-                  onClick={() => setAttachmentAudio(null)}
-                  style={{
-                    padding: "2px 8px",
-                    borderRadius: 6,
-                    border: "none",
-                    background: "#e2e8f0",
-                    cursor: "pointer",
-                    fontSize: "0.7rem",
-                  }}
-                >
-                  Quitar
-                </button>
-              </span>
-            )}
-          </div>
-        )}
-        <form
-          onSubmit={handleSend}
-          onPaste={handlePaste}
-          style={{
-            display: "flex",
-            flexDirection: compact ? "column" : "row",
-            flexWrap: compact ? "nowrap" : "wrap",
-            gap: compact ? 6 : 8,
-            minWidth: 0,
-          }}
-        >
-          <input
-            type="file"
-            accept="image/*"
-            onChange={handleImageFile}
-            style={{ display: "none" }}
-            id="onda-image-upload"
-          />
-          <label
-            htmlFor="onda-image-upload"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              width: 40,
-              height: 40,
-              borderRadius: 10,
-              border: "1px solid #e2e8f0",
-              background: "rgba(255,255,255,0.9)",
-              cursor: "pointer",
-              flexShrink: 0,
-            }}
-            title="Subir imagen o pegar (Ctrl+V)"
-          >
-            🖼️
-          </label>
-          {recording ? (
-            <button
-              type="button"
-              onClick={stopRecording}
-              style={{
-                padding: "10px 16px",
-                borderRadius: 10,
-                border: "none",
-                background: "#dc2626",
-                color: "white",
-                fontWeight: 600,
-                cursor: "pointer",
-                fontSize: "0.8rem",
-              }}
-            >
-              ⏹ Detener
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={startRecording}
-              disabled={loading}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                width: 40,
-                height: 40,
-                borderRadius: 10,
-                border: "1px solid #e2e8f0",
-                background: "rgba(255,255,255,0.9)",
-                cursor: loading ? "not-allowed" : "pointer",
-                flexShrink: 0,
-              }}
-              title="Grabar voz"
-            >
-              🎤
-            </button>
+        {/* Composer */}
+        <div style={S.composer}>
+          {/* Attachment preview */}
+          {(attachmentImage || attachmentAudio) && (
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
+              {attachmentImage && (
+                <div style={{ position: "relative" }}>
+                  <img
+                    src={attachmentImage}
+                    alt="Adjunto"
+                    style={{ height: 48, borderRadius: t.r.sm, border: `1px solid ${t.c.border}` }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setAttachmentImage(null)}
+                    style={{
+                      position: "absolute",
+                      top: -6,
+                      right: -6,
+                      width: 20,
+                      height: 20,
+                      borderRadius: "50%",
+                      border: "none",
+                      background: t.c.muted,
+                      color: "#fff",
+                      cursor: "pointer",
+                      fontSize: 13,
+                      lineHeight: 1,
+                      display: "grid",
+                      placeItems: "center",
+                    }}
+                  >
+                    ×
+                  </button>
+                </div>
+              )}
+              {attachmentAudio && (
+                <span style={{ fontSize: "0.74rem", color: t.c.muted, display: "flex", alignItems: "center", gap: 6 }}>
+                  🎤 Audio listo
+                  <button
+                    type="button"
+                    onClick={() => setAttachmentAudio(null)}
+                    style={{
+                      padding: "2px 10px",
+                      borderRadius: 6,
+                      border: "none",
+                      background: t.isDark ? "rgba(130,150,210,.12)" : "rgba(110,135,190,.10)",
+                      color: t.c.muted,
+                      cursor: "pointer",
+                      fontSize: "0.68rem",
+                    }}
+                  >
+                    Quitar
+                  </button>
+                </span>
+              )}
+            </div>
           )}
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder={currentEje ? EJE_CONFIGS[currentEje].placeholder : "Escribe, imagen o voz..."}
-            disabled={loading}
-            style={{
-              flex: compact ? "0 0 auto" : "1 1 100px",
-              width: compact ? "100%" : undefined,
-              minWidth: 0,
-              padding: inputPadding,
-              borderRadius: inputRadius,
-              fontSize: inputFontSize,
-              outline: "none",
-              color: "#334155",
-              background: "rgba(255, 255, 255, 0.8)",
-              backdropFilter: "blur(10px)",
-              WebkitBackdropFilter: "blur(10px)",
-              border: "1px solid rgba(255,255,255,0.95)",
-              boxShadow: "0 1px 6px rgba(0,0,0,0.03)",
-              boxSizing: "border-box",
-            }}
-          />
-          <button
-            type="submit"
-            disabled={loading || (!input.trim() && !attachmentImage && !attachmentAudio)}
-            style={{
-              width: compact ? "100%" : undefined,
-              padding: btnPadding,
-              borderRadius: inputRadius,
-              border: "none",
-              background: blue,
-              color: "white",
-              fontWeight: 600,
-              cursor: loading ? "not-allowed" : "pointer",
-              fontSize: btnFontSize,
-              boxShadow: "0 2px 10px rgba(37, 99, 235, 0.35)",
-              flexShrink: 0,
-              boxSizing: "border-box",
-            }}
+
+          {/* Input row */}
+          <form
+            onSubmit={handleSend}
+            onPaste={handlePaste}
+            style={{ display: "flex", gap: 10, alignItems: "center" }}
           >
-            {ONDA_MICROCOPY.send}
-          </button>
-        </form>
-      </main>
+            <input type="file" accept="image/*" onChange={handleImageFile} style={{ display: "none" }} id="onda-image-upload" />
+            <label htmlFor="onda-image-upload" style={iconStyle} title="Subir imagen o pegar (Ctrl+V)" {...S.lift.icon}>
+              🖼️
+            </label>
+
+            {recording ? (
+              <button type="button" onClick={stopRecording} style={stopStyle}>
+                ⏹ Detener
+              </button>
+            ) : (
+              <button type="button" onClick={startRecording} disabled={loading} style={iconStyle} title="Grabar voz" {...S.lift.icon}>
+                🎤
+              </button>
+            )}
+
+            <input
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder={currentEje ? EJE_CONFIGS[currentEje].placeholder : "Escribe, imagen o voz..."}
+              disabled={loading}
+              style={inpStyle}
+              onFocus={() => setInputFocused(true)}
+              onBlur={() => setInputFocused(false)}
+            />
+
+            <button
+              type="submit"
+              disabled={!canSend}
+              style={sendStyle}
+              {...S.lift.send}
+            >
+              {ONDA_MICROCOPY.send}
+            </button>
+          </form>
+        </div>
+      </div>
     </div>
   );
 
-  return isEmbed ? (
-    <div style={embedWrapperStyle}>{content}</div>
-  ) : (
-    content
-  );
+  return isEmbed
+    ? <div style={embedWrap}>{content}</div>
+    : <div style={S.page}>{content}</div>;
 }

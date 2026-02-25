@@ -1,13 +1,17 @@
 "use client";
 
+import type { CSSProperties } from "react";
 import type { Message } from "@/content/types";
 import { ONDA_MICROCOPY } from "@/content/shared";
+import type { OndaTheme } from "@/lib/ondaTheme";
+import { ondaStyles } from "@/lib/ondaStyles";
 
 interface ChatBubbleProps {
   message: Message;
   color: string;
   compact?: boolean;
   onPlayTTS?: (text: string) => void;
+  theme: OndaTheme;
 }
 
 function formatContent(text: string): React.ReactNode[] {
@@ -19,125 +23,106 @@ function formatContent(text: string): React.ReactNode[] {
   });
 }
 
-export function ChatBubble({ message, color, compact, onPlayTTS }: ChatBubbleProps) {
+export function ChatBubble({ message, color, compact, onPlayTTS, theme: t }: ChatBubbleProps) {
+  const S = ondaStyles(t);
   const isUser = message.role === "user";
-  const text =
-    message.role === "model" && message.content === ""
-      ? ONDA_MICROCOPY.typing
-      : message.content;
+  const isEmpty = message.role === "model" && message.content === "";
+  const text = isEmpty ? ONDA_MICROCOPY.typing : message.content;
+
   const padding = compact ? "10px 14px" : "12px 16px";
-  const borderRadius = compact ? 12 : 14;
   const fontSize = compact ? "0.8125rem" : "0.875rem";
 
-  const bubbleStyle: React.CSSProperties = isUser
-    ? {
-        background: "rgba(37, 99, 235, 0.2)",
-        backdropFilter: "blur(10px)",
-        WebkitBackdropFilter: "blur(10px)",
-        color: "#1e40af",
-        boxShadow: "0 1px 8px rgba(37, 99, 235, 0.15), 0 0 0 1px rgba(255,255,255,0.6)",
-        border: "1px solid rgba(255,255,255,0.7)",
-      }
-    : {
-        background: "rgba(255, 255, 255, 0.85)",
-        backdropFilter: "blur(10px)",
-        WebkitBackdropFilter: "blur(10px)",
-        color: "#334155",
-        boxShadow: "0 1px 8px rgba(0,0,0,0.04), 0 0 0 1px rgba(255,255,255,0.9)",
-        border: "1px solid rgba(255,255,255,0.95)",
-        borderLeftWidth: 4,
-        borderLeftColor: color,
-      };
+  const wrapStyle: CSSProperties = {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: isUser ? "flex-end" : "flex-start",
+    marginBottom: 2,
+  };
+
+  const bubbleBase: CSSProperties = {
+    maxWidth: "92%",
+    padding,
+    borderRadius: t.r.lg,
+    lineHeight: 1.55,
+    fontSize,
+    whiteSpace: "pre-wrap",
+    wordBreak: "break-word",
+  };
+
+  const botBubbleStyle: CSSProperties = {
+    ...bubbleBase,
+    background: t.c.surface2,
+    color: t.c.ink,
+    border: `1px solid ${t.c.border}`,
+    boxShadow: t.shadow.s3,
+    borderTopLeftRadius: 6,
+    borderLeft: color ? `3px solid ${color}` : undefined,
+    ...(isEmpty ? { fontStyle: "italic", color: t.c.muted, animation: "pulse 1.4s ease-in-out infinite" } : {}),
+  };
+
+  const userBubbleStyle: CSSProperties = {
+    ...bubbleBase,
+    color: "#fff",
+    border: "none",
+    background: t.grad.userBubble,
+    boxShadow: `0 8px 22px rgba(43,99,255,.20)`,
+    borderTopRightRadius: 6,
+  };
+
+  const imgWrapStyle: CSSProperties = {
+    maxWidth: "85%",
+    marginBottom: 6,
+    borderRadius: t.r.md,
+    overflow: "hidden",
+    border: `1px solid ${t.c.border}`,
+    boxShadow: t.shadow.s3,
+  };
+
+  const ttsStyle: CSSProperties = {
+    marginTop: 8,
+    padding: "5px 12px",
+    borderRadius: t.r.sm,
+    border: `1px solid ${t.c.border}`,
+    background: t.isDark ? "rgba(255,255,255,.08)" : "rgba(255,255,255,.50)",
+    fontSize: "0.72rem",
+    color: t.c.muted,
+    cursor: "pointer",
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 5,
+  };
+
+  const metaStyle: CSSProperties = {
+    fontSize: 10,
+    color: t.c.muted2,
+    marginTop: 3,
+    paddingLeft: 4,
+    paddingRight: 4,
+  };
 
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: isUser ? "flex-end" : "flex-start",
-        marginBottom: 4,
-      }}
-    >
+    <div style={wrapStyle}>
       {message.image && (
-        <div
-          style={{
-            maxWidth: "80%",
-            marginBottom: 4,
-            borderRadius: 16,
-            overflow: "hidden",
-            border: "2px solid #eee",
-          }}
-        >
-          <img
-            src={message.image}
-            alt="Enviado por usuario"
-            style={{ width: "100%", height: "auto", display: "block" }}
-          />
+        <div style={imgWrapStyle}>
+          <img src={message.image} alt="Enviado por usuario" style={{ width: "100%", height: "auto", display: "block" }} />
         </div>
       )}
       {message.guideId && message.role === "model" && (
-        <div
-          style={{
-            maxWidth: "85%",
-            marginBottom: 6,
-            borderRadius: 12,
-            overflow: "hidden",
-            border: "1px solid #e2e8f0",
-          }}
-        >
-          <img
-            src={`/guides/${message.guideId}.png`}
-            alt={`Guía ${message.guideId}`}
-            style={{ width: "100%", height: "auto", display: "block" }}
-          />
+        <div style={imgWrapStyle}>
+          <img src={`/guides/${message.guideId}.png`} alt={`Guía ${message.guideId}`} style={{ width: "100%", height: "auto", display: "block" }} />
         </div>
       )}
-      <div
-        style={{
-          maxWidth: "85%",
-          padding,
-          borderRadius,
-          fontSize,
-          lineHeight: 1.5,
-          whiteSpace: "pre-wrap" as const,
-          ...bubbleStyle,
-        }}
-      >
+      <div style={isUser ? userBubbleStyle : botBubbleStyle}>
         <div className="prose-onda">{formatContent(text)}</div>
         {onPlayTTS && message.content && (
-          <button
-            type="button"
-            onClick={() => onPlayTTS(message.content)}
-            style={{
-              marginTop: 8,
-              padding: "6px 12px",
-              borderRadius: 8,
-              border: "1px solid rgba(0,0,0,0.1)",
-              background: "rgba(255,255,255,0.6)",
-              fontSize: "0.75rem",
-              cursor: "pointer",
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 6,
-            }}
-          >
+          <button type="button" onClick={() => onPlayTTS(message.content)} style={ttsStyle} {...S.lift.tts}>
             🔊 Escuchar
           </button>
         )}
       </div>
       {message.timestamp != null && message.timestamp > 0 && (
-        <span
-          style={{
-            fontSize: "10px",
-            color: "#94a3b8",
-            marginTop: 2,
-            paddingLeft: 4,
-          }}
-        >
-          {new Date(message.timestamp).toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          })}
+        <span style={metaStyle}>
+          {new Date(message.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
         </span>
       )}
     </div>

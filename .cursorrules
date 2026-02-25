@@ -1,0 +1,22 @@
+# Cursor Rules — AlmaMundi / Onda (Costo Bajo + Alta Precisión)
+
+## Modo Ahorro (OBLIGATORIO)
+- NO analices el repositorio completo. Trabaja SOLO con archivos que el usuario marque con @.
+- Si el usuario no marcó archivos con @, pide 1 vez los 1–3 archivos mínimos necesarios (y nada más).
+- Prohibido inventar archivos, rutas, componentes o APIs. Si no existen, dilo y pide el archivo correcto.
+- Antes de cambiar código: plan mínimo de 3–6 bullets. Luego aplica cambios acotados.
+- Evita refactors grandes. Cambios pequeños, seguros, reversibles.
+
+## Entrega estándar
+- Siempre lista: "Archivos modificados".
+- Siempre incluir snippets completos o diff claro.
+- Si agregas helpers, colócalos donde el proyecto ya organiza utilidades (no crear carpetas nuevas sin permiso).
+
+## Indexación y archivos pesados
+- Ignorar datos pesados: *.csv, *.parquet, *.zip, dumps, logs, backups, node_modules, .next, dist, build, coverage.
+- No abrir ni resumir archivos grandes a menos que el usuario lo pida.
+
+## Estilo
+- Código profesional y legible.
+- Tipos/validaciones mínimas si aplica.
+- Nada de "suposiciones creativas".

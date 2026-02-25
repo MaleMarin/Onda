@@ -11,8 +11,8 @@ export const EJE_CONFIGS: Record<EjeOnda, EjeConfig> = {
   [EjeOnda.A_MANO]: {
     id: EjeOnda.A_MANO,
     name: "Onda A Mano",
-    color: "#EAB308",
-    bgColor: "bg-yellow-50",
+    color: "#e0a422",
+    bgColor: "bg-amber-50",
     icon: "📱",
     description: "Vida digital cotidiana, criterio e IA.",
     placeholder:

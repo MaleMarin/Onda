@@ -13,6 +13,16 @@ export const metadata: Metadata = {
     "Webhook WhatsApp para ONDA. Asistente de Alfabetización Mediática e Informacional (AMI).",
 };
 
+const GLOBAL_CSS = `
+html,body{height:100%;margin:0}
+body{-webkit-font-smoothing:antialiased}
+*,*::before,*::after{box-sizing:border-box}
+.prose-onda b,.prose-onda strong{color:inherit;font-weight:700}
+@keyframes bubbleIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+.bubble-in{animation:bubbleIn .28s cubic-bezier(.2,.8,.2,1) both}
+`;
+
 export default function RootLayout({
   children,
 }: {
@@ -20,22 +30,14 @@ export default function RootLayout({
 }) {
   return (
     <html lang="es" style={{ height: "100%", overflow: "hidden" }}>
+      <head>
+        <style dangerouslySetInnerHTML={{ __html: GLOBAL_CSS }} />
+      </head>
       <body
         className={plusJakarta.className}
-        style={{
-          margin: 0,
-          height: "100%",
-          overflow: "hidden",
-          boxSizing: "border-box",
-          background: "#f8fafc",
-        }}
+        style={{ height: "100%", overflow: "hidden" }}
       >
         {children}
-        <style
-          dangerouslySetInnerHTML={{
-            __html: ".prose-onda b,.prose-onda strong{color:inherit;font-weight:700}",
-          }}
-        />
       </body>
     </html>
   );
