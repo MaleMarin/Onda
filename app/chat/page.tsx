@@ -8,6 +8,8 @@ import {
   WELCOME_PROFES,
   EJE_CONFIGS,
   EJE_SUGGESTIONS,
+  EJE_MENU_OPTIONS,
+  IA_SUBMENU_OPTIONS,
   ONDA_MICROCOPY,
   ORDERED_EJES,
 } from "@/content/shared";
@@ -44,6 +46,8 @@ export default function ChatPage() {
   const [loading, setLoading] = useState(false);
   const [showPickOndaNotice, setShowPickOndaNotice] = useState(false);
   const [justSwitchedEje, setJustSwitchedEje] = useState<EjeOnda | null>(null);
+  const [showMenu, setShowMenu] = useState(true);
+  const [showIASubmenu, setShowIASubmenu] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const switchHintRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -64,6 +68,8 @@ export default function ChatPage() {
   function pickEje(eje: EjeOnda): void {
     setShowPickOndaNotice(false);
     confirmEjeSwitch(eje);
+    setShowMenu(true);
+    setShowIASubmenu(false);
     const welcome =
       eje === EjeOnda.A_MANO
         ? WELCOME_A_MANO
@@ -71,6 +77,21 @@ export default function ChatPage() {
           ? WELCOME_CIVITA
           : WELCOME_PROFES;
     setMessages((m) => [...m, newMessage("model", welcome)]);
+  }
+
+  function handleMenuOption(optionId: string, label: string, intro: string, isSubmenu?: boolean): void {
+    if (isSubmenu) {
+      setShowIASubmenu(true);
+      setMessages((m) => [...m, newMessage("model", intro)]);
+      return;
+    }
+    setShowMenu(false);
+    setShowIASubmenu(false);
+    setMessages((m) => [
+      ...m,
+      newMessage("user", label),
+      newMessage("model", intro),
+    ]);
   }
 
   async function handleSend(e: React.FormEvent) {
@@ -606,14 +627,120 @@ export default function ChatPage() {
           </>
         )}
 
-        {currentEje !== null && EJE_SUGGESTIONS[currentEje].length > 0 && (
+        {currentEje !== null && showMenu && !showIASubmenu && (
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 6,
+              marginBottom: 8,
+              maxHeight: compact ? "180px" : "220px",
+              overflowY: "auto",
+            }}
+          >
+            {EJE_MENU_OPTIONS[currentEje].map((opt) => (
+              <button
+                key={opt.id}
+                type="button"
+                onClick={() => handleMenuOption(opt.id, opt.label, opt.intro, opt.isSubmenu)}
+                disabled={loading}
+                style={{
+                  padding: compact ? "8px 12px" : "10px 14px",
+                  borderRadius: 10,
+                  border: `1.5px solid ${EJE_CONFIGS[currentEje].color}`,
+                  background: "rgba(255,255,255,0.92)",
+                  color: "#334155",
+                  fontSize: compact ? "0.75rem" : "0.8rem",
+                  fontWeight: 500,
+                  cursor: loading ? "not-allowed" : "pointer",
+                  opacity: loading ? 0.7 : 1,
+                  textAlign: "left",
+                  width: "100%",
+                }}
+              >
+                {opt.label}
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={() => setShowMenu(false)}
+              style={{
+                padding: compact ? "6px 10px" : "8px 12px",
+                borderRadius: 10,
+                border: "1px solid #e2e8f0",
+                background: "rgba(241,245,249,0.9)",
+                color: "#64748b",
+                fontSize: compact ? "0.7rem" : "0.75rem",
+                cursor: "pointer",
+                textAlign: "center",
+                width: "100%",
+              }}
+            >
+              💬 Escribir libremente
+            </button>
+          </div>
+        )}
+
+        {currentEje !== null && showIASubmenu && (
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 6,
+              marginBottom: 8,
+            }}
+          >
+            {IA_SUBMENU_OPTIONS.map((opt) => (
+              <button
+                key={opt.id}
+                type="button"
+                onClick={() => handleMenuOption(opt.id, opt.label, opt.intro)}
+                disabled={loading}
+                style={{
+                  padding: compact ? "8px 12px" : "10px 14px",
+                  borderRadius: 10,
+                  border: `1.5px solid ${EJE_CONFIGS[currentEje].color}`,
+                  background: "rgba(255,255,255,0.92)",
+                  color: "#334155",
+                  fontSize: compact ? "0.75rem" : "0.8rem",
+                  fontWeight: 500,
+                  cursor: loading ? "not-allowed" : "pointer",
+                  opacity: loading ? 0.7 : 1,
+                  textAlign: "left",
+                  width: "100%",
+                }}
+              >
+                {opt.label}
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={() => setShowIASubmenu(false)}
+              style={{
+                padding: compact ? "6px 10px" : "8px 12px",
+                borderRadius: 10,
+                border: "1px solid #e2e8f0",
+                background: "rgba(241,245,249,0.9)",
+                color: "#64748b",
+                fontSize: compact ? "0.7rem" : "0.75rem",
+                cursor: "pointer",
+                textAlign: "center",
+                width: "100%",
+              }}
+            >
+              ↩️ Volver al menú
+            </button>
+          </div>
+        )}
+
+        {currentEje !== null && !showMenu && !showIASubmenu && (
           <div
             style={{
               display: "flex",
               flexWrap: "wrap",
               gap: 6,
               marginBottom: 8,
-              minWidth: 0,
+              alignItems: "center",
             }}
           >
             {EJE_SUGGESTIONS[currentEje].map((suggestion) => (
@@ -640,6 +767,21 @@ export default function ChatPage() {
                 {suggestion}
               </button>
             ))}
+            <button
+              type="button"
+              onClick={() => { setShowMenu(true); setShowIASubmenu(false); }}
+              style={{
+                padding: compact ? "6px 10px" : "8px 12px",
+                borderRadius: 9999,
+                border: "1px solid #94a3b8",
+                background: "rgba(241,245,249,0.9)",
+                color: "#64748b",
+                fontSize: compact ? "0.7rem" : "0.75rem",
+                cursor: "pointer",
+              }}
+            >
+              📋 Ver menú
+            </button>
           </div>
         )}
 
