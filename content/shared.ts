@@ -16,7 +16,7 @@ export const EJE_CONFIGS: Record<EjeOnda, EjeConfig> = {
     icon: "📱",
     description: "Vida digital cotidiana, criterio e IA.",
     placeholder:
-      "Pregúntame sobre una noticia, un audio sospechoso o cómo usar IA hoy...",
+      "Pregúntame sobre una noticia, un link o cómo usar IA hoy...",
   },
   [EjeOnda.CIVITA]: {
     id: EjeOnda.CIVITA,
@@ -255,4 +255,9 @@ export const ONDA_MICROCOPY = {
   pickOndaFirst: "Elegí primero una Onda 👇 así sé cómo ayudarte mejor.",
   typing: "ONDA está escribiendo...",
   send: "Enviar",
+  /** Modo link/noticia: sin lenguaje de audio. */
+  linkHelpBotMessage:
+    "Pega el texto, el pantallazo de la noticia o el link y te lo explico. Si quieres, dime qué necesitas: un resumen, contexto, ideas clave o qué significa para ti.",
+  linkHelpPlaceholder: "Pega el texto, pantallazo o link… y lo explico.",
+  linkHelpCta: "Explicar",
 } as const;

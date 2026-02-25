@@ -10,6 +10,7 @@
     "start:express": "node dist/index.js",
     "build:tsc": "tsc",
     "next:dev": "next dev",
+    "next:dev:3010": "next dev -p 3010",
     "next:build": "next build",
     "next:start": "next start"
   },

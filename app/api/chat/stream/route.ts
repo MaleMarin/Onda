@@ -1,7 +1,15 @@
-import { getOndaReplyStream, getOndaReplyWithImage } from "../../../../lib/ondaReply";
+import { getOndaReplyStream, getOndaReplyWithImage, type ArticleContext } from "../../../../lib/ondaReply";
 import { wantsSources } from "../../../../lib/responseFormat";
 import { transcribeAudio } from "../../../../lib/transcribe";
+import { extractArticle } from "../../../../lib/extractArticle";
 import { EjeOnda } from "../../../../content/types";
+
+const URL_REGEX = /\b(https?:\/\/[^\s)\]}>"']+)/i;
+function extractFirstUrl(text: string): string | null {
+  const m = text.match(URL_REGEX);
+  if (!m) return null;
+  return m[1].replace(/[.,;:)]+$/, "").trim();
+}
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -69,6 +77,42 @@ export async function POST(req: Request) {
       }
     }
 
+    let articleContext: ArticleContext | null = null;
+    const firstUrl = extractFirstUrl(message);
+    const isDev = process.env.NODE_ENV === "development";
+
+    if (firstUrl) {
+      if (isDev) console.log("[ONDA] URL detected:", firstUrl);
+      const extracted = await extractArticle(firstUrl);
+      if (extracted.ok) {
+        if (isDev) {
+          console.log("[ONDA] extract ok | thin:", extracted.thin, "| status:", extracted.status, "| text length:", extracted.text?.length ?? 0);
+          if (extracted.thin || !extracted.text?.trim()) console.log("[ONDA] using meta fallback (title/description/host)");
+        }
+        articleContext = {
+          text: extracted.text,
+          thin: extracted.thin,
+          host: extracted.host,
+          url: extracted.url,
+          meta: extracted.meta,
+        };
+      } else {
+        if (isDev) console.log("[ONDA] extract failed:", extracted.error, "| using meta fallback (host only)");
+        try {
+          const u = new URL(firstUrl);
+          articleContext = {
+            text: "",
+            thin: true,
+            host: u.host,
+            url: firstUrl,
+            meta: { title: "", description: "" },
+          };
+        } catch {
+          articleContext = null;
+        }
+      }
+    }
+
     const encoder = new TextEncoder();
     const stream = new ReadableStream({
       async start(controller) {
@@ -90,7 +134,8 @@ export async function POST(req: Request) {
               message,
               eje,
               history.length > 0 ? history : null,
-              includeSources
+              includeSources,
+              articleContext
             )) {
               controller.enqueue(encoder.encode(JSON.stringify({ text: chunk }) + "\n"));
             }

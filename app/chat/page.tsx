@@ -27,6 +27,11 @@ function newMessage(role: "user" | "model", content: string, extra?: Partial<Mes
   };
 }
 
+const URL_REGEX = /\b(https?:\/\/\S+|www\.\S+)/i;
+function hasUrl(text: string): boolean {
+  return URL_REGEX.test(text);
+}
+
 export default function ChatPage() {
   const t = useOndaTheme();
   const S = useMemo(() => ondaStyles(t), [t]);
@@ -83,10 +88,12 @@ export default function ChatPage() {
     }
     setShowMenu(false);
     setShowIASubmenu(false);
+    const botMessage =
+      optionId === "A_M1" ? ONDA_MICROCOPY.linkHelpBotMessage : intro;
     setMessages((m) => [
       ...m,
       newMessage("user", label),
-      newMessage("model", intro),
+      newMessage("model", botMessage),
     ]);
   }
 
@@ -112,7 +119,7 @@ export default function ChatPage() {
       image: imageToSend ?? undefined,
       audio: !!audioToSend,
     });
-    const placeholderMsg = newMessage("model", "");
+    const placeholderMsg = newMessage("model", "", { isGenerated: true });
     setMessages((m) => [...m, userMsg, placeholderMsg]);
     setLoading(true);
 
@@ -307,6 +314,12 @@ export default function ChatPage() {
   const compact = isEmbed;
   const ejeColor = currentEje ? EJE_CONFIGS[currentEje].color : t.c.brand;
 
+  const lastUserMessage = [...messages].reverse().find((m) => m.role === "user");
+  const linkHelp = Boolean(
+    lastUserMessage &&
+    (hasUrl(lastUserMessage.content) || lastUserMessage.content.includes("Entender una noticia"))
+  );
+
   const shellStyle: CSSProperties = isEmbed
     ? { ...S.shell, maxWidth: "100%", flex: 1, minHeight: 0, borderRadius: t.r.lg }
     : S.shell;
@@ -498,7 +511,7 @@ export default function ChatPage() {
                 message={msg}
                 color={ejeColor}
                 compact={compact}
-                onPlayTTS={msg.role === "model" && msg.content ? playTTS : undefined}
+                onPlayTTS={msg.role === "model" && msg.content && msg.isGenerated ? playTTS : undefined}
                 theme={t}
               />
             </div>
@@ -634,6 +647,34 @@ export default function ChatPage() {
 
         {/* Composer */}
         <div style={S.composer}>
+          {/* Modo link/noticia: mensaje del bot sin lenguaje de audio */}
+          {linkHelp && currentEje !== null && (
+            <div style={{ marginBottom: 10, fontSize: "0.85rem", color: t.c.ink, lineHeight: 1.4 }}>
+              {ONDA_MICROCOPY.linkHelpBotMessage}
+            </div>
+          )}
+          {/* Volver al menú (siempre visible cuando no estás en el menú) */}
+          {currentEje !== null && !showMenu && (
+            <div style={{ marginBottom: 10 }}>
+              <button
+                type="button"
+                onClick={() => { setShowMenu(true); setShowIASubmenu(false); }}
+                style={{
+                  fontSize: "0.8rem",
+                  color: t.c.brand,
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  padding: "4px 0",
+                  fontWeight: 500,
+                  textDecoration: "underline",
+                  textUnderlineOffset: 3,
+                }}
+              >
+                📋 Volver al menú
+              </button>
+            </div>
+          )}
           {/* Attachment preview */}
           {(attachmentImage || attachmentAudio) && (
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
@@ -716,7 +757,13 @@ export default function ChatPage() {
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder={currentEje ? EJE_CONFIGS[currentEje].placeholder : "Escribe, imagen o voz..."}
+              placeholder={
+                linkHelp
+                  ? ONDA_MICROCOPY.linkHelpPlaceholder
+                  : currentEje
+                    ? EJE_CONFIGS[currentEje].placeholder
+                    : "Escribe, imagen o voz..."
+              }
               disabled={loading}
               style={inpStyle}
               onFocus={() => setInputFocused(true)}
@@ -729,7 +776,7 @@ export default function ChatPage() {
               style={sendStyle}
               {...S.lift.send}
             >
-              {ONDA_MICROCOPY.send}
+              {linkHelp ? ONDA_MICROCOPY.linkHelpCta : ONDA_MICROCOPY.send}
             </button>
           </form>
         </div>

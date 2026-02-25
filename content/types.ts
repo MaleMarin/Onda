@@ -24,6 +24,8 @@ export interface Message {
   flowId?: string;
   /** Si el modelo incluyó una guía (ej. [ONDA_GUIA:estafa]), id para mostrar imagen en /guides/{guideId}.png */
   guideId?: string;
+  /** true si es respuesta generada por la API (stream); false/undefined en bienvenida e intros de menú. Usado para mostrar TTS solo en respuestas generadas. */
+  isGenerated?: boolean;
 }
 
 export interface EjeConfig {
