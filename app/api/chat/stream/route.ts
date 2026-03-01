@@ -6,9 +6,25 @@ import { EjeOnda } from "../../../../content/types";
 
 const URL_REGEX = /\b(https?:\/\/[^\s)\]}>"']+)/i;
 function extractFirstUrl(text: string): string | null {
+  if (!text || typeof text !== "string") return null;
   const m = text.match(URL_REGEX);
   if (!m) return null;
   return m[1].replace(/[.,;:)]+$/, "").trim();
+}
+
+/** Obtiene la primera URL del mensaje actual o del historial reciente (mensajes de usuario). */
+function getUrlFromMessageOrHistory(
+  message: string,
+  history: Array<{ role: string; content: string }>
+): string | null {
+  const fromCurrent = extractFirstUrl(message);
+  if (fromCurrent) return fromCurrent;
+  for (let i = history.length - 1; i >= 0; i--) {
+    if (history[i].role !== "user") continue;
+    const url = extractFirstUrl(history[i].content);
+    if (url) return url;
+  }
+  return null;
 }
 
 export const runtime = "nodejs";
@@ -78,16 +94,17 @@ export async function POST(req: Request) {
     }
 
     let articleContext: ArticleContext | null = null;
-    const firstUrl = extractFirstUrl(message);
+    const firstUrl = getUrlFromMessageOrHistory(message, history);
     const isDev = process.env.NODE_ENV === "development";
 
     if (firstUrl) {
-      if (isDev) console.log("[ONDA] URL detected:", firstUrl);
+      if (isDev) console.log("[article] url detected:", firstUrl);
       const extracted = await extractArticle(firstUrl);
       if (extracted.ok) {
         if (isDev) {
-          console.log("[ONDA] extract ok | thin:", extracted.thin, "| status:", extracted.status, "| text length:", extracted.text?.length ?? 0);
-          if (extracted.thin || !extracted.text?.trim()) console.log("[ONDA] using meta fallback (title/description/host)");
+          console.log("[article] status ok? ", extracted.status, "/ thin?", extracted.thin, "| text length:", extracted.text?.length ?? 0);
+          console.log("[article] meta title present?", !!extracted.meta?.title?.trim());
+          if (extracted.thin || !extracted.text?.trim()) console.log("[article] using meta fallback (title/description/host)");
         }
         articleContext = {
           text: extracted.text,
@@ -97,7 +114,7 @@ export async function POST(req: Request) {
           meta: extracted.meta,
         };
       } else {
-        if (isDev) console.log("[ONDA] extract failed:", extracted.error, "| using meta fallback (host only)");
+        if (isDev) console.log("[article] extract failed:", extracted.error, "| using meta fallback (host only)");
         try {
           const u = new URL(firstUrl);
           articleContext = {
@@ -143,12 +160,13 @@ export async function POST(req: Request) {
           controller.enqueue(encoder.encode(JSON.stringify({ done: true }) + "\n"));
         } catch (err) {
           console.error("[chat/stream]", err);
+          const isImageRequest = !!image;
+          const message =
+            isImageRequest
+              ? "No pude analizar la imagen. Probá con otra más liviana o contame por texto qué ves."
+              : "Uy, se cortó la conexión. ¿Probamos de nuevo?";
           controller.enqueue(
-            encoder.encode(
-              JSON.stringify({
-                error: "Uy, se cortó la conexión. ¿Probamos de nuevo?",
-              }) + "\n"
-            )
+            encoder.encode(JSON.stringify({ error: message }) + "\n")
           );
         } finally {
           controller.close();

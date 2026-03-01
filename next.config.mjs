@@ -1,7 +1,14 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Permitir que la API use los módulos de la raíz (lib, content)
   transpilePackages: [],
+  experimental: {
+    serverActions: { bodySizeLimit: "8mb" },
+  },
+  // Evita el warning "Caching failed for pack" en dev (opcional)
+  webpack: (config, { dev }) => {
+    if (dev) config.cache = false;
+    return config;
+  },
 };
 
 export default nextConfig;

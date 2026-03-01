@@ -32,8 +32,42 @@ function hasUrl(text: string): boolean {
   return URL_REGEX.test(text);
 }
 
+/** Comprime la imagen para que el envío no supere límites (body/API). Máx 1200px ancho, JPEG 0.82. */
+function compressImage(dataUrl: string): Promise<string> {
+  const maxWidth = 1200;
+  const quality = 0.82;
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    if (!dataUrl.startsWith("data:")) img.crossOrigin = "anonymous";
+    img.onload = () => {
+      const w = img.naturalWidth;
+      const h = img.naturalHeight;
+      const scale = w > maxWidth ? maxWidth / w : 1;
+      const cw = Math.round(w * scale);
+      const ch = Math.round(h * scale);
+      const canvas = document.createElement("canvas");
+      canvas.width = cw;
+      canvas.height = ch;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        resolve(dataUrl);
+        return;
+      }
+      ctx.drawImage(img, 0, 0, cw, ch);
+      try {
+        const out = canvas.toDataURL("image/jpeg", quality);
+        resolve(out);
+      } catch {
+        resolve(dataUrl);
+      }
+    };
+    img.onerror = () => reject(new Error("No se pudo cargar la imagen"));
+    img.src = dataUrl;
+  });
+}
+
 export default function ChatPage() {
-  const t = useOndaTheme();
+  const t = useOndaTheme(true);
   const S = useMemo(() => ondaStyles(t), [t]);
 
   const [embed, setEmbed] = useState(false);
@@ -58,10 +92,40 @@ export default function ChatPage() {
   const [inputFocused, setInputFocused] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const switchHintRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const shellRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  /** Delegación de clics nativa para que los botones funcionen siempre (evita problemas con React/synthetic events). */
+  useEffect(() => {
+    const shell = shellRef.current;
+    if (!shell) return;
+    const handleClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      const button = target.closest?.("button[data-onda-eje]");
+      if (button) {
+        const eje = (button as HTMLButtonElement).getAttribute("data-onda-eje") as EjeOnda | null;
+        if (eje && (eje === EjeOnda.A_MANO || eje === EjeOnda.CIVITA || eje === EjeOnda.PROFES)) {
+          e.preventDefault();
+          e.stopPropagation();
+          setShowPickOndaNotice(false);
+          setCurrentEje(eje);
+          setShowMenu(true);
+          setShowIASubmenu(false);
+          if (switchHintRef.current) clearTimeout(switchHintRef.current);
+          setJustSwitchedEje(eje);
+          switchHintRef.current = setTimeout(() => {
+            setJustSwitchedEje(null);
+            switchHintRef.current = null;
+          }, 1500);
+        }
+      }
+    };
+    shell.addEventListener("click", handleClick, true);
+    return () => shell.removeEventListener("click", handleClick, true);
+  }, []);
 
   function confirmEjeSwitch(eje: EjeOnda): void {
     setCurrentEje(eje);
@@ -78,6 +142,13 @@ export default function ChatPage() {
     confirmEjeSwitch(eje);
     setShowMenu(true);
     setShowIASubmenu(false);
+  }
+
+  function goToInicio(): void {
+    setCurrentEje(null);
+    setShowMenu(true);
+    setShowIASubmenu(false);
+    setShowPickOndaNotice(false);
   }
 
   function handleMenuOption(optionId: string, label: string, intro: string, isSubmenu?: boolean): void {
@@ -144,11 +215,13 @@ export default function ChatPage() {
       if (!res.ok) {
         clearTimeout(timeoutId);
         const data = await res.json().catch(() => ({}));
+        const isImage = !!imageToSend;
+        const errMsg =
+          data?.error ||
+          (res.status === 413 && isImage ? ONDA_MICROCOPY.errorImage : ONDA_MICROCOPY.errorGeneric);
         setMessages((m) =>
           m.map((msg) =>
-            msg.id === placeholderMsg.id
-              ? { ...msg, content: data?.error || ONDA_MICROCOPY.errorGeneric }
-              : msg
+            msg.id === placeholderMsg.id ? { ...msg, content: errMsg } : msg
           )
         );
         setLoading(false);
@@ -242,7 +315,15 @@ export default function ChatPage() {
     const file = e.target.files?.[0];
     if (!file || !file.type.startsWith("image/")) return;
     const reader = new FileReader();
-    reader.onload = () => setAttachmentImage(reader.result as string);
+    reader.onload = async () => {
+      const dataUrl = reader.result as string;
+      try {
+        const compressed = await compressImage(dataUrl);
+        setAttachmentImage(compressed);
+      } catch {
+        setAttachmentImage(dataUrl);
+      }
+    };
     reader.readAsDataURL(file);
     e.target.value = "";
   }
@@ -254,7 +335,15 @@ export default function ChatPage() {
       const file = item.getAsFile();
       if (file) {
         const reader = new FileReader();
-        reader.onload = () => setAttachmentImage(reader.result as string);
+        reader.onload = async () => {
+          const dataUrl = reader.result as string;
+          try {
+            const compressed = await compressImage(dataUrl);
+            setAttachmentImage(compressed);
+          } catch {
+            setAttachmentImage(dataUrl);
+          }
+        };
         reader.readAsDataURL(file);
       }
     }
@@ -312,7 +401,7 @@ export default function ChatPage() {
 
   const isEmbed = embed;
   const compact = isEmbed;
-  const ejeColor = currentEje ? EJE_CONFIGS[currentEje].color : t.c.brand;
+  const ejeColor = currentEje ? EJE_CONFIGS[currentEje].color : EJE_CONFIGS[EjeOnda.A_MANO].color;
 
   const lastUserMessage = [...messages].reverse().find((m) => m.role === "user");
   const linkHelp = Boolean(
@@ -322,31 +411,39 @@ export default function ChatPage() {
 
   const shellStyle: CSSProperties = isEmbed
     ? { ...S.shell, maxWidth: "100%", flex: 1, minHeight: 0, borderRadius: t.r.lg }
-    : S.shell;
+    : currentEje === null
+      ? { ...S.shell, flex: "0 0 auto", minHeight: 420 }
+      : S.shell;
 
   const embedWrap: CSSProperties | undefined = isEmbed
     ? { width: "100%", height: "100%", minHeight: 320, display: "flex", flexDirection: "column", padding: 0, background: "transparent", overflow: "hidden" }
     : undefined;
+
+  const pageStyle: CSSProperties = {
+    ...S.page,
+    ...(currentEje === null ? { justifyContent: "center", alignItems: "center" } : {}),
+  };
 
   const headerStyle: CSSProperties = compact
     ? { ...S.header, padding: "10px 14px" }
     : S.header;
 
   const chatBody: CSSProperties = {
-    ...(isEmbed ? { flex: 1, minHeight: 0 } : { height: S.chat.height as string }),
-    display: "flex",
-    flexDirection: "column",
+    ...S.chat,
     overflow: "hidden",
+    ...(currentEje === null ? { flex: "0 0 auto" } : {}),
   };
 
   const msgsArea: CSSProperties = {
     ...S.messages,
-    flex: 1,
+    padding: currentEje === null ? "8px 14px 0 14px" : "8px 14px 0 14px",
+    flex: currentEje === null ? "0 0 auto" : 1,
     minHeight: 0,
-    overflowY: "auto",
+    overflowY: currentEje === null ? "hidden" : "auto",
     display: "flex",
     flexDirection: "column",
-    gap: compact ? 8 : 10,
+    justifyContent: currentEje === null ? "flex-start" : "flex-end",
+    gap: compact ? 6 : 8,
   };
 
   const disabledCursor = loading ? "not-allowed" : "pointer";
@@ -378,23 +475,22 @@ export default function ChatPage() {
   };
 
   const pickerBtn: CSSProperties = {
-    padding: "14px 16px",
-    borderRadius: t.r.md,
-    border: `1px solid ${t.c.border}`,
-    background: t.c.surface2,
+    ...S.glassCard,
+    padding: "16px 18px",
+    borderRadius: 24,
     cursor: "pointer",
     textAlign: "left",
     display: "flex",
     flexDirection: "column",
-    gap: 4,
-    transition: "transform 180ms cubic-bezier(.2,.8,.2,1), box-shadow 180ms",
+    gap: 6,
+    transition: "transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease",
   };
 
   const menuList: CSSProperties = {
     display: "flex",
     flexDirection: "column",
     gap: 6,
-    marginBottom: 10,
+    marginBottom: 6,
     maxHeight: compact ? 180 : 240,
     overflowY: "auto",
     padding: "0 4px",
@@ -403,8 +499,6 @@ export default function ChatPage() {
   const menuBtnStyle: CSSProperties = {
     padding: compact ? "8px 12px" : "10px 14px",
     borderRadius: t.r.sm,
-    border: `1px solid ${t.c.border}`,
-    background: t.c.surface2,
     color: t.c.ink,
     fontSize: compact ? "0.75rem" : "0.8rem",
     fontWeight: 500,
@@ -413,13 +507,14 @@ export default function ChatPage() {
     textAlign: "left",
     width: "100%",
     transition: "transform 180ms cubic-bezier(.2,.8,.2,1), box-shadow 180ms",
+    ...t.fx.crystal,
   };
 
   const menuSec: CSSProperties = {
     padding: compact ? "6px 10px" : "8px 12px",
     borderRadius: t.r.sm,
-    border: `1px solid ${t.c.border}`,
-    background: t.isDark ? "rgba(130,150,210,.06)" : "rgba(110,135,190,.06)",
+    border: `1px solid ${t.glass.borderSoft}`,
+    background: "rgba(255,255,255,0.06)",
     color: t.c.muted,
     fontSize: compact ? "0.7rem" : "0.75rem",
     cursor: "pointer",
@@ -441,8 +536,8 @@ export default function ChatPage() {
   const chipMuted: CSSProperties = {
     ...S.chip,
     color: t.c.muted,
-    borderColor: t.isDark ? "rgba(130,150,210,.15)" : "rgba(110,135,190,.15)",
-    background: t.isDark ? "rgba(130,150,210,.06)" : "rgba(110,135,190,.06)",
+    borderColor: t.glass.borderSoft,
+    background: "rgba(255,255,255,0.06)",
     ...(compact ? { padding: "6px 10px", fontSize: "0.7rem" } : {}),
   };
 
@@ -463,15 +558,17 @@ export default function ChatPage() {
     fontSize: "0.78rem",
   };
 
+  const canSend = !loading && !!(input.trim() || attachmentImage || attachmentAudio);
+
   const inpStyle: CSSProperties = {
     ...S.input,
+    border: `1px solid ${ejeColor}99`,
     ...(compact ? { height: 40, fontSize: "0.8rem" } : {}),
     flex: 1,
     minWidth: 0,
-    ...(inputFocused ? S.inputFocusRing : {}),
+    ...(inputFocused ? { boxShadow: `0 0 0 5px ${ejeColor}40`, borderColor: ejeColor } : {}),
   };
 
-  const canSend = !loading && !!(input.trim() || attachmentImage || attachmentAudio);
   const sendStyle: CSSProperties = {
     ...S.send,
     ...(compact ? { height: 40, padding: "0 16px" } : {}),
@@ -483,20 +580,13 @@ export default function ChatPage() {
   /* ── render ── */
 
   const content = (
-    <div style={shellStyle}>
+    <div ref={shellRef} className="onda-shell" style={shellStyle}>
       {/* Header */}
       <div style={headerStyle}>
         <div style={S.titleWrap}>
-          <span style={S.titleBadge} />
-          <div>
-            <div style={{ fontWeight: 700, fontSize: compact ? "0.85rem" : "1rem", letterSpacing: ".02em", color: t.c.ink }}>
-              {isEmbed ? "Chatea con ONDA · Fundación Precisar" : "ONDA – Fundación Precisar"}
-            </div>
-            {!isEmbed && (
-              <div style={{ ...S.subtitle, marginTop: 2 }}>
-                Alfabetización Mediática e Informacional (AMI)
-              </div>
-            )}
+          <img src="/logo-onda.png" alt="ONDA" width={28} height={28} style={{ display: "block", objectFit: "contain" }} />
+          <div style={{ fontWeight: 700, fontSize: compact ? "0.85rem" : "1rem", letterSpacing: ".02em", color: t.c.ink }}>
+            {isEmbed ? "Chatea con ONDA" : "ONDA"}
           </div>
         </div>
       </div>
@@ -504,7 +594,44 @@ export default function ChatPage() {
       {/* Chat body */}
       <div style={chatBody}>
         {/* Messages */}
-        <div style={msgsArea}>
+        <div className="onda-messages" style={msgsArea}>
+          {currentEje === null ? (
+            <>
+              {messages.length > 0 && (
+                <div
+                  key={messages[0].id}
+                  className="bubble-in"
+                  style={{
+                    ...S.row(false),
+                  }}
+                >
+                  <ChatBubble
+                    message={messages[0]}
+                    color={ejeColor}
+                    compact={compact}
+                    onPlayTTS={undefined}
+                    theme={t}
+                  />
+                </div>
+              )}
+              <div className="bubble-in" style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: -6, maxWidth: "min(88%, 420px)", flexShrink: 0 }}>
+                {ORDERED_EJES.map((eje) => {
+                  const config = EJE_CONFIGS[eje];
+                  return (
+                    <button key={eje} type="button" data-onda-eje={eje} onClick={() => pickEje(eje)} style={pickerBtn}>
+                      <span style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 700, fontSize: "0.88rem", color: config.color }}>
+                        <span>{config.name}</span>
+                      </span>
+                      <span style={{ fontSize: "0.74rem", color: t.c.muted, fontWeight: 400 }}>
+                        {config.description}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </>
+          ) : (
+            <>
           {messages.map((msg) => (
             <div key={msg.id} className="bubble-in" style={S.row(msg.role === "user")}>
               <ChatBubble
@@ -539,38 +666,21 @@ export default function ChatPage() {
             </div>
           )}
 
-          {/* Onda picker */}
-          {currentEje === null && (
-            <div className="bubble-in" style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 6, maxWidth: "min(88%, 420px)" }}>
-              <div style={{ fontSize: "0.82rem", color: t.c.muted, marginBottom: 2 }}>
-                Elige una Onda:
-              </div>
-              {ORDERED_EJES.map((eje) => {
-                const config = EJE_CONFIGS[eje];
-                return (
-                  <button key={eje} type="button" onClick={() => pickEje(eje)} style={pickerBtn} {...S.lift.picker}>
-                    <span style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 700, fontSize: "0.88rem", color: config.color }}>
-                      <span>{config.icon}</span>
-                      <span>{config.name}</span>
-                    </span>
-                    <span style={{ fontSize: "0.74rem", color: t.c.muted, fontWeight: 400 }}>
-                      {config.description}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
+          {/* Onda picker: no se muestra cuando ya hay onda elegida */}
+            </>
           )}
 
           <div ref={bottomRef} />
         </div>
 
+        {/* Tabs, menu, chips, composer: no shrink so only messages area scrolls */}
+        <div style={{ flexShrink: 0, display: "flex", flexDirection: "column" }}>
         {/* Tabs */}
         {currentEje !== null && (
           <>
             <EjeSelector currentEje={currentEje} onSelect={confirmEjeSwitch} compact={compact} theme={t} />
             {justSwitchedEje !== null && (
-              <p style={{ margin: "-4px 0 8px", fontSize: compact ? "0.7rem" : "0.74rem", color: EJE_CONFIGS[justSwitchedEje].color, fontWeight: 500, padding: "0 4px" }}>
+              <p style={{ margin: "-2px 0 4px", fontSize: compact ? "0.7rem" : "0.74rem", color: EJE_CONFIGS[justSwitchedEje].color, fontWeight: 500, padding: "0 4px" }}>
                 Ahora en {EJE_CONFIGS[justSwitchedEje].name}
               </p>
             )}
@@ -587,13 +697,15 @@ export default function ChatPage() {
                 onClick={() => handleMenuOption(opt.id, opt.label, opt.intro, opt.isSubmenu)}
                 disabled={loading}
                 style={menuBtnStyle}
-                {...S.lift.menu}
               >
                 {opt.label}
               </button>
             ))}
             <button type="button" onClick={() => setShowMenu(false)} style={menuSec}>
               💬 Escribir libremente
+            </button>
+            <button type="button" onClick={goToInicio} style={menuSec}>
+              🏠 Volver al inicio
             </button>
           </div>
         )}
@@ -608,7 +720,6 @@ export default function ChatPage() {
                 onClick={() => handleMenuOption(opt.id, opt.label, opt.intro)}
                 disabled={loading}
                 style={menuBtnStyle}
-                {...S.lift.menu}
               >
                 {opt.label}
               </button>
@@ -616,12 +727,15 @@ export default function ChatPage() {
             <button type="button" onClick={() => setShowIASubmenu(false)} style={menuSec}>
               ↩️ Volver al menú
             </button>
+            <button type="button" onClick={goToInicio} style={menuSec}>
+              🏠 Volver al inicio
+            </button>
           </div>
         )}
 
         {/* Suggestion chips */}
         {currentEje !== null && !showMenu && !showIASubmenu && (
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 10, padding: "0 4px", alignItems: "center" }}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 6, padding: "0 4px", alignItems: "center" }}>
             {EJE_SUGGESTIONS[currentEje].map((suggestion) => (
               <button
                 key={suggestion}
@@ -629,7 +743,6 @@ export default function ChatPage() {
                 onClick={() => useSuggestion(suggestion)}
                 disabled={loading}
                 style={chipBase}
-                {...S.lift.chip}
               >
                 {suggestion}
               </button>
@@ -638,7 +751,6 @@ export default function ChatPage() {
               type="button"
               onClick={() => { setShowMenu(true); setShowIASubmenu(false); }}
               style={chipMuted}
-              {...S.lift.chip}
             >
               📋 Ver menú
             </button>
@@ -653,15 +765,15 @@ export default function ChatPage() {
               {ONDA_MICROCOPY.linkHelpBotMessage}
             </div>
           )}
-          {/* Volver al menú (siempre visible cuando no estás en el menú) */}
+          {/* Volver al menú / Volver al inicio (cuando no estás en el menú) */}
           {currentEje !== null && !showMenu && (
-            <div style={{ marginBottom: 10 }}>
+            <div style={{ marginBottom: 10, display: "flex", flexWrap: "wrap", gap: "12px 16px", alignItems: "center" }}>
               <button
                 type="button"
                 onClick={() => { setShowMenu(true); setShowIASubmenu(false); }}
                 style={{
                   fontSize: "0.8rem",
-                  color: t.c.brand,
+                  color: EJE_CONFIGS[EjeOnda.A_MANO].color,
                   background: "none",
                   border: "none",
                   cursor: "pointer",
@@ -672,6 +784,23 @@ export default function ChatPage() {
                 }}
               >
                 📋 Volver al menú
+              </button>
+              <button
+                type="button"
+                onClick={goToInicio}
+                style={{
+                  fontSize: "0.8rem",
+                  color: EJE_CONFIGS[EjeOnda.A_MANO].color,
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  padding: "4px 0",
+                  fontWeight: 500,
+                  textDecoration: "underline",
+                  textUnderlineOffset: 3,
+                }}
+              >
+                🏠 Volver al inicio
               </button>
             </div>
           )}
@@ -739,7 +868,7 @@ export default function ChatPage() {
             style={{ display: "flex", gap: 10, alignItems: "center" }}
           >
             <input type="file" accept="image/*" onChange={handleImageFile} style={{ display: "none" }} id="onda-image-upload" />
-            <label htmlFor="onda-image-upload" style={iconStyle} title="Subir imagen o pegar (Ctrl+V)" {...S.lift.icon}>
+            <label htmlFor="onda-image-upload" style={iconStyle} title="Subir imagen o pegar (Ctrl+V)">
               🖼️
             </label>
 
@@ -748,7 +877,7 @@ export default function ChatPage() {
                 ⏹ Detener
               </button>
             ) : (
-              <button type="button" onClick={startRecording} disabled={loading} style={iconStyle} title="Grabar voz" {...S.lift.icon}>
+              <button type="button" onClick={startRecording} disabled={loading} style={iconStyle} title="Grabar voz">
                 🎤
               </button>
             )}
@@ -774,17 +903,18 @@ export default function ChatPage() {
               type="submit"
               disabled={!canSend}
               style={sendStyle}
-              {...S.lift.send}
             >
               {linkHelp ? ONDA_MICROCOPY.linkHelpCta : ONDA_MICROCOPY.send}
             </button>
           </form>
         </div>
+        </div>
       </div>
     </div>
   );
 
-  return isEmbed
-    ? <div style={embedWrap}>{content}</div>
-    : <div style={S.page}>{content}</div>;
+  if (isEmbed) {
+    return <div style={embedWrap}>{content}</div>;
+  }
+  return <div style={pageStyle}>{content}</div>;
 }

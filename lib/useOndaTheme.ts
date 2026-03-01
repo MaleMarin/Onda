@@ -26,7 +26,24 @@ export function usePrefersColorScheme(): OndaMode {
   return mode;
 }
 
-export function useOndaTheme(): OndaTheme {
-  const mode = usePrefersColorScheme();
+/** Detects if the environment supports backdrop-filter (liquid glass blur). */
+export function useSupportsBackdropFilter(): boolean {
+  const [supports, setSupports] = useState(true);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof CSS === "undefined" || !CSS.supports) {
+      setSupports(true);
+      return;
+    }
+    setSupports(CSS.supports("backdrop-filter", "blur(1px)") || CSS.supports("-webkit-backdrop-filter", "blur(1px)"));
+  }, []);
+
+  return supports;
+}
+
+/** Si pasas true, el chat usa siempre tema claro (liquid glass). Sin fallback por defecto para evitar re-renders que rompan interactividad. */
+export function useOndaTheme(forceLight?: boolean): OndaTheme {
+  const systemMode = usePrefersColorScheme();
+  const mode = forceLight ? "light" : systemMode;
   return useMemo(() => createOndaTheme(mode), [mode]);
 }

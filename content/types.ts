@@ -33,7 +33,10 @@ export interface EjeConfig {
   name: string;
   color: string;
   bgColor: string;
+  /** Emoji o texto de respaldo cuando no se usa imagen. */
   icon: string;
+  /** Ruta a la imagen del icono (mano, pasaporte, red). */
+  iconImage?: string;
   description: string;
   placeholder: string;
 }

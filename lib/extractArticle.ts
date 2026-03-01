@@ -69,20 +69,21 @@ export async function extractArticle(urlParam: string): Promise<ExtractResult> {
       redirect: "follow",
     });
 
-    const status = res.status;
+    // SIEMPRE leer HTML: aunque res.ok sea false (403, 404, paywall) podemos rescatar <title> y og:description.
     const html = await res.text();
     const meta = pickMeta(html);
     const rawText = stripHtml(html);
-    const isThin = rawText.length < THIN_THRESHOLD;
+    const text = rawText.slice(0, MAX_TEXT_LENGTH);
+    const thin = text.length < THIN_THRESHOLD;
 
     return {
       ok: true,
-      status,
+      status: res.status,
       url: url.toString(),
       host: url.host,
       meta,
-      text: isThin ? "" : rawText.slice(0, MAX_TEXT_LENGTH),
-      thin: isThin,
+      text,
+      thin,
     };
   } catch {
     return { ok: false, error: "fetch_failed" };

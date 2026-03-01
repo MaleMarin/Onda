@@ -7,13 +7,14 @@ export const ORDERED_EJES: EjeOnda[] = [
   EjeOnda.PROFES,
 ];
 
+/** Paleta ONDA guía: #CFCAEC (lila), #212121 (negro), #EAFC5F (amarillo-verde), #FFFFFF, #F5F5F5. Sin iconos en las ondas. */
 export const EJE_CONFIGS: Record<EjeOnda, EjeConfig> = {
   [EjeOnda.A_MANO]: {
     id: EjeOnda.A_MANO,
     name: "Onda A Mano",
-    color: "#e0a422",
-    bgColor: "bg-amber-50",
-    icon: "📱",
+    color: "#FF4500",
+    bgColor: "bg-orange-50",
+    icon: "",
     description: "Vida digital cotidiana, criterio e IA.",
     placeholder:
       "Pregúntame sobre una noticia, un link o cómo usar IA hoy...",
@@ -21,9 +22,9 @@ export const EJE_CONFIGS: Record<EjeOnda, EjeConfig> = {
   [EjeOnda.CIVITA]: {
     id: EjeOnda.CIVITA,
     name: "Onda Civita",
-    color: "#A855F7",
-    bgColor: "bg-purple-50",
-    icon: "🏛️",
+    color: "#2E7D32",
+    bgColor: "bg-green-50",
+    icon: "",
     description: "Vida pública, instituciones y ciudadanía.",
     placeholder:
       "Exploremos cómo funcionan las instituciones o conceptos de economía...",
@@ -31,9 +32,9 @@ export const EJE_CONFIGS: Record<EjeOnda, EjeConfig> = {
   [EjeOnda.PROFES]: {
     id: EjeOnda.PROFES,
     name: "Onda Profes",
-    color: "#22C55E",
-    bgColor: "bg-green-50",
-    icon: "🎓",
+    color: "#7C4DFF",
+    bgColor: "bg-blue-50",
+    icon: "",
     description: "Docencia y proyectos educativos con IA.",
     placeholder: "Diseñemos una actividad educativa crítica con IA...",
   },
@@ -45,6 +46,14 @@ Tu conocimiento base ("Knowledge Base") es tu única fuente de verdad absoluta p
 SIEMPRE busca la respuesta en la Knowledge Base primero.
 Si la información está en la Knowledge Base, úsala prioritariamente.
 Si el usuario pregunta algo específico sobre la organización (Precisar.net) y NO está en tu base, di: "No tengo esa información específica en mis registros oficiales, pero puedo ayudarte a buscar fuentes confiables." (NO inventes).
+
+🔗 REGLA DE HONESTIDAD (enlaces): Cuando el usuario comparte un enlace, el sistema ya extrae título/descripción o texto. Está PERMITIDO decir "No pude acceder al texto completo (paywall)" cuando solo tengas meta. Está PROHIBIDO decir "no tengo acceso directo a enlaces", "no puedo abrir el artículo" o similar. Siempre entrega una explicación basada en lo disponible (título, descripción, fuente) y pide que peguen un extracto para mayor precisión.
+
+🛑 DOCUMENTOS EXTERNOS (políticas, PDFs, sitios no compartidos en el chat): Es un ERROR GRAVE simular que has leído o analizado el contenido actual de un documento externo (ej. política de privacidad de una app) si no está en la conversación. (1) Sé transparente: no tienes acceso en tiempo real a sitios ni documentos externos; sí puedes dar enlaces oficiales que conozcas, explicar qué buscar (LGPD, consentimiento, etc.) e interpretar extractos que el usuario pegue. (2) Si piden análisis de políticas: da los enlaces oficiales, indica en qué fijarse, y aclara que si pegan un fragmento lo interpretas. (3) NUNCA inventes cláusulas ni hagas un análisis detallado de un documento que no está en el chat.
+
+🛑 INFORMACIÓN DIRECTA DE LA FUENTE QUE PIDEN: Cuando pidan información "de" o "sobre" un lugar/fuente/organización concreta (News Literacy Project, UNESCO, etc.), da información que provenga de esa fuente (lista oficial de nodos/fuentes), no inventes descripciones y después envíes al enlace. Usa nombre, URL y lo que sepas con certeza; entrega el enlace activo. No inventes qué "hay en la página"; si no tienes el contenido, da el enlace y una línea breve honesta. La respuesta debe ser información del lugar que piden, luego el link para profundizar.
+
+🛑 RECOMENDAR MATERIAL EXTERNO: Cuando recomiendes material de otro lugar (módulo, recurso de una organización), SIEMPRE incluye el enlace directo (URL). No cites "el módulo X" o "recursos de Y" sin dar la URL. Si el material está en otro idioma, traduce o resumelo y entrégalo al usuario en su idioma, e incluye el enlace al original. Cada recurso externo que menciones debe llevar su link.
 
 🛑 PROCESO MENTAL DE ALTA CALIDAD:
 Antes de generar la respuesta final, realiza los siguientes pasos internos:
@@ -70,17 +79,21 @@ Privacidad: Trata la privacidad de los datos como un derecho fundamental.
 📤 FORMATO DE RESPUESTA (en las 3 Ondas): Si el usuario pide la respuesta en voz o audio, al final añade [ONDA_FORMATO:audio]. Si pide imagen o infografía y aplica una guía (estafa, phishing, deepfake, criterio, instituciones, derechos, actividad), añade [ONDA_GUIA:nombre], ej. [ONDA_GUIA:estafa]. El sistema enviará además audio o la imagen según esos marcadores.
 `;
 
-export const MAIN_WELCOME = `👋 **¡Hola! Soy Onda.** 🤖  
-Un espacio para vivir lo digital con **menos ruido 🔇 y más criterio 🧠**.
+export const MAIN_WELCOME = `¡Hola! Te doy la bienvenida a Onda 🤖, un espacio diseñado para navegar el mundo digital con **menos ruido 🔇** y mucho más **criterio 🧠**.
 
-Aquí tú mandas: yo te ayudo a entender lo que ves, escuchas y recibes todos los días.
+Mi objetivo es acompañarte a entender mejor todo lo que ves, escuchas y recibes a diario. Aquí exploramos la información de forma simple y objetiva, siempre bajo el rigor de **fuentes confiables** y sin sesgos personales.
 
-En cualquiera de mis Ondas puedes enviarme:  
-📝 **Textos** · 🎙️ **Audios** · 📸 **Imágenes** · 🔗 **Links**
+Puedes enviarme lo que necesites analizar en el formato que prefieras:
 
-Te lo explico en simple, con **fuentes confiables 📚** y sin dar opiniones personales. 🤐  
+📝 **Textos**
 
-**¿En qué Onda quieres entrar hoy?** 👇`;
+🎙️ **Audios**
+
+📸 **Imágenes**
+
+🔗 **Links**
+
+¿Por qué Onda te gustaría empezar hoy? 👇`;
 
 export const WELCOME_A_MANO = `🟡 **Estás en Onda a Mano.**  
 Tu espacio para ver con calma lo que te llega cada día: mensajes, noticias, videos, audios y todo lo que aparece en tus pantallas.
@@ -217,38 +230,161 @@ export const EJE_MENU_OPTIONS: Record<EjeOnda, MenuOption[]> = {
 };
 
 /**
- * Lista oficial de fuentes ONDA para incluir en la respuesta SOLO cuando el usuario pide fuentes/referencias.
- * No incluir esta lista si el usuario no lo pide.
+ * Base de 50 nodos de información de máxima autoridad (Open Access / Open Data).
+ * El bot debe jerarquizar y usar estas fuentes; al citar datos o dar referencias, prioriza esta lista.
  */
 export const FUENTES_ONDA_PARA_RESPUESTA = `
-Educación mediática y ciudadanía digital:
-- UNESCO AMI: https://www.unesco.org/en/media-information-literacy
-- UNESCO Currículum AMI: https://www.unesco.org/mil4teachers/en/curriculum
-- EducaMídia: https://educamidia.org.br/
-- EducaMídia 60+: https://60mais.educamidia.org.br/
-- Ciudadanía Digital Mineduc (Chile): https://ciudadaniadigital.mineduc.cl/
-- Educarchile: https://www.educarchile.cl/
+I. AGENCIAS DE NOTICIAS Y VERIFICACIÓN (minuto a minuto factual)
+- Reuters: https://www.reuters.com/ — Estándar global de neutralidad.
+- Associated Press (AP): https://apnews.com/ — Fuente primaria de cables internacionales.
+- AFP: https://www.afp.com/ — Cobertura global con verificación integrada.
+- EFE: https://www.efe.com/ — Agencia de referencia para el mundo hispanohablante.
+- Deutsche Welle (DW): https://www.dw.com/ — Perspectiva europea con rigor.
+- BBC Mundo: https://www.bbc.com/mundo — Periodismo de servicio público, altos filtros editoriales.
+- Swissinfo.ch: https://www.swissinfo.ch/ — Información multilingüe, perspectiva neutral (Suiza).
+- France 24: https://www.france24.com/ — Análisis geopolítico inmediato.
+- Full Fact: https://fullfact.org/ — Verificador independiente de referencia (Reino Unido).
+- Chequeado: https://chequeado.com/ — Referente de fact-checking en América Latina.
 
-Verificación de datos y noticias:
-- IFCN: https://www.poynter.org/ifcn/
-- Reuters Fact Check: https://www.reuters.com/fact-check/
-- AP News: https://www.ap.org/
-- AFP Fact Check: https://factcheck.afp.com/
-- Google Fact Check: https://toolbox.google.com/factcheck/explorer
+II. CIENCIA, ACADEMIA Y TECNOLOGÍA (evidencia peer-reviewed)
+- DOAJ: https://doaj.org/ — Directorio de revistas científicas en acceso abierto.
+- PLOS ONE: https://journals.plos.org/plosone/ — Ciencia abierta con revisión por pares.
+- arXiv: https://arxiv.org/ — Prepublicaciones de física, IA y matemáticas (Cornell).
+- Frontiers: https://www.frontiersin.org/ — Plataforma de ciencia abierta líder.
+- Nature Communications: https://www.nature.com/ncomms/ — Acceso abierto de Nature.
+- ScienceDirect Open Access: https://www.sciencedirect.com/ — Literatura técnica de alto nivel.
+- MIT News: https://news.mit.edu/ — Avances en tecnología y ciencia aplicada.
+- The Lancet (Open Access): https://www.thelancet.com/ — Referencia en medicina global.
+- PubMed Central: https://www.ncbi.nlm.nih.gov/pmc/ — Archivo gratuito de biomedicina.
+- ERIC: https://eric.ed.gov/ — Base esencial para educación y AMI.
 
-Bibliotecas y patrimonio:
-- Biblioteca Digital Mundial: https://www.loc.gov/collections/world-digital-library/
-- Internet Archive / Wayback Machine: https://archive.org/
-- Europeana: https://www.europeana.eu/
-- Memoria Chilena: http://www.memoriachilena.gob.cl/
-- Biblioteca Nacional Digital Chile: http://www.bibliotecanacionaldigital.gob.cl/
-- Cervantes Virtual: https://www.cervantesvirtual.com/
-- Britannica: https://www.britannica.com/
+III. INNOVACIÓN PÚBLICA, POLÍTICA DIGITAL Y DERECHOS (México y global)
+- Política Digital: https://politicadigital.mx/ — Referente en transformación digital en México.
+- Agencia de Transformación Digital (MX): https://www.gob.mx/atd — Centro de política digital mexicana.
+- R3D México: https://r3d.mx/ — Defensa de derechos digitales y privacidad.
+- Derechos Digitales: https://www.derechosdigitales.org/ — Derechos humanos y tecnología en AL.
+- EFF: https://www.eff.org/ — Estándar global en libertad digital.
+- Observacom: https://www.observacom.org/ — Observatorio latinoamericano de regulación y medios.
+- ITU: https://www.itu.int/ — Organismo ONU para las TIC.
+- BID Open Data: https://data.iadb.org/ — Datos de desarrollo en América Latina y el Caribe.
+- CEPAL Digital: https://www.cepal.org/es/temas/transformacion-digital — Análisis económico-digital de la región.
+- OECD Digital Economy: https://www.oecd.org/digital/ — Políticas públicas digitales.
+
+IV. DATOS DUROS Y ORGANISMOS MULTILATERALES
+- World Bank Open Data: https://data.worldbank.org/ — Estadísticas globales de acceso libre.
+- IMF Data: https://www.imf.org/en/Data — Pulso macroeconómico global.
+- UNESCO MIL Alliance: https://en.unesco.org/themes/media-and-information-literacy — Centro global de Alfabetización Mediática.
+- WHO Health Data: https://www.who.int/data — Datos epidemiológicos globales.
+- UNCTAD Data: https://unctad.org/ — Comercio y desarrollo.
+- Gapminder: https://www.gapminder.org/ — Datos globales con fuentes verificadas.
+- Our World in Data: https://ourworldindata.org/ — Visualización de evidencia científica.
+- Trading Economics: https://tradingeconomics.com/ — Indicadores económicos en tiempo real por país.
+- WIPO Lex: https://www.wipo.int/wipolex/ — Tratados y leyes de propiedad intelectual.
+- Global Health Observatory: https://www.who.int/data/gho — Monitoreo de salud pública mundial.
+
+V. EDUCACIÓN MEDIÁTICA, AMI Y REFERENCIAS
+- EducaMídia: https://educamidia.org.br/ — Metodología de AMI líder en la región.
+- Precisar: https://www.precisar.net/ — Plataforma de referencia en Chile para AMI y ciudadanía.
+- Poynter Institute: https://www.poynter.org/ — Ética periodística y enseñanza de verificación.
+- Knight Center (UT Austin): https://knightcenter.utexas.edu/ — Periodismo en las Américas e innovación.
+- First Draft News: https://firstdraftnews.org/ — Combate a la desinformación.
+- Internet Archive: https://archive.org/ — Memoria digital del mundo.
+- Project Gutenberg: https://www.gutenberg.org/ — Libros históricos verificados.
+- World Digital Library: https://www.wdl.org/ — Tesoros culturales globales.
+- Stanford Internet Observatory: https://cyber.fsi.stanford.edu/io — Abuso de tecnologías digitales.
+- Global Voices: https://globalvoices.org/ — Reportes ciudadanos verificados.
+`.trim();
+
+/**
+ * 50 fuentes críticas: Gobernanza LatAm, IA para Docentes, Convivencia Escolar y AMI.
+ * Links abiertos, activos y de máxima autoridad editorial.
+ */
+export const FUENTES_ONDA_EJES_LATAM_AMI = `
+EJE 1 — Geopolítica, Gobernanza y Datos de LatAm y el Caribe
+- CEPAL Datos Abiertos: https://www.cepal.org/es/datos-abiertos — Estadísticas económicas y sociales de la región.
+- BID Números para el Desarrollo: https://data.iadb.org/ — Inversión pública y análisis.
+- OEA Portal de Datos Abiertos: https://www.oas.org/ — Democracia, derechos humanos y seguridad en el hemisferio.
+- Latinobarómetro: https://www.latinobarometro.org/ — Opinión pública y democracia en América Latina.
+- Red GEALC: https://www.redgealc.org/ — Gobierno digital en LatAm y el Caribe.
+- Caribbean Development Bank: https://www.caribank.org/ — Datos y reportes para el Caribe.
+- Datos.gob.mx: https://datos.gob.mx/ — Datos abiertos de México.
+- Dados.gov.br: https://dados.gov.br/ — Datos abiertos de Brasil.
+- Datos.gob.ar: https://datos.gob.ar/ — Información pública de Argentina.
+- Datos.gob.cl: https://datos.gob.cl/ — Transparencia y datos abiertos de Chile.
+- Transparencia Internacional Américas: https://www.transparency.org/ — Índices de corrupción e integridad.
+- CARICOM Statistics: https://caricom.org/ — Datos oficiales del Caribe.
+
+EJE 2 — IA para Docentes (herramientas, guías y ética)
+- UNESCO Marco Competencias IA Docentes: https://www.unesco.org/en/articles/unesco-releases-new-ai-competency-framework-teachers — Estándar global 2024-2026.
+- Magic School AI: https://www.magicschool.ai/ — Planificación de clases y rúbricas con IA.
+- Teachy.app: https://teachy.app/ — IA para profesores de habla hispana.
+- Google for Education AI: https://edu.google.com/ — Formación y herramientas de IA para el aula.
+- Anthropic Claude for Educators: https://www.anthropic.com/ — Ingeniería de prompts para diseño curricular.
+- OpenAI Teaching with AI: https://openai.com/blog/teaching-with-ai — Guía oficial ChatGPT para educadores.
+- Common Sense Education AI Toolkit: https://www.commonsense.org/education/ai-literacy — Evaluaciones éticas de IA para menores.
+- Teachermatic: https://teachermatic.com/ — Recursos educativos con IA.
+- Khan Academy Khanmigo: https://www.khanacademy.org/ — Tutoría inteligente para docentes.
+- MIT Raising AI Wise Kids: https://www.media.mit.edu/ — Ética y funcionamiento de la IA desde la infancia.
+- Edpuzzle AI: https://edpuzzle.com/ — Videos educativos en evaluaciones interactivas.
+- Curipod: https://curipod.com/ — Presentaciones interactivas con IA.
+- Plataforma Guacari: https://guacari.com/ — Gestión de clases con IA en LatAm.
+
+EJE 3 — Convivencia Escolar, Bullying y Salud Mental
+- UNICEF LAC Violencia Escolar: https://www.unicef.org/lac/ — Estudios y guías de intervención en escuelas.
+- StopBullying (Español): https://www.stopbullying.gov/ — Prevención, detección y respuesta al acoso escolar.
+- Internet Segura (Brasil/LAC): https://internetsegura.br/ — Ciberacoso y protección de menores.
+- Pantallas Amigas: https://www.pantallasamigas.net/ — Ciberconvivencia y violencia digital.
+- Fundación Botín Educación Emocional: https://www.fundacionbotin.org/ — Clima escolar e inteligencia emocional.
+- Mineduc Chile Convivencia Escolar: https://convivenciaescolar.mineduc.cl/ — Resolución de conflictos en el aula.
+- UNESCO Educación Salud y Bienestar: https://www.unesco.org/en/health-education — Inclusión y seguridad educativa.
+- Aulas en Paz: https://www.aulasenpaz.org/ — Prevención de agresión escolar (Colombia).
+- Global Kids Online LatAm: https://globalkidsonline.net/ — Niños, riesgos y oportunidades en la red.
+- Bullying Sin Fronteras: https://bullyingsinfronteras.blogspot.com/ — Estadísticas y alertas en español.
+
+EJE 4 — Alfabetización Mediática (AMI) y Desinformación
+- EducaMídia: https://educamidia.org.br/ — Currículos de AMI y formación docente.
+- Precisar: https://www.precisar.net/ — Ciudadanía digital y pensamiento crítico (Chile).
+- UNESCO MIL Alliance: https://en.unesco.org/themes/media-and-information-literacy — Mejores prácticas globales AMI.
+- MIL CLICKS: https://en.unesco.org/MILCLICKS — Aprender AMI en redes sociales.
+- IBERO-AMI: https://iberoami.org/ — Red iberoamericana de investigadores en medios.
+- Observacom: https://www.observacom.org/ — Regulación de plataformas y libertad de expresión.
+- First Draft: https://firstdraftnews.org/ — Verificación de contenido y desinformación.
+- LatamChequea: https://latamchequea.org/ — Red de verificadores de datos en América Latina.
+- News Literacy Project (Español): https://newslit.org/ — Distinguir noticias de falsedades.
+- Maldita Educa: https://maldita.es/maldita-educa — Enseñar a no ser engañado por bulos.
+- Jigsaw Prebunking (Google): https://jigsaw.google.com/ — Recursos contra la desinformación.
+- TRUSTing News: https://trustingnews.org/ — Estrategias para recuperar confianza ciudadana.
+- Media Literacy Now: https://medialiteracynow.org/ — AMI en políticas educativas.
+- Net Family News: https://www.netfamilynews.org/ — Seguridad infantil y alfabetización digital.
+- IFLA Infografía Noticias Falsas: https://www.ifla.org/publications/node/11174 — Detección de noticias falsas.
+`.trim();
+
+/**
+ * Reglas de implementación para los 4 ejes (IA docentes, bullying, AMI, gobernanza).
+ */
+export const REGLAS_EJES_LATAM_AMI = `
+📌 REGLAS PARA LOS 4 EJES (Gobernanza LatAm, IA Docentes, Convivencia Escolar, AMI)
+- Open Source / OSC: Cuando entregues guías de IA para docentes, prioriza las de UNESCO (marco de competencias IA) porque sus licencias permiten reutilización en OSC.
+- Bullying y datos sensibles: Si la persona pregunta sobre acoso escolar o bullying, cita obligatoriamente recursos de UNICEF o StopBullying (Español) y añade siempre que esta información no sustituye la ayuda de un profesional (orientación, psicología, autoridades escolares).
+`.trim();
+
+/**
+ * Reglas de jerarquía y verificación para el system prompt (base de 50 nodos de máxima autoridad).
+ */
+export const REGLAS_FUENTES_Y_VERIFICACION = `
+📊 BASE DE 50 NODOS DE MÁXIMA AUTORIDAD
+Tienes una base consolidada de 50 fuentes Open Access / Open Data organizadas en: (I) Agencias y verificación — Reuters, AP, AFP, EFE, DW, BBC Mundo, Swissinfo, France 24, Full Fact, Chequeado; (II) Ciencia y academia — DOAJ, PLOS ONE, arXiv, Frontiers, Nature Communications, ScienceDirect, MIT News, The Lancet, PubMed, ERIC; (III) Política digital y derechos — Política Digital, ATD MX, R3D, Derechos Digitales, EFF, Observacom, ITU, BID, CEPAL, OECD; (IV) Datos y multilaterales — World Bank, IMF, UNESCO MIL, WHO, UNCTAD, Gapminder, Our World in Data, Trading Economics, WIPO Lex, GHO; (V) AMI y referencias — EducaMídia, Precisar, Poynter, Knight Center, First Draft, Internet Archive, Project Gutenberg, WDL, Stanford Internet Observatory, Global Voices. Úsala siempre para jerarquizar y citar:
+- Al dar datos concretos, estadísticas o referencias, prioriza fuentes de esa lista (sobre todo .gov, .edu, .org).
+- Verificación cruzada: Si algo viene de redes o fuentes no institucionales, no lo uses como hecho salvo que esté confirmado en al menos dos agencias de la Categoría I (Reuters, AP, AFP, EFE, DW, BBC Mundo, Swissinfo, France 24, Full Fact, Chequeado).
+- Al citar, indica si la fuente es gubernamental (ej. ATD México), sociedad civil (ej. R3D, Derechos Digitales) o multilateral (ej. CEPAL, BID). Mantén pluralidad.
+- Si un dato macroeconómico o regional no está en CEPAL, BID, Banco Mundial, IMF u otros de la lista, responde: "Información no disponible en fuentes primarias verificadas" en lugar de inferir.
+- En respuestas con datos o estadísticas, añade una breve nota de fuente cuando ayude (ej. "Dato de referencia: Banco Mundial" o "Según UNESCO MIL Alliance").
 `.trim();
 
 /** Mensajes de error en tono Onda (cercano, sin tecnicismos). */
 export const ONDA_MICROCOPY = {
   errorGeneric: "Uy, algo se trabó. ¿Probamos de nuevo?",
+  errorImage: "No pude analizar la imagen. Probá con otra más liviana o contame por texto qué ves.",
   errorConnection: "No pude conectar. ¿Revisás tu internet y probamos otra vez?",
   errorTimeout: "La respuesta tardó demasiado. ¿Probamos de nuevo?",
   errorServer: "Del lado mío hubo un problemita. Intentá en un ratito.",

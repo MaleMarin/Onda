@@ -1,10 +1,37 @@
 "use client";
 
+import { useState, useEffect, useCallback } from "react";
 import type { CSSProperties } from "react";
 import type { Message } from "@/content/types";
 import { ONDA_MICROCOPY } from "@/content/shared";
 import type { OndaTheme } from "@/lib/ondaTheme";
 import { ondaStyles } from "@/lib/ondaStyles";
+
+/** Detecta si el texto contiene una tabla (markdown con | o líneas de celdas). */
+function hasTable(text: string): boolean {
+  if (!text || text.length < 10) return false;
+  const lines = text.split(/\r?\n/);
+  const tableLike = lines.filter((line) => /\|.+\|/.test(line.trim()));
+  return tableLike.length >= 2;
+}
+
+/** Hora solo después de montar para evitar hydration mismatch (mismo placeholder en server y cliente). */
+function MessageTime({ timestamp }: { timestamp: number }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  let text = "--:--";
+  if (mounted && Number.isFinite(timestamp)) {
+    try {
+      const d = new Date(timestamp);
+      const h = d.getHours().toString().padStart(2, "0");
+      const m = d.getMinutes().toString().padStart(2, "0");
+      text = `${h}:${m}`;
+    } catch {
+      // keep --:--
+    }
+  }
+  return <span suppressHydrationWarning>{text}</span>;
+}
 
 interface ChatBubbleProps {
   message: Message;
@@ -12,6 +39,8 @@ interface ChatBubbleProps {
   compact?: boolean;
   onPlayTTS?: (text: string) => void;
   theme: OndaTheme;
+  /** En la primera vista, la burbuja de bienvenida crece para llenar el espacio (sin huecos). */
+  fillHeight?: boolean;
 }
 
 function formatContent(text: string): React.ReactNode[] {
@@ -23,11 +52,35 @@ function formatContent(text: string): React.ReactNode[] {
   });
 }
 
-export function ChatBubble({ message, color, compact, onPlayTTS, theme: t }: ChatBubbleProps) {
+export function ChatBubble({ message, color, compact, onPlayTTS, theme: t, fillHeight }: ChatBubbleProps) {
   const S = ondaStyles(t);
+  const [copied, setCopied] = useState(false);
   const isUser = message.role === "user";
   const isEmpty = message.role === "model" && message.content === "";
   const text = isEmpty ? ONDA_MICROCOPY.typing : message.content;
+  const showCopyDownload = message.role === "model" && message.content && hasTable(message.content);
+
+  const handleCopy = useCallback(async () => {
+    if (!message.content) return;
+    try {
+      await navigator.clipboard.writeText(message.content);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // ignore
+    }
+  }, [message.content]);
+
+  const handleDownload = useCallback(() => {
+    if (!message.content) return;
+    const blob = new Blob([message.content], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "tabla-onda.txt";
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [message.content]);
 
   const padding = compact ? "10px 14px" : "12px 16px";
   const fontSize = compact ? "0.8125rem" : "0.875rem";
@@ -37,6 +90,7 @@ export function ChatBubble({ message, color, compact, onPlayTTS, theme: t }: Cha
     flexDirection: "column",
     alignItems: isUser ? "flex-end" : "flex-start",
     marginBottom: 2,
+    ...(fillHeight ? { flex: 1, minHeight: 0, width: "100%", maxWidth: "92%" } : {}),
   };
 
   const bubbleBase: CSSProperties = {
@@ -51,22 +105,29 @@ export function ChatBubble({ message, color, compact, onPlayTTS, theme: t }: Cha
 
   const botBubbleStyle: CSSProperties = {
     ...bubbleBase,
-    background: t.c.surface2,
+    ...(t.isDark ? t.fx.glassSoft : {
+      ...t.fx.plate,
+      boxShadow: `${t.shadow.glassInset}, 0 2px 4px rgba(0,0,0,0.04), 0 12px 28px rgba(0,0,0,0.06)`,
+    }),
     color: t.c.ink,
-    border: `1px solid ${t.c.border}`,
-    boxShadow: t.shadow.s3,
-    borderTopLeftRadius: 6,
-    borderLeft: color ? `3px solid ${color}` : undefined,
+    borderRadius: t.isDark ? undefined : "0 22px 22px 22px",
+    borderTopLeftRadius: t.isDark ? 6 : 0,
+    borderLeft: t.isDark ? (color ? `3px solid ${color}` : undefined) : (color ? `3px solid ${color}` : undefined),
     ...(isEmpty ? { fontStyle: "italic", color: t.c.muted, animation: "pulse 1.4s ease-in-out infinite" } : {}),
+    ...(fillHeight ? { flex: 1, minHeight: 0, display: "flex", flexDirection: "column", justifyContent: "flex-start" } : {}),
   };
 
   const userBubbleStyle: CSSProperties = {
     ...bubbleBase,
     color: "#fff",
     border: "none",
-    background: t.grad.userBubble,
-    boxShadow: `0 8px 22px rgba(43,99,255,.20)`,
-    borderTopRightRadius: 6,
+    background: color
+      ? `linear-gradient(135deg, ${color}, ${color}dd)`
+      : t.grad.userBubble,
+    boxShadow: color
+      ? `0 8px 24px ${color}55, inset 0 1px 0 rgba(255,255,255,0.25)`
+      : "0 8px 24px rgba(255,109,77,0.2), inset 0 1px 0 rgba(255,255,255,0.25)",
+    borderTopRightRadius: 22,
   };
 
   const imgWrapStyle: CSSProperties = {
@@ -83,7 +144,7 @@ export function ChatBubble({ message, color, compact, onPlayTTS, theme: t }: Cha
     padding: "5px 12px",
     borderRadius: t.r.sm,
     border: `1px solid ${t.c.border}`,
-    background: t.isDark ? "rgba(255,255,255,.08)" : "rgba(255,255,255,.50)",
+    background: t.isDark ? "rgba(255,255,255,.08)" : t.glass.bg,
     fontSize: "0.72rem",
     color: t.c.muted,
     cursor: "pointer",
@@ -98,6 +159,31 @@ export function ChatBubble({ message, color, compact, onPlayTTS, theme: t }: Cha
     marginTop: 3,
     paddingLeft: 4,
     paddingRight: 4,
+  };
+
+  const copyDownloadWrap: CSSProperties = {
+    marginTop: 10,
+    paddingTop: 10,
+    borderTop: `1px solid ${t.c.border}`,
+    display: "flex",
+    flexWrap: "wrap",
+    alignItems: "center",
+    gap: 8,
+  };
+  const copyDownloadHint: CSSProperties = {
+    fontSize: "0.75rem",
+    color: t.c.muted,
+    marginRight: 4,
+  };
+  const copyDownloadBtn: CSSProperties = {
+    padding: "6px 10px",
+    borderRadius: t.r.sm,
+    border: `1px solid ${t.c.border}`,
+    background: t.isDark ? "rgba(255,255,255,.08)" : t.glass.bg,
+    color: t.c.ink,
+    fontSize: "0.75rem",
+    fontWeight: 600,
+    cursor: "pointer",
   };
 
   return (
@@ -115,14 +201,25 @@ export function ChatBubble({ message, color, compact, onPlayTTS, theme: t }: Cha
       <div style={isUser ? userBubbleStyle : botBubbleStyle}>
         <div className="prose-onda">{formatContent(text)}</div>
         {onPlayTTS && message.content && (
-          <button type="button" onClick={() => onPlayTTS(message.content)} style={ttsStyle} {...S.lift.tts}>
+          <button type="button" onClick={() => onPlayTTS(message.content)} style={ttsStyle}>
             🔊 Escuchar
           </button>
         )}
+        {showCopyDownload && (
+          <div style={copyDownloadWrap}>
+            <span style={copyDownloadHint}>Puedes copiar o descargar la tabla:</span>
+            <button type="button" onClick={handleCopy} style={copyDownloadBtn}>
+              {copied ? "✓ Copiado" : "Copiar"}
+            </button>
+            <button type="button" onClick={handleDownload} style={copyDownloadBtn}>
+              Descargar
+            </button>
+          </div>
+        )}
       </div>
       {message.timestamp != null && message.timestamp > 0 && (
-        <span style={metaStyle}>
-          {new Date(message.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+        <span style={metaStyle} suppressHydrationWarning>
+          <MessageTime timestamp={message.timestamp} />
         </span>
       )}
     </div>

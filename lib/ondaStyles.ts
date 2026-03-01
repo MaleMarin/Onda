@@ -1,8 +1,8 @@
 import type { CSSProperties } from "react";
 import type { OndaTheme } from "./ondaTheme";
 
-const EASE = "cubic-bezier(.2,.8,.2,1)";
-const TR = `180ms ${EASE}`;
+const EASE = "cubic-bezier(.25,.75,.2,1)";
+const TR = "180ms ease";
 
 type Ev = { currentTarget: HTMLElement };
 type LiftBind = { onMouseEnter: (e: Ev) => void; onMouseLeave: (e: Ev) => void };
@@ -21,32 +21,66 @@ function liftHandlers(baseShadow: string, hoverShadow: string): LiftBind {
 }
 
 export function ondaStyles(t: OndaTheme) {
+  const glassBg = t.glass.bg;
+  const glassBorder = t.glass.border;
+  const glassBorderSoft = t.glass.borderSoft;
+  const crystal = t.fx.crystal;
+  const insetStrong = t.shadow.glassInsetStrong;
+  const insetSoft = t.shadow.glassInset;
+
   const S = {
     page: {
+      height: "100dvh",
       minHeight: "100vh",
-      display: "grid",
-      placeItems: "center",
-      padding: "28px 18px",
+      overflow: "hidden",
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      justifyContent: "flex-start",
+      padding: "24px 20px 24px 20px",
       fontFamily: t.font.ui,
       color: t.c.ink,
       background: t.grad.pageBg,
+      transition: "background 0.3s ease",
+      position: "relative",
     } satisfies CSSProperties,
 
+    /** Panel principal: bloque de vidrio flotando, sombra profunda = 1000% cristal. */
     shell: {
-      ...t.fx.glass,
+      ...crystal,
       width: "100%",
-      maxWidth: 980,
-      borderRadius: t.r.lg + 6,
+      maxWidth: "min(720px, 92vw)",
+      flex: 1,
+      minHeight: 0,
+      borderRadius: 40,
       overflow: "hidden",
+      display: "flex",
+      flexDirection: "column",
+      boxShadow: `${t.shadow.glassInsetStrong}, ${t.shadow.elevation}, 0 56px 100px rgba(0,0,0,0.1), 0 24px 48px rgba(0,0,0,0.06)`,
+      transition: "box-shadow 0.18s ease, transform 0.18s ease",
+      position: "relative",
+      zIndex: 1,
+      pointerEvents: "auto",
+    } satisfies CSSProperties,
+
+    /** Tarjetas información: border-radius 24px, degradado cian → azul profundo (Slim) */
+    glassCard: {
+      ...t.fx.glass,
+      borderRadius: 24,
+      boxShadow: `${insetSoft}, ${t.shadow.elevation}`,
     } satisfies CSSProperties,
 
     header: {
       display: "flex",
       alignItems: "center",
       justifyContent: "space-between",
-      padding: "18px 18px",
-      background: t.grad.header,
-      borderBottom: `1px solid ${t.c.border}`,
+      padding: "20px 24px",
+      ...t.fx.glass,
+      borderBottom: `1px solid ${glassBorderSoft}`,
+      boxShadow: insetSoft,
+      flexShrink: 0,
+      transition: "background 0.2s ease, border-color 0.2s ease",
+      pointerEvents: "auto",
     } satisfies CSSProperties,
 
     titleWrap: { display: "flex", alignItems: "center", gap: 10 } satisfies CSSProperties,
@@ -56,7 +90,7 @@ export function ondaStyles(t: OndaTheme) {
       height: 12,
       borderRadius: 999,
       background: t.grad.badge,
-      boxShadow: `0 0 0 5px ${t.isDark ? "rgba(43,99,255,.14)" : "rgba(43,99,255,.10)"}`,
+      boxShadow: `0 0 0 4px ${t.c.orange}30`,
     } satisfies CSSProperties,
 
     subtitle: { fontSize: 13, color: t.c.muted } satisfies CSSProperties,
@@ -66,40 +100,43 @@ export function ondaStyles(t: OndaTheme) {
       gap: 10,
       padding: "12px 14px",
       borderBottom: `1px solid ${t.c.border}`,
-      background: t.isDark ? "rgba(20,30,55,.35)" : "rgba(255,255,255,.35)",
+      ...t.fx.glassSoft,
     } satisfies CSSProperties,
 
+    /** Tab: edge cue (highlight) on both active and inactive so surface always reads as glass. */
     tab: (active: boolean): CSSProperties => ({
       flex: 1,
       display: "inline-flex",
       alignItems: "center",
       justifyContent: "center",
       gap: 8,
-      padding: "10px 12px",
-      borderRadius: 999,
-      border: `1px solid ${active ? "rgba(43,99,255,.28)" : "rgba(110,135,190,.18)"}`,
+      padding: "10px 14px",
+      borderRadius: 14,
+      border: `1px solid ${glassBorder}`,
       color: active ? t.c.ink : t.c.muted,
-      background: active
-        ? `${t.grad.activeTab}, ${t.isDark ? "rgba(20,30,55,.46)" : "rgba(255,255,255,.75)"}`
-        : t.isDark
-          ? "rgba(20,30,55,.44)"
-          : "rgba(255,255,255,.55)",
-      boxShadow: active ? t.shadow.s2 : "none",
+      background: active ? t.grad.activeTab : glassBg,
+      boxShadow: active ? `${insetStrong}, 0 4px 12px rgba(0,0,0,0.06)` : `${insetSoft}, 0 1px 3px rgba(0,0,0,0.03)`,
       cursor: "pointer",
       userSelect: "none",
       transition: `transform ${TR}, box-shadow ${TR}, border-color ${TR}, background ${TR}, color ${TR}`,
     }),
 
     chat: {
-      display: "grid",
-      gridTemplateRows: "1fr auto",
-      height: "min(74vh, 760px)",
+      display: "flex",
+      flexDirection: "column",
+      flex: 1,
+      minHeight: 0,
+      pointerEvents: "auto",
     } satisfies CSSProperties,
 
+    /** Área de mensajes: tinte mínimo, sin blur, para que botones y clics funcionen siempre. */
     messages: {
-      padding: 18,
+      flex: 1,
+      padding: 24,
       overflow: "auto",
       scrollBehavior: "smooth",
+      background: t.isDark ? "rgba(255,255,255,0.02)" : "rgba(255,255,255,0.03)",
+      pointerEvents: "auto",
     } satisfies CSSProperties,
 
     row: (isUser: boolean): CSSProperties => ({
@@ -107,34 +144,38 @@ export function ondaStyles(t: OndaTheme) {
       justifyContent: isUser ? "flex-end" : "flex-start",
       gap: 10,
       alignItems: "flex-end",
-      margin: "10px 0",
+      margin: "6px 0",
     }),
 
     avatar: {
       width: 34,
       height: 34,
       borderRadius: 999,
-      background:
-        `radial-gradient(circle at 30% 30%, rgba(255,255,255,.9), rgba(255,255,255,.2) 30%, transparent 65%),
-         linear-gradient(135deg, rgba(43,99,255,.85), rgba(17,197,182,.75))`,
-      boxShadow: "0 8px 18px rgba(43,99,255,.18)",
+      background: `linear-gradient(135deg, rgba(251,80,2,0.9) 0%, ${t.c.orange} 100%)`,
+      border: `1px solid rgba(255,255,255,0.5)`,
+      boxShadow: `${insetSoft}, 0 8px 20px ${t.c.orange}40`,
       flex: "0 0 auto",
     } satisfies CSSProperties,
 
     bubble: (isUser: boolean): CSSProperties => ({
       maxWidth: "min(72ch, 86%)",
       padding: "12px 14px",
-      borderRadius: t.r.lg,
-      lineHeight: 1.35,
+      borderRadius: 22,
+      lineHeight: 1.45,
       fontSize: 15,
-      letterSpacing: ".1px",
-      boxShadow: t.shadow.s3,
-      border: isUser ? "0" : `1px solid ${t.c.border}`,
-      color: isUser ? "#ffffff" : t.c.ink,
-      background: isUser ? t.grad.userBubble : t.c.surface2,
+      letterSpacing: ".02em",
       ...(isUser
-        ? { borderTopRightRadius: 14 }
-        : { borderTopLeftRadius: 14 }),
+        ? {}
+        : {
+            ...t.fx.plate,
+            boxShadow: `${insetSoft}, 0 2px 4px rgba(0,0,0,0.04), 0 12px 28px rgba(0,0,0,0.06)`,
+          }),
+      boxShadow: isUser ? t.shadow.s3 : undefined,
+      border: isUser ? "0" : `1px solid ${glassBorder}`,
+      color: isUser ? "#fff" : t.c.ink,
+      ...(isUser ? { background: t.grad.userBubble } : {}),
+      ...(isUser ? { borderTopRightRadius: 22 } : { borderRadius: "0 22px 22px 22px" }),
+      transition: "box-shadow 0.18s ease, background 0.18s ease",
     }),
 
     meta: {
@@ -150,27 +191,33 @@ export function ondaStyles(t: OndaTheme) {
       gap: 10,
       padding: "10px 14px 14px",
       borderTop: `1px solid ${t.c.border}`,
-      background: t.isDark ? "rgba(20,30,55,.28)" : "rgba(255,255,255,.28)",
+      ...t.fx.glassSoft,
+      pointerEvents: "auto",
     } satisfies CSSProperties,
 
     chip: {
       display: "inline-flex",
       alignItems: "center",
       gap: 8,
-      padding: "9px 12px",
-      borderRadius: 999,
-      border: "1px solid rgba(110,135,190,.22)",
-      background: t.isDark ? "rgba(20,30,55,.55)" : "rgba(255,255,255,.65)",
+      padding: "10px 16px",
+      borderRadius: 14,
+      border: `1px solid ${glassBorder}`,
+      background: glassBg,
       color: t.c.ink,
       fontSize: 13,
       cursor: "pointer",
-      transition: `transform ${TR}, box-shadow ${TR}, border-color ${TR}, background ${TR}`,
+      boxShadow: `${insetSoft}, ${t.shadow.elevation}`,
+      transition: "transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease",
     } satisfies CSSProperties,
 
     composer: {
-      padding: 14,
-      borderTop: `1px solid ${t.c.border}`,
-      background: t.isDark ? "rgba(20,30,55,.35)" : "rgba(255,255,255,.35)",
+      ...t.fx.glass,
+      padding: "20px 24px 24px",
+      borderTop: `1px solid ${glassBorderSoft}`,
+      boxShadow: insetSoft,
+      flexShrink: 0,
+      transition: "background 0.2s ease",
+      pointerEvents: "auto",
     } satisfies CSSProperties,
 
     composerRow: {
@@ -181,64 +228,83 @@ export function ondaStyles(t: OndaTheme) {
     } satisfies CSSProperties,
 
     iconBtn: {
-      width: 42,
-      height: 42,
+      width: 44,
+      height: 44,
       borderRadius: 14,
-      border: "1px solid rgba(110,135,190,.22)",
-      background: t.isDark ? "rgba(20,30,55,.55)" : "rgba(255,255,255,.65)",
-      boxShadow: t.shadow.s3,
+      ...crystal,
       display: "grid",
       placeItems: "center",
       cursor: "pointer",
-      transition: `transform ${TR}, box-shadow ${TR}, border-color ${TR}`,
+      transition: "transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease",
     } satisfies CSSProperties,
 
     input: {
-      height: 44,
+      height: 46,
       width: "100%",
-      padding: "0 14px",
-      borderRadius: 16,
-      border: "1px solid rgba(110,135,190,.24)",
-      background: t.isDark ? "rgba(20,30,55,.62)" : "rgba(255,255,255,.72)",
+      padding: "0 20px",
+      borderRadius: 14,
+      border: `1px solid ${glassBorder}`,
+      background: t.glass.plate,
       color: t.c.ink,
-      boxShadow: `inset 0 1px 0 ${t.isDark ? "rgba(255,255,255,.08)" : "rgba(255,255,255,.55)"}`,
-      transition: `border-color ${TR}, box-shadow ${TR}, background ${TR}`,
+      boxShadow: `${insetSoft}, 0 2px 4px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.05)`,
+      transition: "border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease",
       outline: "none",
     } satisfies CSSProperties,
 
+    /** Focus: crisp ring above the stack, independent of background (state stress). */
     inputFocusRing: {
-      boxShadow: `0 0 0 5px ${t.c.ring}`,
-      borderColor: "rgba(43,99,255,.42)",
+      boxShadow: `0 0 0 4px ${t.c.ring}`,
+      borderColor: t.c.orange,
     } satisfies CSSProperties,
 
+    /** Enviar: gradiente naranja + borde/highlight tipo vidrio para coherencia 100% vidrio. */
     send: {
-      height: 44,
-      padding: "0 18px",
-      borderRadius: 16,
-      border: 0,
+      height: 46,
+      padding: "0 24px",
+      borderRadius: 14,
+      border: "1px solid rgba(255,255,255,0.65)",
       color: "#fff",
-      fontWeight: 700,
-      letterSpacing: ".2px",
+      fontWeight: 600,
+      letterSpacing: ".03em",
       cursor: "pointer",
-      background:
-        `radial-gradient(140px 70px at 20% 0%, rgba(255,255,255,.18), transparent 65%),
-         linear-gradient(135deg, ${t.c.brand}, ${t.c.brand2})`,
-      boxShadow: "0 14px 28px rgba(43,99,255,.22)",
-      transition: `transform ${TR}, box-shadow ${TR}, filter ${TR}`,
+      background: `linear-gradient(180deg, ${t.palette.gradientBright} 0%, ${t.c.naranja} 50%, ${t.palette.gradientMid} 100%)`,
+      boxShadow: `inset 0 1px 0 rgba(255,255,255,0.4), inset 0 0 0 1px rgba(255,255,255,0.15), 0 2px 8px rgba(251,80,2,0.2), 0 12px 28px rgba(251,80,2,0.35)`,
+      transition: "transform 0.18s ease, box-shadow 0.18s ease",
     } satisfies CSSProperties,
   };
+
+  const pickerBaseShadow = `${insetSoft}, 0 2px 8px rgba(0,0,0,0.04), 0 16px 40px rgba(0,0,0,0.06)`;
+  const pickerHoverShadow = `${insetStrong}, 0 4px 12px rgba(0,0,0,0.05), 0 20px 44px rgba(0,0,0,0.07)`;
 
   const lift = {
     icon: liftHandlers(t.shadow.s3, t.shadow.s2),
     chip: liftHandlers("none", t.shadow.s3),
     menu: liftHandlers("none", t.shadow.s3),
-    picker: liftHandlers("none", t.shadow.s2),
-    send: liftHandlers(
-      "0 14px 28px rgba(43,99,255,.22)",
-      "0 18px 34px rgba(43,99,255,.26)"
-    ),
+    picker: {
+      onMouseEnter: (e: Ev) => {
+        e.currentTarget.style.transform = "translateY(-1px)";
+        e.currentTarget.style.boxShadow = pickerHoverShadow;
+      },
+      onMouseLeave: (e: Ev) => {
+        e.currentTarget.style.transform = "";
+        e.currentTarget.style.boxShadow = pickerBaseShadow;
+      },
+    },
+    send: {
+      onMouseEnter: (e: Ev) => {
+        e.currentTarget.style.transform = "translateY(-1px)";
+        e.currentTarget.style.boxShadow = "inset 0 1px 0 rgba(255,255,255,0.35), 0 4px 12px rgba(251,80,2,0.25), 0 16px 36px rgba(251,80,2,0.4)";
+      },
+      onMouseLeave: (e: Ev) => {
+        e.currentTarget.style.transform = "";
+        e.currentTarget.style.boxShadow = "inset 0 1px 0 rgba(255,255,255,0.3), 0 2px 8px rgba(251,80,2,0.2), 0 12px 28px rgba(251,80,2,0.35)";
+      },
+    },
     tab: (active: boolean): LiftBind =>
-      liftHandlers(active ? t.shadow.s2 : "none", t.shadow.s2),
+      liftHandlers(
+        active ? t.shadow.s2 : `${insetSoft}, 0 1px 3px rgba(0,0,0,0.03)`,
+        t.shadow.s2
+      ),
     tts: liftHandlers("none", t.shadow.s3),
   };
 
