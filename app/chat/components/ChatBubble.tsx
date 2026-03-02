@@ -135,13 +135,16 @@ export function ChatBubble({ message, color, compact, onPlayTTS, theme: t, fillH
 
   const botBubbleStyle: CSSProperties = {
     ...bubbleBase,
-    ...(t.isDark ? t.fx.glassSoft : t.fx.glass),
+    background: t.glass.bg,
+    border: `2px solid ${t.glass.border}`,
+    boxShadow: t.shadow.neuRaisedStrong,
     color: t.c.ink,
-    borderRadius: t.isDark ? undefined : "0 22px 22px 22px",
+    borderRadius: t.isDark ? 6 : "0 22px 22px 22px",
     borderTopLeftRadius: t.isDark ? 6 : 0,
-    borderLeft: t.isDark ? (color ? `3px solid ${color}` : undefined) : (color ? `3px solid ${color}` : undefined),
+    borderLeft: color ? `4px solid ${color}` : undefined,
     ...(isEmpty ? { fontStyle: "italic", color: t.c.muted, animation: "pulse 1.4s ease-in-out infinite" } : {}),
     ...(fillHeight ? { flex: 1, minHeight: 0, display: "flex", flexDirection: "column", justifyContent: "flex-start" } : {}),
+    transition: "box-shadow 0.18s ease, background 0.18s ease",
   };
 
   const userBubbleStyle: CSSProperties = {
@@ -182,10 +185,11 @@ export function ChatBubble({ message, color, compact, onPlayTTS, theme: t, fillH
 
   const metaStyle: CSSProperties = {
     fontSize: 10,
-    color: t.c.muted2,
+    color: t.c.darkGray,
     marginTop: 3,
     paddingLeft: 4,
     paddingRight: 4,
+    fontWeight: 500,
   };
 
   const copyDownloadWrap: CSSProperties = {

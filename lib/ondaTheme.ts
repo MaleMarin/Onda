@@ -4,19 +4,29 @@ export type OndaMode = "light" | "dark";
 
 export type OndaTheme = ReturnType<typeof createOndaTheme>;
 
+/** Naranja del botón Enviar (neumórfico): desde env o naranja oscuro por defecto. Siempre sólido, 100% neumorphism. */
+const DEFAULT_ORANGE = "#C43E00";
+function getSendOrange(): string {
+  if (typeof process === "undefined") return DEFAULT_ORANGE;
+  const v = process.env.NEXT_PUBLIC_ONDA_ORANGE;
+  return (v && /^#[0-9A-Fa-f]{6}$/.test(v)) ? v : DEFAULT_ORANGE;
+}
+
 /** Paleta Onda Bot + colores neumórficos de referencia (amarillo, rojo, teal, púrpura, azul oscuro). */
-const ONDA_PALETTE = {
-  orange: "#FB5002",
-  black: "#000000",
-  white: "#FFFFFF",
-  gray: "#646464",
-  lightGray: "#A7A7A7",
-  darkGray: "#333333",
-  gradientStart: "#000000",
-  gradientMid: "#FC3D01",
-  gradientBright: "#FF8001",
-  gradientLight: "#F08C5A",
-} as const;
+function getOndaPalette() {
+  return {
+    orange: getSendOrange(),
+    black: "#000000",
+    white: "#FFFFFF",
+    gray: "#646464",
+    lightGray: "#A7A7A7",
+    darkGray: "#333333",
+    gradientStart: "#000000",
+    gradientMid: "#FC3D01",
+    gradientBright: "#FF8001",
+    gradientLight: "#F08C5A",
+  } as const;
+}
 
 /** Colores un poco más oscuros: verde/teal más oscuro, resto más saturado y profundo. */
 export const NEU_COLORS = {
@@ -27,10 +37,10 @@ export const NEU_COLORS = {
   darkBlue: "#152A45",
 } as const;
 
-/** Neumorphism muy marcado: contraste alto para relieve evidente. */
+/** Neumorphism 100%. Fondo gris claro; no oscurecer la página. */
 const NEU_LIGHT = {
-  bg: "#b8bcc4",
-  surface: "#d0d4da",
+  bg: "#d2d6dc",
+  surface: "#e0e4e8",
   shadowDark: "rgba(100, 105, 115, 0.8)",
   shadowLight: "rgba(255, 255, 255, 0.99)",
   insetDark: "rgba(100, 105, 115, 0.75)",
@@ -55,6 +65,7 @@ export type OndaThemeOptions = { useFallback?: boolean };
 export function createOndaTheme(mode: OndaMode, options?: OndaThemeOptions) {
   const isDark = mode === "dark";
   const neu = isDark ? NEU_DARK : NEU_LIGHT;
+  const palette = getOndaPalette();
 
   const c = {
     bg0: neu.bg,
@@ -64,16 +75,16 @@ export function createOndaTheme(mode: OndaMode, options?: OndaThemeOptions) {
     border: neu.border,
     borderSoft: neu.borderSoft,
     ink: isDark ? "#f0f0f0" : "#2d2d2d",
-    muted: isDark ? "#a0a0a0" : ONDA_PALETTE.gray,
-    muted2: isDark ? "#888" : ONDA_PALETTE.lightGray,
-    brand: ONDA_PALETTE.orange,
-    naranja: ONDA_PALETTE.orange,
-    orange: ONDA_PALETTE.orange,
-    black: ONDA_PALETTE.black,
-    white: ONDA_PALETTE.white,
-    gray: ONDA_PALETTE.gray,
-    lightGray: ONDA_PALETTE.lightGray,
-    darkGray: ONDA_PALETTE.darkGray,
+    muted: isDark ? "#a0a0a0" : palette.gray,
+    muted2: isDark ? "#888" : palette.lightGray,
+    brand: palette.orange,
+    naranja: palette.orange,
+    orange: palette.orange,
+    black: palette.black,
+    white: palette.white,
+    gray: palette.gray,
+    lightGray: palette.lightGray,
+    darkGray: palette.darkGray,
     ring: "rgba(201, 60, 48, 0.5)",
     focus: "rgba(201, 60, 48, 0.35)",
     danger: "#ea3546",
@@ -109,6 +120,11 @@ export function createOndaTheme(mode: OndaMode, options?: OndaThemeOptions) {
     `14px 14px 28px ${hexToRgba(hex, 0.6)}, -14px -14px 28px rgba(255,255,255,0.94), inset 3px 3px 6px rgba(255,255,255,0.35)`;
   const neuRaisedColoredHover = (hex: string) =>
     `18px 18px 36px ${hexToRgba(hex, 0.65)}, -18px -18px 36px rgba(255,255,255,0.98), inset 3px 3px 6px rgba(255,255,255,0.4)`;
+  /** Sólido 100%: solo sombra exterior (sin inset), color plano neumórfico. */
+  const neuRaisedColoredSolid = (hex: string) =>
+    `14px 14px 28px ${hexToRgba(hex, 0.5)}, -14px -14px 28px rgba(255,255,255,0.9)`;
+  const neuRaisedColoredSolidHover = (hex: string) =>
+    `18px 18px 36px ${hexToRgba(hex, 0.55)}, -18px -18px 36px rgba(255,255,255,0.95)`;
   /** Estado pulsado (botón Onda): hundido. */
   const neuPressedColored = (hex: string) =>
     `inset 8px 8px 16px ${hexToRgba(hex, 0.5)}, inset -8px -8px 16px rgba(0,0,0,0.15)`;
@@ -128,6 +144,8 @@ export function createOndaTheme(mode: OndaMode, options?: OndaThemeOptions) {
     neuInsetSoft,
     neuRaisedColored,
     neuRaisedColoredHover,
+    neuRaisedColoredSolid,
+    neuRaisedColoredSolidHover,
     neuPressedColored,
   } as const;
 
@@ -145,7 +163,7 @@ export function createOndaTheme(mode: OndaMode, options?: OndaThemeOptions) {
     header: neu.surface,
     userBubble: NEU_COLORS.red,
     activeTab: neu.surface,
-    badge: ONDA_PALETTE.orange,
+    badge: palette.orange,
     card: neu.surface,
     cardBorder: neu.border,
   } as const;
@@ -198,7 +216,7 @@ export function createOndaTheme(mode: OndaMode, options?: OndaThemeOptions) {
     font,
     grad,
     fx,
-    palette: ONDA_PALETTE,
+    palette,
     neuColors: NEU_COLORS,
     glass,
     blur: "none",

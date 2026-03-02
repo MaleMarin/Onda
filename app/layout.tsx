@@ -6,13 +6,29 @@ export const metadata: Metadata = {
     "Webhook WhatsApp para ONDA. Asistente de Alfabetización Mediática e Informacional (AMI).",
 };
 
+/** Naranja del botón Enviar (neumórfico). Env NEXT_PUBLIC_ONDA_ORANGE o naranja oscuro #C43E00 por defecto. */
+const SEND_ORANGE = (typeof process !== "undefined" && process.env.NEXT_PUBLIC_ONDA_ORANGE) || "#C43E00";
+
 const GLOBAL_CSS = `
 html,body{height:100%;margin:0;pointer-events:auto;touch-action:manipulation}
 body{-webkit-font-smoothing:antialiased;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;outline:none}
 /* Shell aislado: clics siempre llegan a botones/inputs. No añadir overlays ni ::before/::after que tapen. */
 .onda-shell{position:relative;z-index:1;isolation:isolate;pointer-events:auto}
 .onda-shell *{pointer-events:auto}
+.onda-page-wrap,.onda-page-wrap *{pointer-events:auto !important}
 button,label,input,a,[role="button"]{cursor:pointer;touch-action:manipulation}
+/* Botón Enviar: naranja oscuro sólido (NEXT_PUBLIC_ONDA_ORANGE o #C43E00), neumorphism, siempre */
+button[data-onda-send],
+button[data-onda-send]:hover,
+button[data-onda-send]:focus{background:${SEND_ORANGE} !important;color:#fff !important}
+/* El contenido interno del botón picker no captura el clic; el botón sí */
+.onda-picker-btn-inner{pointer-events:none !important}
+/* Capa del composer y menú: encima del área de mensajes para que los clics lleguen */
+.onda-composer-layer{position:relative;z-index:10;background:inherit}
+/* Enlaces elegir Onda: siempre clicables */
+[data-onda-picker-composer]{position:relative;z-index:2;pointer-events:auto !important}
+/* Botones del menú y acciones: siempre clicables */
+.onda-menu-btn,button[data-onda-action],button[data-onda-menu-id]{position:relative;z-index:2;pointer-events:auto !important;cursor:pointer}
 *,*::before,*::after{box-sizing:border-box}
 .prose-onda b,.prose-onda strong{color:inherit;font-weight:700}
 @keyframes bubbleIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
@@ -20,10 +36,10 @@ button,label,input,a,[role="button"]{cursor:pointer;touch-action:manipulation}
 .bubble-in{animation:bubbleIn .28s cubic-bezier(.25,.75,.2,1) both}
 .onda-shell input::placeholder{color:#5a5d62;opacity:0.9;font-weight:500;letter-spacing:0.02em}
 .onda-shell *,.onda-shell *:focus,.onda-shell *:focus-visible{outline:none !important}
-.onda-page-wrap{outline:none}
-/* Área de mensajes: permitir scroll (contenido largo); scrollbar opcional oculta */
-.onda-messages{min-height:0;display:flex;flex-direction:column;overflow:hidden}
-.onda-messages-inner{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
+.onda-page-wrap{outline:none;position:relative;z-index:0}
+/* Área de mensajes: debajo del composer para que los botones reciban clics */
+.onda-messages{min-height:0;display:flex;flex-direction:column;overflow:hidden;position:relative;z-index:1}
+.onda-messages-inner{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;position:relative;z-index:1}
 .onda-messages-inner::-webkit-scrollbar{width:6px}
 .onda-messages-inner::-webkit-scrollbar-track{background:transparent}
 .onda-messages-inner::-webkit-scrollbar-thumb{background:rgba(0,0,0,0.2);border-radius:3px}

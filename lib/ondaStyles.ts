@@ -214,11 +214,14 @@ export function ondaStyles(t: OndaTheme) {
       transition: "transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease",
     } satisfies CSSProperties,
 
+    /** Área gris inferior: 100% neumorphism — bandeja hundida (inset) + borde y relieve muy marcados. */
     composer: {
-      ...t.fx.glass,
-      padding: "20px 24px 24px",
-      borderTop: `2px solid ${glassBorderSoft}`,
-      boxShadow: neuRaised,
+      background: t.glass.bg,
+      padding: "22px 24px 26px",
+      border: `2px solid ${glassBorder}`,
+      borderTop: `3px solid ${glassBorderSoft}`,
+      borderRadius: "24px 24px 0 0",
+      boxShadow: `${t.shadow.neuInset}, 0 -8px 24px rgba(100,105,115,0.25)`,
       flexShrink: 0,
       transition: "background 0.2s ease, box-shadow 0.2s ease",
       pointerEvents: "auto",
@@ -262,18 +265,19 @@ export function ondaStyles(t: OndaTheme) {
       borderColor: t.neuColors.red,
     } satisfies CSSProperties,
 
-    /** Enviar: neumorphism marcado (triple sombra + highlight interior). */
+    /** Enviar: naranja sólido (NEXT_PUBLIC_ONDA_ORANGE o #FB5002), 100% neumorphism. */
     send: {
       height: 46,
       padding: "0 24px",
       borderRadius: 16,
-      border: "2px solid rgba(255,255,255,0.4)",
+      border: "none",
       color: "#fff",
-      fontWeight: 600,
-      letterSpacing: ".03em",
+      fontWeight: 700,
+      letterSpacing: ".04em",
       cursor: "pointer",
-      background: t.neuColors.red,
-      boxShadow: t.shadow.neuRaisedColored(t.neuColors.red),
+      touchAction: "manipulation",
+      background: t.c.orange,
+      boxShadow: t.shadow.neuRaisedColoredSolid(t.c.orange),
       transition: "transform 0.2s ease, box-shadow 0.2s ease",
     } satisfies CSSProperties,
   };
@@ -296,22 +300,15 @@ export function ondaStyles(t: OndaTheme) {
         e.currentTarget.style.boxShadow = pickerBaseShadow;
       },
     },
+    /** Solo hover (sin onMouseDown/onMouseUp) para no perder el click al mover el botón. */
     send: {
       onMouseEnter: (e: Ev) => {
-        e.currentTarget.style.transform = "translateY(-3px)";
-        e.currentTarget.style.boxShadow = t.shadow.neuRaisedColoredHover(t.neuColors.red);
+        e.currentTarget.style.transform = "translateY(-2px)";
+        e.currentTarget.style.boxShadow = t.shadow.neuRaisedColoredSolidHover(t.c.orange);
       },
       onMouseLeave: (e: Ev) => {
         e.currentTarget.style.transform = "";
-        e.currentTarget.style.boxShadow = t.shadow.neuRaisedColored(t.neuColors.red);
-      },
-      onMouseDown: (e: Ev) => {
-        e.currentTarget.style.transform = "translateY(1px)";
-        e.currentTarget.style.boxShadow = t.shadow.neuPressedColored(t.neuColors.red);
-      },
-      onMouseUp: (e: Ev) => {
-        e.currentTarget.style.transform = "";
-        e.currentTarget.style.boxShadow = t.shadow.neuRaisedColored(t.neuColors.red);
+        e.currentTarget.style.boxShadow = t.shadow.neuRaisedColoredSolid(t.c.orange);
       },
     },
     tab: (active: boolean): LiftBind =>

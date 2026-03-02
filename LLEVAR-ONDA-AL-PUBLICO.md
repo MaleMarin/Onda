@@ -172,6 +172,12 @@ Si no responde, revisa [SUBIR-A-META-WHATSAPP.md](./SUBIR-A-META-WHATSAPP.md) y 
 
 Si en Deployments todos los deploys salen con **Error**, hay que ver el **log del build** para saber la causa. Guía paso a paso: **[VERCEL-BUILD-ERRORS.md](./VERCEL-BUILD-ERRORS.md)**.
 
+---
+
+## Si Vercel muestra una versión antigua del chat
+
+Si en la URL de producción ves el texto antiguo ("¡Hola! Soy Onda. 👋", "Elige una Onda:") en lugar del actual ("Te doy la bienvenida a Onda 🌊", "¿Por qué Onda te gustaría empezar hoy? ✨"), es porque **producción sigue siendo el último deploy que terminó bien** (p. ej. uno de febrero). El código nuevo ya está en GitHub; lo que falta es que **un build en Vercel termine en Ready**. Revisá en el proyecto **onda** en Vercel: **Settings** → **Build & Development** → **Output Directory** vacío (sin override), **Framework Preset** = **Next.js**. Guardá y hacé **Redeploy**. Cuando ese build pase, la URL de producción mostrará la versión actual.
+
 ## Documentos relacionados
 
 - [INTEGRAR-ONDA-EN-WIX.md](./INTEGRAR-ONDA-EN-WIX.md) – Detalle del embed en Wix.

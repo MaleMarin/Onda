@@ -2,7 +2,7 @@ import { EJE_CONFIGS } from '../shared';
 
 export const MANO_CONFIG = EJE_CONFIGS.A_MANO;
 
-export const WELCOME_A_MANO = `🟡 **Estás en Onda a Mano.**  
+export const WELCOME_A_MANO = `🔴 **Estás en Onda a Mano.**  
 Tu espacio para ver con calma lo que te llega cada día: mensajes, noticias, videos, audios y todo lo que aparece en tus pantallas.
 
 Aquí podemos:  

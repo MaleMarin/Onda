@@ -71,19 +71,35 @@ function compressImage(dataUrl: string): Promise<string> {
   });
 }
 
-export default function ChatPage() {
+type ChatPageProps = { initialEje?: EjeOnda | null };
+
+export default function ChatPage({ initialEje = null }: ChatPageProps) {
   const t = useOndaTheme(true);
   const S = useMemo(() => ondaStyles(t), [t]);
+
+  const [messages, setMessages] = useState<Message[]>([
+    newMessage("model", MAIN_WELCOME),
+  ]);
+  const [currentEje, setCurrentEje] = useState<EjeOnda | null>(initialEje);
 
   const [embed, setEmbed] = useState(false);
   useEffect(() => {
     setEmbed(new URLSearchParams(window.location.search).get("embed") === "1");
   }, []);
 
-  const [messages, setMessages] = useState<Message[]>([
-    newMessage("model", MAIN_WELCOME),
-  ]);
-  const [currentEje, setCurrentEje] = useState<EjeOnda | null>(null);
+  /** Al cargar: si la URL tiene ?eje=, usar esa Onda (por enlace o recarga). Luego limpiar la URL. */
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const ejeParam = params.get("eje");
+    if (ejeParam === EjeOnda.A_MANO || ejeParam === EjeOnda.CIVITA || ejeParam === EjeOnda.PROFES) {
+      setCurrentEje(ejeParam as EjeOnda);
+      params.delete("eje");
+      const newSearch = params.toString();
+      const path = window.location.pathname;
+      window.history.replaceState({}, "", path + (newSearch ? "?" + newSearch : ""));
+    }
+  }, []);
   const [input, setInput] = useState("");
   const [attachmentImage, setAttachmentImage] = useState<string | null>(null);
   const [attachmentAudio, setAttachmentAudio] = useState<string | null>(null);
@@ -148,7 +164,6 @@ export default function ChatPage() {
     const text = input.trim();
     const hasContent = text || attachmentImage || attachmentAudio;
     if (!hasContent || loading) return;
-
     if (currentEje === null) {
       setShowPickOndaNotice(true);
       return;
@@ -381,6 +396,12 @@ export default function ChatPage() {
     [EjeOnda.CIVITA]: t.neuColors.teal,
     [EjeOnda.PROFES]: t.neuColors.purple,
   };
+  /** Colores oscuros para el texto "Ahora en A Mano / Civita / Profes". */
+  const neuPickerColorDarkMap: Record<EjeOnda, string> = {
+    [EjeOnda.A_MANO]: "#8B2920",
+    [EjeOnda.CIVITA]: "#0F5A4A",
+    [EjeOnda.PROFES]: "#4A2655",
+  };
   const ejeColor = currentEje ? neuPickerColorMap[currentEje] : t.neuColors.red;
 
   const lastUserMessage = [...messages].reverse().find((m) => m.role === "user");
@@ -464,54 +485,22 @@ export default function ChatPage() {
     fontSize: "0.72rem",
   };
 
-  /** Botones Onda: convexos con colores neumórficos (rojo, teal, púrpura). */
-  const pickerBtn = (eje: EjeOnda): CSSProperties => ({
-    ...S.glassCard,
-    background: neuPickerColorMap[eje],
-    border: "2px solid rgba(255,255,255,0.4)",
-    padding: "18px 20px",
-    borderRadius: 22,
-    cursor: "pointer",
-    textAlign: "left",
-    display: "flex",
-    flexDirection: "column",
-    gap: 6,
-    boxShadow: t.shadow.neuRaisedColored(neuPickerColorMap[eje]),
-    transition: "transform 0.2s ease, box-shadow 0.2s ease",
-  });
-
-  const pickerHover = (eje: EjeOnda) => ({
-    onMouseEnter: (e: React.MouseEvent<HTMLButtonElement>) => {
-      e.currentTarget.style.transform = "translateY(-3px)";
-      e.currentTarget.style.boxShadow = t.shadow.neuRaisedColoredHover(neuPickerColorMap[eje]);
-    },
-    onMouseLeave: (e: React.MouseEvent<HTMLButtonElement>) => {
-      e.currentTarget.style.transform = "";
-      e.currentTarget.style.boxShadow = t.shadow.neuRaisedColored(neuPickerColorMap[eje]);
-    },
-    onMouseDown: (e: React.MouseEvent<HTMLButtonElement>) => {
-      e.currentTarget.style.transform = "translateY(1px)";
-      e.currentTarget.style.boxShadow = t.shadow.neuPressedColored(neuPickerColorMap[eje]);
-    },
-    onMouseUp: (e: React.MouseEvent<HTMLButtonElement>) => {
-      e.currentTarget.style.transform = "";
-      e.currentTarget.style.boxShadow = t.shadow.neuRaisedColored(neuPickerColorMap[eje]);
-    },
-  });
-
   const menuList: CSSProperties = {
     display: "flex",
     flexDirection: "column",
-    gap: 6,
+    gap: 8,
     marginBottom: 6,
     maxHeight: compact ? 180 : 240,
     overflowY: "auto",
     padding: "0 4px",
   };
 
+  /** Botones del menú: 100% neumorphism (elevados, sombra marcada, hover con lift). */
   const menuBtnStyle: CSSProperties = {
-    padding: compact ? "8px 12px" : "10px 14px",
-    borderRadius: t.r.sm,
+    padding: compact ? "10px 14px" : "12px 16px",
+    borderRadius: 16,
+    border: `2px solid ${t.glass.border}`,
+    background: t.glass.bg,
     color: t.c.ink,
     fontSize: compact ? "0.75rem" : "0.8rem",
     fontWeight: 500,
@@ -519,20 +508,23 @@ export default function ChatPage() {
     opacity: disabledOpacity,
     textAlign: "left",
     width: "100%",
-    transition: "transform 180ms cubic-bezier(.2,.8,.2,1), box-shadow 180ms",
-    ...t.fx.crystal,
+    boxShadow: t.shadow.neuRaisedStrong,
+    transition: "transform 0.2s ease, box-shadow 0.2s ease",
   };
 
+  /** Secundarios (Escribir libremente, Volver al inicio): neumorphism elevado. */
   const menuSec: CSSProperties = {
-    padding: compact ? "6px 10px" : "8px 12px",
-    borderRadius: t.r.sm,
-    border: `1px solid ${t.glass.borderSoft}`,
-    background: "rgba(255,255,255,0.06)",
+    padding: compact ? "8px 12px" : "10px 14px",
+    borderRadius: 16,
+    border: `2px solid ${t.glass.borderSoft}`,
+    background: t.glass.bg,
     color: t.c.muted,
     fontSize: compact ? "0.7rem" : "0.75rem",
     cursor: "pointer",
     textAlign: "center",
     width: "100%",
+    boxShadow: t.shadow.neuRaised,
+    transition: "transform 0.2s ease, box-shadow 0.2s ease",
   };
 
   const chipBase: CSSProperties = {
@@ -571,21 +563,21 @@ export default function ChatPage() {
     fontSize: "0.78rem",
   };
 
-  const canSend = !loading && !!(input.trim() || attachmentImage || attachmentAudio);
+  const hasContent = !!(input.trim() || attachmentImage || attachmentAudio);
+  const canSend = !loading && currentEje !== null && hasContent;
 
   const inpStyle: CSSProperties = {
     ...S.input,
-    border: `1px solid ${ejeColor}99`,
     ...(compact ? { height: 40, fontSize: "0.8rem" } : {}),
     flex: 1,
     minWidth: 0,
-    ...(inputFocused ? { boxShadow: `0 0 0 5px ${ejeColor}40`, borderColor: ejeColor } : {}),
+    ...(inputFocused ? { boxShadow: `${t.shadow.neuInsetSoft}, 0 0 0 3px rgba(0,0,0,0.1)` } : {}),
   };
 
   const sendStyle: CSSProperties = {
     ...S.send,
     ...(compact ? { height: 40, padding: "0 16px" } : {}),
-    opacity: canSend ? 1 : 0.5,
+    opacity: 1,
     cursor: canSend ? "pointer" : "not-allowed",
     flexShrink: 0,
   };
@@ -615,9 +607,7 @@ export default function ChatPage() {
                 <div
                   key={messages[0].id}
                   className="bubble-in"
-                  style={{
-                    ...S.row(false),
-                  }}
+                  style={{ ...S.row(false) }}
                 >
                   <ChatBubble
                     message={messages[0]}
@@ -628,30 +618,6 @@ export default function ChatPage() {
                   />
                 </div>
               )}
-              <div
-                className="bubble-in"
-                style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: -6, maxWidth: "min(88%, 420px)", flexShrink: 0 }}
-              >
-                {ORDERED_EJES.map((eje) => {
-                  const config = EJE_CONFIGS[eje];
-                  return (
-                    <button
-                      key={eje}
-                      type="button"
-                      style={pickerBtn(eje)}
-                      onClick={() => pickEje(eje)}
-                      {...pickerHover(eje)}
-                    >
-                      <span style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 700, fontSize: "0.88rem", color: "#fff" }}>
-                        <span>{config.name}</span>
-                      </span>
-                      <span style={{ fontSize: "0.74rem", color: "rgba(255,255,255,0.92)", fontWeight: 400 }}>
-                        {config.description}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
             </>
           ) : (
             <>
@@ -697,14 +663,14 @@ export default function ChatPage() {
           </div>
         </div>
 
-        {/* Tabs, menu, chips, composer: no shrink so only messages area scrolls */}
-        <div style={{ flexShrink: 0, display: "flex", flexDirection: "column" }}>
+        {/* Tabs, menu, chips, composer: capa con z-index alto para que todos los botones reciban clics */}
+        <div className="onda-composer-layer" style={{ flexShrink: 0, display: "flex", flexDirection: "column", minHeight: 0 }}>
         {/* Tabs */}
         {currentEje !== null && (
           <>
             <EjeSelector currentEje={currentEje} onSelect={confirmEjeSwitch} compact={compact} theme={t} />
             {justSwitchedEje !== null && (
-              <p style={{ margin: "-2px 0 4px", fontSize: compact ? "0.7rem" : "0.74rem", color: neuPickerColorMap[justSwitchedEje], fontWeight: 500, padding: "0 4px" }}>
+              <p style={{ margin: "-2px 0 4px", fontSize: compact ? "0.7rem" : "0.74rem", color: neuPickerColorDarkMap[justSwitchedEje], fontWeight: 600, padding: "0 4px" }}>
                 Ahora en {EJE_CONFIGS[justSwitchedEje].name}
               </p>
             )}
@@ -713,11 +679,12 @@ export default function ChatPage() {
 
         {/* Menu options */}
         {currentEje !== null && showMenu && !showIASubmenu && (
-          <div style={menuList}>
+          <div className="onda-menu-list" style={{ ...menuList, position: "relative", zIndex: 2 }}>
             {EJE_MENU_OPTIONS[currentEje].map((opt) => (
               <button
                 key={opt.id}
                 type="button"
+                className="onda-menu-btn"
                 data-onda-menu-id={opt.id}
                 data-onda-menu-label={opt.label}
                 data-onda-menu-intro={opt.intro}
@@ -725,14 +692,15 @@ export default function ChatPage() {
                 onClick={() => handleMenuOption(opt.id, opt.label, opt.intro, opt.isSubmenu)}
                 disabled={loading}
                 style={menuBtnStyle}
+                {...S.lift.menu}
               >
                 {opt.label}
               </button>
             ))}
-            <button type="button" data-onda-action="close-menu" onClick={() => setShowMenu(false)} style={menuSec}>
+            <button type="button" className="onda-menu-btn" data-onda-action="close-menu" onClick={() => setShowMenu(false)} style={menuSec} {...S.lift.menu}>
               💬 Escribir libremente
             </button>
-            <button type="button" data-onda-action="go-inicio" onClick={goToInicio} style={menuSec} title="Salir de esta Onda y elegir otra (A Mano, Civita, Profes)">
+            <button type="button" className="onda-menu-btn" data-onda-action="go-inicio" onClick={goToInicio} style={menuSec} title="Salir de esta Onda y elegir otra (A Mano, Civita, Profes)" {...S.lift.menu}>
               🏠 Volver al inicio
             </button>
           </div>
@@ -740,11 +708,12 @@ export default function ChatPage() {
 
         {/* IA submenu */}
         {currentEje !== null && showIASubmenu && (
-          <div style={menuList}>
+          <div className="onda-menu-list" style={{ ...menuList, position: "relative", zIndex: 2 }}>
             {IA_SUBMENU_OPTIONS.map((opt) => (
               <button
                 key={opt.id}
                 type="button"
+                className="onda-menu-btn"
                 data-onda-menu-id={opt.id}
                 data-onda-menu-label={opt.label}
                 data-onda-menu-intro={opt.intro}
@@ -752,14 +721,15 @@ export default function ChatPage() {
                 onClick={() => handleMenuOption(opt.id, opt.label, opt.intro)}
                 disabled={loading}
                 style={menuBtnStyle}
+                {...S.lift.menu}
               >
                 {opt.label}
               </button>
             ))}
-            <button type="button" data-onda-action="show-menu" onClick={() => setShowIASubmenu(false)} style={menuSec} title="Ver de nuevo las opciones de esta Onda">
+            <button type="button" className="onda-menu-btn" data-onda-action="show-menu" onClick={() => setShowIASubmenu(false)} style={menuSec} title="Ver de nuevo las opciones de esta Onda" {...S.lift.menu}>
               ↩️ Volver al menú
             </button>
-            <button type="button" data-onda-action="go-inicio" onClick={goToInicio} style={menuSec} title="Salir de esta Onda y elegir otra (A Mano, Civita, Profes)">
+            <button type="button" className="onda-menu-btn" data-onda-action="go-inicio" onClick={goToInicio} style={menuSec} title="Salir de esta Onda y elegir otra (A Mano, Civita, Profes)" {...S.lift.menu}>
               🏠 Volver al inicio
             </button>
           </div>
@@ -793,6 +763,63 @@ export default function ChatPage() {
 
         {/* Composer */}
         <div style={S.composer}>
+          {/* Sin Onda elegida: indicar que debe elegir para enviar + botones aquí por si los de arriba no responden (embed/iframe) */}
+          {currentEje === null && (
+            <div style={{ marginBottom: 10 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, maxWidth: "min(88%, 320px)", position: "relative", zIndex: 11 }}>
+                {ORDERED_EJES.map((eje, idx) => {
+                  const config = EJE_CONFIGS[eje];
+                  const href = `?eje=${eje}`;
+                  return (
+                    <a
+                      key={eje}
+                      href={href}
+                      data-onda-picker-composer
+                      data-onda-eje={eje}
+                      aria-label={`Elegir ${config.name}`}
+                      role="button"
+                      tabIndex={0}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        pickEje(eje);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          pickEje(eje);
+                        }
+                      }}
+                      style={{
+                        padding: "12px 16px",
+                        borderRadius: 22,
+                        border: "none",
+                        background: neuPickerColorMap[eje],
+                        color: "#fff",
+                        fontSize: "0.88rem",
+                        fontWeight: 700,
+                        cursor: "pointer",
+                        touchAction: "manipulation",
+                        boxShadow: t.shadow.neuRaisedColoredSolid(neuPickerColorMap[eje]),
+                        textAlign: "left",
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 4,
+                        width: "100%",
+                        position: "relative",
+                        zIndex: 11 + idx,
+                        textDecoration: "none",
+                      }}
+                    >
+                      <span className="onda-picker-btn-inner">{config.name}</span>
+                      <span className="onda-picker-btn-inner" style={{ fontSize: "0.74rem", fontWeight: 400, color: "rgba(255,255,255,0.92)" }}>
+                        {config.description}
+                      </span>
+                    </a>
+                  );
+                })}
+              </div>
+            </div>
+          )}
           {/* Modo link/noticia: mensaje del bot sin lenguaje de audio */}
           {linkHelp && currentEje !== null && (
             <div style={{ marginBottom: 10, fontSize: "0.85rem", color: t.c.ink, lineHeight: 1.4 }}>
@@ -934,8 +961,10 @@ export default function ChatPage() {
                 linkHelp
                   ? ONDA_MICROCOPY.linkHelpPlaceholder
                   : currentEje
-                    ? EJE_CONFIGS[currentEje].placeholder
-                    : "Escribe, imagen o voz..."
+                    ? showMenu
+                      ? ONDA_MICROCOPY.placeholderGeneric
+                      : ""
+                    : ONDA_MICROCOPY.placeholderGeneric
               }
               disabled={loading}
               style={inpStyle}
@@ -945,6 +974,7 @@ export default function ChatPage() {
 
             <button
               type="button"
+              data-onda-send
               disabled={!canSend}
               style={sendStyle}
               {...S.lift.send}
@@ -963,7 +993,7 @@ export default function ChatPage() {
   );
 
   if (isEmbed) {
-    return <div style={embedWrap}>{content}</div>;
+    return <div className="onda-page-wrap" style={embedWrap}>{content}</div>;
   }
-  return <div style={pageStyle}>{content}</div>;
+  return <div className="onda-page-wrap" style={pageStyle}>{content}</div>;
 }

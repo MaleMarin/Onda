@@ -56,6 +56,7 @@ Si el editor solo acepta un iframe suelto, usa este. Luego en Wix redimensiona e
 ### Importante
 
 - La URL del iframe debe ser: **`https://onda2026.vercel.app/chat?embed=1`**
+- Escribe **`embed`** con **m** (no "enbed"); si está mal escrito, el chat no se abre bien en la página.
 - El **`?embed=1`** hace que el chat se vea compacto y con el botón "Enviar" correcto.
 - El servidor permite que esta página se abra dentro de iframes (Wix, etc.).
 
@@ -84,6 +85,16 @@ Ejemplos de texto: **"Chatea con ONDA"**, **"Pregúntale a ONDA"**, **"Hablar co
 |-----|-----|
 | Embeber en Wix (iframe) | `https://onda2026.vercel.app/chat?embed=1` |
 | Abrir en nueva pestaña / enlace | `https://onda2026.vercel.app/chat` |
+
+---
+
+## Si ves otro texto de bienvenida o una versión antigua del chat
+
+Eso significa que **Vercel está sirviendo un deploy viejo**. Para que precisar.net muestre la ONDA actual (texto de bienvenida con 🤖🧠, tres Ondas, etc.):
+
+1. Sube el código más reciente a GitHub (`git push origin main`).
+2. En [vercel.com](https://vercel.com) → tu proyecto → **Deployments** → **Redeploy** del último deployment (o espera al deploy automático tras el push).
+3. Cuando el deploy esté en **Ready**, recarga la página de precisar.net donde está el iframe.
 
 ---
 

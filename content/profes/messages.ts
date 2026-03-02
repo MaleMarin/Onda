@@ -2,7 +2,7 @@ import { EJE_CONFIGS } from '../shared';
 
 export const PROFES_CONFIG = EJE_CONFIGS.PROFES;
 
-export const WELCOME_PROFES = `🟢 **Estás en Onda Profes.**  
+export const WELCOME_PROFES = `🟣 **Estás en Onda Profes.**  
 Un espacio para **docentes y facilitadores** que quieren trabajar con IA y mundo digital de forma crítica, creativa y responsable.
 
 Aquí Onda te acompaña a:  

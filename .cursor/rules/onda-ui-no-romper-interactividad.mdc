@@ -1,0 +1,26 @@
+---
+description: Al hacer cambios estéticos en Onda, NUNCA romper clics ni envío del chat
+globs: app/chat/**/*,app/layout.tsx,lib/ondaStyles.ts,lib/ondaTheme.ts,lib/useOndaTheme.ts
+alwaysApply: false
+---
+
+# Onda: cambios estéticos sin romper la interactividad
+
+Cuando modifiques la UI del chat Onda (estilos, tema, layout, glass, animaciones), **debe seguir funcionando al 100%**: elegir Onda (A Mano / Civita / Profes), menú, chips, Enviar.
+
+## Reglas obligatorias
+
+1. **Nunca** poner `pointer-events: none` en `.onda-shell` ni en ningún hijo que contenga botones o el formulario de envío.
+2. **Nunca** añadir capas que tapen los controles: ni `::before`/`::after` sobre el shell, ni divs/overlays encima del área de botones o del composer sin `pointer-events: none` en esa capa.
+3. **Mantener** los handlers de React: cada botón con `onClick`, el form con `onSubmit`. No sustituir por delegación en document/shell salvo que sea estrictamente necesario y se documente.
+4. **Selector de Onda (los 3 botones):** deben ser `type="button"` dentro de un `div`, no dentro de un `<form>` (evita submits que cambien la URL).
+5. **En `app/layout.tsx`:** no quitar ni modificar las reglas CSS que garantizan `.onda-shell` y `.onda-shell *` con `pointer-events: auto`.
+
+## Antes de dar por cerrado un cambio estético
+
+- Comprobar que en `/` (o el puerto en uso) se puede: hacer clic en A Mano / Civita / Profes, abrir menú, elegir opción, escribir y pulsar Enviar.
+- Si tocas estilos del shell, mensajes o composer, no añadir `backdrop-filter` ni overlays que intercepten eventos.
+
+## Si algo deja de funcionar
+
+Revertir cambios en estilos/layout que hayan añadido overlays, `pointer-events: none`, o que hayan cambiado la estructura de botones/form (p. ej. pasar de `type="button"` a `type="submit"` dentro de un form sin `action`).

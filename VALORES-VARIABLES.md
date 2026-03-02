@@ -99,6 +99,22 @@ Cuando configures en Vercel, verifica:
 
 ---
 
+## 🟠 Variable opcional: NEXT_PUBLIC_ONDA_ORANGE
+
+**¿Qué es?** Color del botón **Enviar** (naranja, estilo neumórfico). Si no la defines, se usa naranja oscuro (`#C43E00`).
+
+**¿Qué valor pongo?** Un color en hexadecimal de 6 dígitos.
+
+**Ejemplos:**
+```
+#C43E00
+#FB5002
+```
+
+**Dónde configurarla:** Vercel → proyecto → **Settings** → **Environment Variables** → añade `NEXT_PUBLIC_ONDA_ORANGE` con valor `#FB5002` (u otro hex) si quieres fijar el naranja. Tras cambiar, haz **Redeploy**.
+
+---
+
 ## 🔄 Después de Configurar
 
 1. **Guarda todas las variables** en Vercel

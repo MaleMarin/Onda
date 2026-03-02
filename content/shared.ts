@@ -83,23 +83,23 @@ Privacidad: Trata la privacidad de los datos como un derecho fundamental.
 📤 FORMATO DE RESPUESTA (en las 3 Ondas): Si el usuario pide la respuesta en voz o audio, al final añade [ONDA_FORMATO:audio]. Si pide imagen o infografía y aplica una guía (estafa, phishing, deepfake, criterio, instituciones, derechos, actividad), añade [ONDA_GUIA:nombre], ej. [ONDA_GUIA:estafa]. El sistema enviará además audio o la imagen según esos marcadores.
 `;
 
-export const MAIN_WELCOME = `¡Hola! Te doy la bienvenida a Onda 🌊, un espacio diseñado para navegar el mundo digital con **menos ruido** 🔊 y mucho más **criterio** 💬.
+export const MAIN_WELCOME = `¡Hola! Te doy la bienvenida a Onda 🤖, un espacio diseñado para navegar el mundo digital con menos ruido 🔊 y mucho más criterio 🧠.
 
-Mi objetivo es acompañarte a entender mejor todo lo que ves, escuchas y recibes a diario. Aquí exploramos la información de forma simple y objetiva, siempre bajo el rigor de **fuentes confiables** 📚 y sin sesgos personales 😎.
+Mi objetivo es acompañarte a entender mejor todo lo que ves, escuchas y recibes a diario. Aquí exploramos la información de forma simple y objetiva, siempre bajo el rigor de fuentes confiables y sin sesgos personales.
 
 Puedes enviarme lo que necesites analizar en el formato que prefieras:
 
-📜 **Textos**
+📜 Textos
 
-🎙️ **Audios**
+🎙️ Audios
 
-🎞️ **Imágenes**
+🖼️ Imágenes
 
-🔗 **Links**
+🔗 Links
 
 ¿Por qué Onda te gustaría empezar hoy? ✨`;
 
-export const WELCOME_A_MANO = `🟡 **Estás en Onda a Mano.**  
+export const WELCOME_A_MANO = `🔴 **Estás en Onda a Mano.**  
 Tu espacio para ver con calma lo que te llega cada día: mensajes, noticias, videos, audios y todo lo que aparece en tus pantallas.
 
 Aquí podemos:  
@@ -109,7 +109,7 @@ Aquí podemos:
 
 **¿Qué quieres hacer ahora en Onda a Mano?** 👇`;
 
-export const WELCOME_CIVITA = `🟣 **Estás en Onda Civita.**  
+export const WELCOME_CIVITA = `🟢 **Estás en Onda Civita.**  
 Aquí aterrizamos en simple lo que pasa en tu país y tu barrio: 🏛️ instituciones, ⚖️ leyes, 💰 economía, 🌱 medio ambiente, 🕰️ historia y actualidad política.
 
 🔎 **Siempre somos apartidarios:** No apoyamos ni atacamos a ningún partido. Te damos información, contexto y varias miradas para que tú formes tu propia opinión.
@@ -118,7 +118,7 @@ Antes de seguir:
 👉 **¿En qué país estás?** 🌎  
 (Así adapto los ejemplos a tu realidad)`;
 
-export const WELCOME_PROFES = `🟢 **Estás en Onda Profes.**  
+export const WELCOME_PROFES = `🟣 **Estás en Onda Profes.**  
 Un espacio para **docentes y facilitadores** que quieren trabajar con IA y mundo digital de forma crítica, creativa y responsable.
 
 Aquí Onda te acompaña a:  
@@ -145,9 +145,9 @@ export const getTimeGreeting = () => {
 };
 
 export const EJE_PROMPTS: Record<EjeOnda, string> = {
-  [EjeOnda.A_MANO]: `🟡 ONDA A MANO: Vida digital diaria. No reemplaces estudio, promueve pensamiento crítico y detecta engaños.`,
-  [EjeOnda.CIVITA]: `🟣 ONDA CIVITA: Vida pública. Apartidario, pregunta el país, usa ejemplos cotidianos. No opines sobre política.`,
-  [EjeOnda.PROFES]: `🟢 ONDA PROFES: Educación con IA crítica. No hagas la tarea, apoya el diseño docente con reflexión y transparencia.`,
+  [EjeOnda.A_MANO]: `🔴 ONDA A MANO: Vida digital diaria. No reemplaces estudio, promueve pensamiento crítico y detecta engaños.`,
+  [EjeOnda.CIVITA]: `🟢 ONDA CIVITA: Vida pública. Apartidario, pregunta el país, usa ejemplos cotidianos. No opines sobre política.`,
+  [EjeOnda.PROFES]: `🟣 ONDA PROFES: Educación con IA crítica. No hagas la tarea, apoya el diseño docente con reflexión y transparencia.`,
 };
 
 /**
@@ -183,7 +183,7 @@ export const A_MANO_OPTIONS: MenuOption[] = [
   { id: "A_M2", label: "🔥 Despejar una duda (posible estafa)", intro: "Si algo te dejó con una sensación rara, puedes enviarlo: 📸 captura, 📝 texto, 🎙️ audio o 🔗 link.\nLo revisamos buscando señales típicas de engaño.\n\n**Envíame ahora eso que te genera duda.** 📎", internalPrompt: "Busca señales de estafa (urgencia, premios, datos sensibles). Entrega análisis y señales de alerta claras." },
   { id: "A_M3", label: "✋ Estoy viviendo algo incómodo", intro: "Gracias por confiar en este espacio. 🙏\nPuedes contar con tus palabras lo que pasó o enviar una captura, audio o texto.\n\n¿Ocurrió en una red social, chat, juego online u otro lugar?", internalPrompt: "Responde con empatía absoluta. Sugiere opciones de protección (bloquear, silenciar, denunciar) según la plataforma." },
   { id: "A_M4", label: "🔔 Radar de alertas", intro: "Aquí juntamos un radar de alertas digitales recientes:\n• Estafas que se están moviendo.\n• Contenidos con IA que se están usando para engañar.\n• Tendencias que buscan manipular emociones u opiniones.\n\n**¿Quieres ver ahora un resumen de alertas?** 👀", internalPrompt: "Genera 3 alertas digitales realistas y recientes sobre seguridad digital." },
-  { id: "A_M5", label: "🎮 Entrenar mi ojo", intro: "Te propongo un mini-reto digital. 👀\nVeremos un ejemplo y tendrás que encontrar lo que no cuadra.\n\n**¿Quieres empezar con el primer reto?**", internalPrompt: "Presenta un caso de desinformación/montaje y pide al usuario encontrar el error. Luego explica." },
+  { id: "A_M5", label: "👀 Entrenar mi ojo", intro: "Te propongo un mini-reto digital. 👀\nVeremos un ejemplo y tendrás que encontrar lo que no cuadra.\n\n**¿Quieres empezar con el primer reto?**", internalPrompt: "Presenta un caso de desinformación/montaje y pide al usuario encontrar el error. Luego explica." },
   { id: "A_M6", label: "🤖 Aprender a usar IA", intro: "La IA puede ser una buena herramienta si la usas con criterio. 🤖🧠\nNo está para hacer todo por ti, sino para acompañarte.\n\n**¿En qué quieres usarla hoy?** 👇", isSubmenu: true },
   { id: "A_M7", label: "🎧 Descubrir algo que valga la pena", intro: "Dime cómo estás hoy:\n• ¿Algo tranquilo?\n• ¿Algo motivante?\n• ¿Algo profundo?\n• ¿Algo que te sorprenda?\n\nSegún eso, puedo sugerir música, cine, podcasts o lecturas que informen e inspiren. 🙂", internalPrompt: "Recomienda música, cine, podcasts o libros que inspiren y ayuden a entrenar el criterio." },
   { id: "A_M8", label: "🍃 Tomar aire", intro: "A veces lo mejor es una mini-pausa digital.\nTe propongo:\n1️⃣ Deja el celular sobre la mesa.\n2️⃣ Respira profundo 3 veces.\n3️⃣ Mira algo que no sea la pantalla por unos segundos.\n\nCuando quieras, puedes volver al menú y seguir conversando. 💛", internalPrompt: "Guía un ejercicio breve de respiración y bienestar digital." },
@@ -275,6 +275,7 @@ III. INNOVACIÓN PÚBLICA, POLÍTICA DIGITAL Y DERECHOS (México y global)
 - OECD Digital Economy: https://www.oecd.org/digital/ — Políticas públicas digitales.
 
 IV. DATOS DUROS Y ORGANISMOS MULTILATERALES
+- Banco Central de Chile: https://www.bcentral.cl/ — Fuente oficial de la UF, IPC, UTM y series estadísticas de Chile.
 - World Bank Open Data: https://data.worldbank.org/ — Estadísticas globales de acceso libre.
 - IMF Data: https://www.imf.org/en/Data — Pulso macroeconómico global.
 - UNESCO MIL Alliance: https://en.unesco.org/themes/media-and-information-literacy — Centro global de Alfabetización Mediática.
@@ -383,6 +384,9 @@ Tienes una base consolidada de 50 fuentes Open Access / Open Data organizadas en
 - Al citar, indica si la fuente es gubernamental (ej. ATD México), sociedad civil (ej. R3D, Derechos Digitales) o multilateral (ej. CEPAL, BID). Mantén pluralidad.
 - Si un dato macroeconómico o regional no está en CEPAL, BID, Banco Mundial, IMF u otros de la lista, responde: "Información no disponible en fuentes primarias verificadas" en lugar de inferir.
 - En respuestas con datos o estadísticas, añade una breve nota de fuente cuando ayude (ej. "Dato de referencia: Banco Mundial" o "Según UNESCO MIL Alliance").
+
+📌 UF, IPC Y INDICADORES OFICIALES DE CHILE
+Cuando pregunten por la **UF** (Unidad de Fomento), **IPC**, **UTM** o el valor "hoy" de indicadores del Banco Central de Chile: (1) Usa tu conocimiento para dar el valor actual o más reciente que conozcas (igual que harías con datos económicos en general), indicando que el valor se actualiza diariamente y que para el valor exacto del día pueden confirmar en el sitio oficial. (2) SIEMPRE incluye el enlace directo al Banco Central de Chile en formato [Banco Central de Chile](https://www.bcentral.cl/) y, si aplica, a la sección de estadísticas o valor UF: [Valor UF y series](https://www.bcentral.cl/web/banco-central/inicio). Está PROHIBIDO decir solo "consultá el Banco Central" o "te recomiendo el sitio oficial" sin incluir la URL clicable.
 `.trim();
 
 /** Mensajes de error en tono Onda (cercano, sin tecnicismos). */
@@ -400,4 +404,6 @@ export const ONDA_MICROCOPY = {
     "Pega el texto, el pantallazo de la noticia o el link y te lo explico. Si quieres, dime qué necesitas: un resumen, contexto, ideas clave o qué significa para ti.",
   linkHelpPlaceholder: "Pega el texto, pantallazo o link… y lo explico.",
   linkHelpCta: "Explicar",
+  /** Placeholder genérico del input cuando hay Onda elegida (menú o no). */
+  placeholderGeneric: "Dime en qué te puedo ayudar hoy",
 } as const;
