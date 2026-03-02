@@ -16,7 +16,12 @@ export const dynamic = "force-dynamic";
 
 function verifyWebhookSignature(rawBody: string, signatureHeader: string | null): boolean {
   const appSecret = process.env.WHATSAPP_APP_SECRET || process.env.META_APP_SECRET;
-  if (!appSecret) return true; // skip if secret not configured
+  if (!appSecret) {
+    if (process.env.VERCEL_ENV === "production") {
+      console.warn("⚠️ WHATSAPP_APP_SECRET (o META_APP_SECRET) no configurado en producción. Configúralo para verificar la firma del webhook.");
+    }
+    return true; // skip verification when secret not set (evitar romper entornos sin configurar)
+  }
   if (!signatureHeader) return false;
   const [algo, sig] = signatureHeader.split("=");
   if (algo !== "sha256" || !sig) return false;
@@ -60,8 +65,10 @@ export async function GET(req: Request) {
             WHATSAPP_VERIFY_TOKEN: !!process.env.WHATSAPP_VERIFY_TOKEN,
             WHATSAPP_ACCESS_TOKEN: !!process.env.WHATSAPP_ACCESS_TOKEN,
             WHATSAPP_PHONE_NUMBER_ID: !!process.env.WHATSAPP_PHONE_NUMBER_ID,
+            WHATSAPP_APP_SECRET_OR_META_APP_SECRET: !!(process.env.WHATSAPP_APP_SECRET || process.env.META_APP_SECRET),
             OPENAI_API_KEY: !!process.env.OPENAI_API_KEY,
           },
+          security_note: "En producción configura WHATSAPP_APP_SECRET (o META_APP_SECRET) para verificar la firma del webhook.",
         },
         null,
         2

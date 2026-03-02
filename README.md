@@ -2,6 +2,19 @@
 
 Bot de WhatsApp para la Fundación Precisar que utiliza OpenAI para responder preguntas sobre Alfabetización Mediática e Informacional (AMI).
 
+## 💬 Chat web (interfaz ONDA)
+
+Para usar la interfaz de chat en local:
+
+```bash
+npm run dev
+```
+
+Luego abrí en el navegador: **http://localhost:2999**
+
+- Por defecto el servidor usa el puerto **2999** (para evitar conflicto con otros procesos en 3000/3001).
+- Si ves "address already in use", cerrá otras terminales donde corra Next o probá: `npm run dev:3010` y entrá a **http://localhost:3010**.
+
 ## 🚀 Configuración Rápida
 
 ### 1. Variables de Entorno
@@ -55,16 +68,17 @@ ondabot/
 ## 🔧 Desarrollo Local
 
 ```bash
-# Instalar dependencias
 npm install
-
-# Ejecutar en desarrollo
-npm run next:dev
-
-# El webhook estará en: http://localhost:3000/api/webhook
 ```
 
-**Nota**: Para desarrollo local, necesitarás usar ngrok o similar para exponer tu localhost a Meta.
+| Comando | Uso |
+|--------|-----|
+| `npm run chat` | Interfaz de chat (Next.js) en **http://localhost:3000** |
+| `npm run dev` | Backend Express (webhook, etc.). No sirve la UI del chat |
+
+El webhook estará en: http://localhost:3000/api/webhook (con `npm run chat`).
+
+**Nota**: Para desarrollo local del webhook de WhatsApp, necesitarás ngrok o similar para exponer tu localhost a Meta.
 
 ## 📝 Logs
 
@@ -100,3 +114,14 @@ Los logs aparecen en la consola de Vercel. Busca estos mensajes:
 
 - [WhatsApp Cloud API Docs](https://developers.facebook.com/docs/whatsapp/cloud-api)
 - [OpenAI API Docs](https://platform.openai.com/docs)
+
+## 🌐 Llevar ONDA al público (web + WhatsApp)
+
+- **[LLEVAR-ONDA-AL-PUBLICO.md](./LLEVAR-ONDA-AL-PUBLICO.md)** – **Guía principal:** publicar con seguridad, primero en la web (Wix) y después en WhatsApp. Incluye checklist de seguridad, variables de entorno y pasos para Vercel, Wix y Meta.
+
+## 📄 Más documentación
+
+- **[LLEVAR-CHAT-A-PRECISAR.md](./LLEVAR-CHAT-A-PRECISAR.md)** – Desplegar el chat en Vercel y enlazarlo o embeberlo en la página de Precisar.
+- **[INTEGRAR-ONDA-EN-WIX.md](./INTEGRAR-ONDA-EN-WIX.md)** – Cómo embeber el chat en un sitio Wix (iframe y enlaces).
+- **[POLITICA-PRIVACIDAD-CHAT-ONDA.md](./POLITICA-PRIVACIDAD-CHAT-ONDA.md)** – Texto de política de privacidad (web y WhatsApp). Publicar en una URL antes de subir a Meta.
+- **[SUBIR-A-META-WHATSAPP.md](./SUBIR-A-META-WHATSAPP.md)** – Pasos para publicar la app en Meta y que el bot funcione en WhatsApp (App Review, URL de política, etc.).

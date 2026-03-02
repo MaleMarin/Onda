@@ -9,19 +9,24 @@ export const metadata: Metadata = {
 const GLOBAL_CSS = `
 html,body{height:100%;margin:0;pointer-events:auto;touch-action:manipulation}
 body{-webkit-font-smoothing:antialiased;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;outline:none}
-.onda-shell,.onda-shell *{pointer-events:auto}
+/* Shell aislado: clics siempre llegan a botones/inputs. No añadir overlays ni ::before/::after que tapen. */
+.onda-shell{position:relative;z-index:1;isolation:isolate;pointer-events:auto}
+.onda-shell *{pointer-events:auto}
 button,label,input,a,[role="button"]{cursor:pointer;touch-action:manipulation}
 *,*::before,*::after{box-sizing:border-box}
 .prose-onda b,.prose-onda strong{color:inherit;font-weight:700}
 @keyframes bubbleIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
 .bubble-in{animation:bubbleIn .28s cubic-bezier(.25,.75,.2,1) both}
-.onda-shell input::placeholder{color:#6e6864;opacity:0.88;font-weight:400}
+.onda-shell input::placeholder{color:#5a5d62;opacity:0.9;font-weight:500;letter-spacing:0.02em}
 .onda-shell *,.onda-shell *:focus,.onda-shell *:focus-visible{outline:none !important}
 .onda-page-wrap{outline:none}
-/* Ocultar scrollbar y cualquier grip/puntos en el área de mensajes */
-.onda-messages{scrollbar-width:none;-ms-overflow-style:none}
-.onda-messages::-webkit-scrollbar{display:none;width:0;height:0}
+/* Área de mensajes: permitir scroll (contenido largo); scrollbar opcional oculta */
+.onda-messages{min-height:0;display:flex;flex-direction:column;overflow:hidden}
+.onda-messages-inner{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
+.onda-messages-inner::-webkit-scrollbar{width:6px}
+.onda-messages-inner::-webkit-scrollbar-track{background:transparent}
+.onda-messages-inner::-webkit-scrollbar-thumb{background:rgba(0,0,0,0.2);border-radius:3px}
 `;
 
 export default function RootLayout({

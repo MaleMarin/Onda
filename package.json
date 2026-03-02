@@ -4,7 +4,9 @@
   "description": "Backend minimal de Onda (Express + TypeScript)",
   "main": "dist/index.js",
   "scripts": {
-    "dev": "next dev -p 3020",
+    "dev": "next dev -p 2999",
+    "dev:3000": "next dev -p 3000",
+    "dev:3001": "next dev -p 3001",
     "backend": "ts-node-dev --respawn --transpile-only src/index.ts",
     "build": "next build",
     "start": "next start",
@@ -12,7 +14,7 @@
     "build:tsc": "tsc",
     "next:dev": "next dev",
     "next:dev:3010": "next dev -p 3010",
-    "chat": "next dev -p 3020",
+    "chat": "next dev -p 2999",
     "next:build": "next build",
     "next:start": "next start"
   },

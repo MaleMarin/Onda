@@ -43,13 +43,43 @@ interface ChatBubbleProps {
   fillHeight?: boolean;
 }
 
-function formatContent(text: string): React.ReactNode[] {
-  return text.split(/(\*\*.*?\*\*)/g).map((part, i) => {
+const LINK_REGEX = /\[([^\]]*)\]\((https?:\/\/[^)\s]+)\)/g;
+
+function formatBold(segment: string, keyBase: number): React.ReactNode[] {
+  return segment.split(/(\*\*[^*]+\*\*)/g).map((part, i) => {
     if (part.startsWith("**") && part.endsWith("**")) {
-      return <strong key={i}>{part.slice(2, -2)}</strong>;
+      return <strong key={`b-${keyBase}-${i}`}>{part.slice(2, -2)}</strong>;
     }
-    return <span key={i}>{part}</span>;
+    return <span key={`b-${keyBase}-${i}`}>{part}</span>;
   });
+}
+
+function formatContent(text: string): React.ReactNode[] {
+  const out: React.ReactNode[] = [];
+  let lastEnd = 0;
+  let key = 0;
+  let m: RegExpExecArray | null;
+  LINK_REGEX.lastIndex = 0;
+  while ((m = LINK_REGEX.exec(text)) !== null) {
+    const before = text.slice(lastEnd, m.index);
+    out.push(...formatBold(before, key));
+    key += 1000;
+    out.push(
+      <a
+        key={`link-${key}`}
+        href={m[2]}
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{ color: "inherit", textDecoration: "underline", fontWeight: 600 }}
+      >
+        {m[1] || m[2]}
+      </a>
+    );
+    key += 1;
+    lastEnd = m.index + m[0].length;
+  }
+  out.push(...formatBold(text.slice(lastEnd), key));
+  return out;
 }
 
 export function ChatBubble({ message, color, compact, onPlayTTS, theme: t, fillHeight }: ChatBubbleProps) {
@@ -105,10 +135,7 @@ export function ChatBubble({ message, color, compact, onPlayTTS, theme: t, fillH
 
   const botBubbleStyle: CSSProperties = {
     ...bubbleBase,
-    ...(t.isDark ? t.fx.glassSoft : {
-      ...t.fx.plate,
-      boxShadow: `${t.shadow.glassInset}, 0 2px 4px rgba(0,0,0,0.04), 0 12px 28px rgba(0,0,0,0.06)`,
-    }),
+    ...(t.isDark ? t.fx.glassSoft : t.fx.glass),
     color: t.c.ink,
     borderRadius: t.isDark ? undefined : "0 22px 22px 22px",
     borderTopLeftRadius: t.isDark ? 6 : 0,

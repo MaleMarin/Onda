@@ -38,7 +38,7 @@ export default function NotFound() {
         Ir al chat ONDA
       </Link>
       <p style={{ marginTop: "1.5rem", fontSize: "0.8rem", color: "#6e6e8a", textAlign: "center", maxWidth: 320 }}>
-        Ejecutá <strong>npm run dev</strong> y entrá a <strong>http://localhost:3020</strong>
+        Ejecutá <strong>npm run dev</strong> y entrá a <strong>http://localhost:2999</strong>
       </p>
     </div>
   );

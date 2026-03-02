@@ -4,7 +4,7 @@ export type OndaMode = "light" | "dark";
 
 export type OndaTheme = ReturnType<typeof createOndaTheme>;
 
-/** Paleta Onda Bot: naranja de marca + grises */
+/** Paleta Onda Bot + colores neumórficos de referencia (amarillo, rojo, teal, púrpura, azul oscuro). */
 const ONDA_PALETTE = {
   orange: "#FB5002",
   black: "#000000",
@@ -12,69 +12,60 @@ const ONDA_PALETTE = {
   gray: "#646464",
   lightGray: "#A7A7A7",
   darkGray: "#333333",
-  /** Gradiente marca: negro → naranja oscuro → naranja → naranja claro */
   gradientStart: "#000000",
   gradientMid: "#FC3D01",
   gradientBright: "#FF8001",
   gradientLight: "#F08C5A",
 } as const;
 
-/**
- * Liquid glass (material system):
- * - Outer shell: thickness cues (border, highlight band, inner stroke), controlled refraction.
- * - Inner stabilized plate: text/icon stability, consistent contrast.
- * - One light model: light from top → highlight always on top edge.
- * - Fallback: same layout/anatomy, no blur, more opaque surface so content stays stable.
- */
-/** Más transparente, sin azul; sin blur para que el bot funcione siempre. */
-const GLASS_LIGHT = {
-  bg: "rgba(255, 255, 255, 0.12)",
-  border: "rgba(255, 255, 255, 0.95)",
-  borderSoft: "rgba(255, 255, 255, 0.8)",
-  plate: "rgba(255, 255, 255, 0.28)",
+/** Colores un poco más oscuros: verde/teal más oscuro, resto más saturado y profundo. */
+export const NEU_COLORS = {
+  yellow: "#D4B82A",
+  red: "#C93C30",
+  teal: "#1A8F72",
+  purple: "#6B3D7A",
+  darkBlue: "#152A45",
 } as const;
 
-const GLASS_DARK = {
-  bg: "rgba(255, 255, 255, 0.03)",
-  border: "rgba(255, 255, 255, 0.42)",
-  borderSoft: "rgba(255, 255, 255, 0.26)",
-  plate: "rgba(255, 255, 255, 0.06)",
+/** Neumorphism muy marcado: contraste alto para relieve evidente. */
+const NEU_LIGHT = {
+  bg: "#b8bcc4",
+  surface: "#d0d4da",
+  shadowDark: "rgba(100, 105, 115, 0.8)",
+  shadowLight: "rgba(255, 255, 255, 0.99)",
+  insetDark: "rgba(100, 105, 115, 0.75)",
+  insetLight: "rgba(255, 255, 255, 0.9)",
+  border: "rgba(0,0,0,0.12)",
+  borderSoft: "rgba(0,0,0,0.08)",
 } as const;
 
-/** Fallback when backdrop-filter is unavailable: same edges, no blur, stable content. */
-const GLASS_FALLBACK_LIGHT = {
-  bg: "rgba(255, 255, 255, 0.92)",
-  border: "rgba(255, 255, 255, 0.9)",
-  borderSoft: "rgba(255, 255, 255, 0.75)",
-  plate: "rgba(255, 255, 255, 0.88)",
-} as const;
-
-const GLASS_FALLBACK_DARK = {
-  bg: "rgba(28, 28, 28, 0.95)",
-  border: "rgba(255, 255, 255, 0.2)",
-  borderSoft: "rgba(255, 255, 255, 0.15)",
-  plate: "rgba(40, 40, 40, 0.95)",
+const NEU_DARK = {
+  bg: "#2d2d2d",
+  surface: "#363636",
+  shadowDark: "rgba(0, 0, 0, 0.4)",
+  shadowLight: "rgba(255, 255, 255, 0.03)",
+  insetDark: "rgba(0, 0, 0, 0.5)",
+  insetLight: "rgba(255, 255, 255, 0.04)",
+  border: "rgba(255,255,255,0.06)",
+  borderSoft: "rgba(255,255,255,0.04)",
 } as const;
 
 export type OndaThemeOptions = { useFallback?: boolean };
 
 export function createOndaTheme(mode: OndaMode, options?: OndaThemeOptions) {
   const isDark = mode === "dark";
-  const useFallback = options?.useFallback ?? false;
-  const glass = useFallback
-    ? (isDark ? GLASS_FALLBACK_DARK : GLASS_FALLBACK_LIGHT)
-    : (isDark ? GLASS_DARK : GLASS_LIGHT);
+  const neu = isDark ? NEU_DARK : NEU_LIGHT;
 
   const c = {
-    bg0: isDark ? ONDA_PALETTE.darkGray : "#f8f8f8",
-    bg1: isDark ? "#1a1a1a" : "#f0f0f0",
-    surface: isDark ? "rgba(51, 51, 51, 0.6)" : glass.bg,
-    surface2: isDark ? "rgba(255,255,255,.08)" : "rgba(255,255,255,0.4)",
-    border: isDark ? glass.borderSoft : glass.border,
-    borderSoft: glass.borderSoft,
-    ink: isDark ? ONDA_PALETTE.white : ONDA_PALETTE.black,
-    muted: isDark ? ONDA_PALETTE.lightGray : ONDA_PALETTE.gray,
-    muted2: isDark ? ONDA_PALETTE.lightGray : ONDA_PALETTE.lightGray,
+    bg0: neu.bg,
+    bg1: neu.surface,
+    surface: neu.surface,
+    surface2: neu.surface,
+    border: neu.border,
+    borderSoft: neu.borderSoft,
+    ink: isDark ? "#f0f0f0" : "#2d2d2d",
+    muted: isDark ? "#a0a0a0" : ONDA_PALETTE.gray,
+    muted2: isDark ? "#888" : ONDA_PALETTE.lightGray,
     brand: ONDA_PALETTE.orange,
     naranja: ONDA_PALETTE.orange,
     orange: ONDA_PALETTE.orange,
@@ -83,42 +74,62 @@ export function createOndaTheme(mode: OndaMode, options?: OndaThemeOptions) {
     gray: ONDA_PALETTE.gray,
     lightGray: ONDA_PALETTE.lightGray,
     darkGray: ONDA_PALETTE.darkGray,
-    ring: "rgba(251, 80, 2, 0.35)",
-    focus: "rgba(251, 80, 2, 0.25)",
+    ring: "rgba(201, 60, 48, 0.5)",
+    focus: "rgba(201, 60, 48, 0.35)",
     danger: "#ea3546",
     warnBg: "rgba(234, 53, 70, 0.1)",
     warnBorder: "rgba(234, 53, 70, 0.3)",
     warnText: "#c41e3a",
   } as const;
 
-  /** Borde superior = luz sobre el cristal. Banda gruesa y muy brillante = 1000% vidrio. */
-  const highlightTop = isDark
-    ? "inset 0 3px 0 rgba(255,255,255,0.28)"
-    : "inset 0 3px 0 rgba(255,255,255,1)";
-  const highlightTopStrong = isDark
-    ? "inset 0 4px 0 rgba(255,255,255,0.35)"
-    : "inset 0 4px 0 rgba(255,255,255,1)";
-  const elevation = isDark
-    ? "0 4px 12px rgba(0,0,0,0.2), 0 16px 40px rgba(0,0,0,0.15)"
-    : "0 2px 4px rgba(0,0,0,0.04), 0 12px 32px rgba(0,0,0,0.06), 0 32px 64px rgba(0,0,0,0.05)";
+  /** Neumorphism muy marcado: botones, áreas, bordes con relieve claro. */
+  const neuRaised = isDark
+    ? `14px 14px 28px ${neu.shadowDark}, -14px -14px 28px ${neu.shadowLight}`
+    : `14px 14px 28px ${neu.shadowDark}, -14px -14px 28px ${neu.shadowLight}`;
+  const neuRaisedStrong = isDark
+    ? `18px 18px 36px ${neu.shadowDark}, -18px -18px 36px ${neu.shadowLight}`
+    : `18px 18px 36px ${neu.shadowDark}, -18px -18px 36px ${neu.shadowLight}`;
+  const neuRaisedExtra = isDark
+    ? `22px 22px 44px ${neu.shadowDark}, -22px -22px 44px ${neu.shadowLight}`
+    : `22px 22px 44px ${neu.shadowDark}, -22px -22px 44px ${neu.shadowLight}`;
+  /** Hundido profundo (input, área contenido). */
+  const neuInset = isDark
+    ? `inset 12px 12px 24px ${neu.insetDark}, inset -12px -12px 24px ${neu.insetLight}`
+    : `inset 12px 12px 24px ${neu.insetDark}, inset -12px -12px 24px ${neu.insetLight}`;
+  const neuInsetSoft = isDark
+    ? `inset 8px 8px 16px ${neu.insetDark}, inset -8px -8px 16px ${neu.insetLight}`
+    : `inset 8px 8px 16px ${neu.insetDark}, inset -8px -8px 16px ${neu.insetLight}`;
 
-  const shadow = isDark
-    ? {
-        s1: "0 20px 50px rgba(0,0,0,0.25)",
-        s2: "0 12px 32px rgba(0,0,0,0.2)",
-        s3: "0 6px 20px rgba(0,0,0,0.15)",
-        glassInset: highlightTop,
-        glassInsetStrong: highlightTopStrong,
-        elevation,
-      }
-    : {
-        s1: `0 2px 4px rgba(0,0,0,0.04), 0 12px 28px rgba(0,0,0,0.06), 0 40px 80px rgba(0,0,0,0.06)`,
-        s2: "0 2px 4px rgba(0,0,0,0.03), 0 8px 24px rgba(0,0,0,0.05)",
-        s3: "0 2px 8px rgba(0,0,0,0.04), 0 12px 28px rgba(0,0,0,0.05)",
-        glassInset: highlightTop,
-        glassInsetStrong: highlightTopStrong,
-        elevation,
-      };
+  const hexToRgba = (hex: string, a: number) => {
+    const r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);
+    return `rgba(${r},${g},${b},${a})`;
+  };
+  /** Botones Onda: triple sombra = relieve + highlight interior (convexo neumórfico). */
+  const neuRaisedColored = (hex: string) =>
+    `14px 14px 28px ${hexToRgba(hex, 0.6)}, -14px -14px 28px rgba(255,255,255,0.94), inset 3px 3px 6px rgba(255,255,255,0.35)`;
+  const neuRaisedColoredHover = (hex: string) =>
+    `18px 18px 36px ${hexToRgba(hex, 0.65)}, -18px -18px 36px rgba(255,255,255,0.98), inset 3px 3px 6px rgba(255,255,255,0.4)`;
+  /** Estado pulsado (botón Onda): hundido. */
+  const neuPressedColored = (hex: string) =>
+    `inset 8px 8px 16px ${hexToRgba(hex, 0.5)}, inset -8px -8px 16px rgba(0,0,0,0.15)`;
+
+  const shadow = {
+    s1: neuRaisedStrong,
+    s2: neuRaised,
+    s3: isDark ? `4px 4px 8px ${neu.shadowDark}, -4px -4px 8px ${neu.shadowLight}` : `4px 4px 8px ${neu.shadowDark}, -4px -4px 8px ${neu.shadowLight}`,
+    glassInset: neuInsetSoft,
+    glassInsetStrong: neuInset,
+    spectralEdge: "none",
+    elevation: neuRaised,
+    neuRaised,
+    neuRaisedStrong,
+    neuRaisedExtra,
+    neuInset,
+    neuInsetSoft,
+    neuRaisedColored,
+    neuRaisedColoredHover,
+    neuPressedColored,
+  } as const;
 
   const r = { lg: 24, md: 18, sm: 14, pill: 999 } as const;
 
@@ -127,57 +138,71 @@ export function createOndaTheme(mode: OndaMode, options?: OndaThemeOptions) {
     mono: `ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace`,
   } as const;
 
-  const pageBg = isDark
-    ? `linear-gradient(165deg, ${ONDA_PALETTE.black} 0%, ${ONDA_PALETTE.darkGray} 50%, ${ONDA_PALETTE.black} 100%)`
-    : "linear-gradient(165deg, #e2e2e2 0%, #d2d2d2 50%, #c4c4c4 100%)";
+  const pageBg = neu.bg;
 
   const grad = {
     pageBg,
-    header: isDark ? "rgba(51,51,51,0.8)" : "rgba(255,255,255,0.5)",
-    userBubble: `linear-gradient(135deg, ${ONDA_PALETTE.gradientMid} 0%, ${ONDA_PALETTE.orange} 50%, ${ONDA_PALETTE.gradientLight} 100%)`,
-    activeTab: isDark ? "rgba(251,80,2,0.18)" : "rgba(255,255,255,0.5)",
+    header: neu.surface,
+    userBubble: NEU_COLORS.red,
+    activeTab: neu.surface,
     badge: ONDA_PALETTE.orange,
-    card: isDark ? "rgba(51,51,51,0.6)" : "rgba(255,255,255,0.5)",
-    cardBorder: isDark ? "rgba(251,80,2,0.3)" : "rgba(255,255,255,0.9)",
+    card: neu.surface,
+    cardBorder: neu.border,
   } as const;
 
-  const blur = useFallback ? "none" : "blur(52px) saturate(220%)";
-  /** Sin blur en ningún elemento para que los clics funcionen siempre en todos los navegadores. */
-  const backdropNone = { backdropFilter: "none" as const, WebkitBackdropFilter: "none" as const };
-
-  /** Reflejo suave arriba. */
-  const glassOverlay = isDark
-    ? "linear-gradient(180deg, rgba(255,255,255,0.05) 0%, transparent 22%)"
-    : "linear-gradient(180deg, rgba(255,255,255,0.12) 0%, transparent 28%)";
+  const glass = {
+    bg: neu.surface,
+    border: neu.border,
+    borderSoft: neu.borderSoft,
+    plate: neu.surface,
+  } as const;
 
   const fx = {
-    /** Cristal: fondo muy transparente + reflejo arriba + borde brillante + elevación */
+    /** Panel/card elevado (neumorphism). */
     glass: {
-      background: `${glassOverlay}, ${glass.bg}`,
-      ...backdropNone,
-      border: `1px solid ${glass.border}`,
-      boxShadow: `${shadow.glassInset}, ${shadow.elevation}`,
+      background: neu.surface,
+      border: `1px solid ${neu.border}`,
+      boxShadow: neuRaised,
     } satisfies CSSProperties,
     glassSoft: {
-      background: isDark ? (useFallback ? "rgba(30,30,30,0.95)" : "rgba(255,255,255,0.02)") : (useFallback ? "rgba(255,255,255,0.88)" : "rgba(255,255,255,0.06)"),
-      ...backdropNone,
-      border: `1px solid ${glass.borderSoft}`,
-      boxShadow: shadow.glassInset,
+      background: neu.surface,
+      border: `1px solid ${neu.borderSoft}`,
+      boxShadow: neuRaised,
     } satisfies CSSProperties,
+    /** Botón/card elevado más marcado. */
     crystal: {
-      background: `${glassOverlay}, ${glass.bg}`,
-      ...backdropNone,
-      border: `1px solid ${glass.border}`,
-      boxShadow: `${shadow.glassInsetStrong}, ${shadow.elevation}`,
+      background: neu.surface,
+      border: `1px solid ${neu.border}`,
+      boxShadow: neuRaisedStrong,
     } satisfies CSSProperties,
-    /** Placa estable bajo texto: algo más opaca para legibilidad, mismo reflejo. */
+    /** Input/campo hundido. */
     plate: {
-      background: `${glassOverlay}, ${glass.plate}`,
-      ...backdropNone,
-      border: `1px solid ${glass.border}`,
-      boxShadow: `${shadow.glassInset}, ${shadow.elevation}`,
+      background: neu.surface,
+      border: `1px solid ${neu.border}`,
+      boxShadow: neuInsetSoft,
+    } satisfies CSSProperties,
+    /** Hundido (pressed state). */
+    pressed: {
+      background: neu.surface,
+      border: `1px solid ${neu.border}`,
+      boxShadow: neuInset,
     } satisfies CSSProperties,
   } as const;
 
-  return { mode, isDark, c, shadow, r, font, grad, fx, palette: ONDA_PALETTE, glass, blur, useFallback } as const;
+  return {
+    mode,
+    isDark,
+    c,
+    shadow,
+    r,
+    font,
+    grad,
+    fx,
+    palette: ONDA_PALETTE,
+    neuColors: NEU_COLORS,
+    glass,
+    blur: "none",
+    useFallback: false,
+    neu,
+  } as const;
 }

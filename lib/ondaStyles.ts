@@ -21,12 +21,12 @@ function liftHandlers(baseShadow: string, hoverShadow: string): LiftBind {
 }
 
 export function ondaStyles(t: OndaTheme) {
-  const glassBg = t.glass.bg;
+  const neuRaised = t.shadow.neuRaised;
+  const neuRaisedStrong = t.shadow.neuRaisedStrong;
+  const neuInset = t.shadow.neuInset;
+  const neuInsetSoft = t.shadow.neuInsetSoft;
   const glassBorder = t.glass.border;
   const glassBorderSoft = t.glass.borderSoft;
-  const crystal = t.fx.crystal;
-  const insetStrong = t.shadow.glassInsetStrong;
-  const insetSoft = t.shadow.glassInset;
 
   const S = {
     page: {
@@ -45,29 +45,30 @@ export function ondaStyles(t: OndaTheme) {
       position: "relative",
     } satisfies CSSProperties,
 
-    /** Panel principal: bloque de vidrio flotando, sombra profunda = 1000% cristal. */
+    /** Panel principal: muy elevado (neumorphism máximo). */
     shell: {
-      ...crystal,
+      ...t.fx.crystal,
       width: "100%",
       maxWidth: "min(720px, 92vw)",
       flex: 1,
       minHeight: 0,
-      borderRadius: 40,
+      borderRadius: 28,
       overflow: "hidden",
       display: "flex",
       flexDirection: "column",
-      boxShadow: `${t.shadow.glassInsetStrong}, ${t.shadow.elevation}, 0 56px 100px rgba(0,0,0,0.1), 0 24px 48px rgba(0,0,0,0.06)`,
+      border: "none",
+      boxShadow: t.shadow.neuRaisedExtra,
       transition: "box-shadow 0.18s ease, transform 0.18s ease",
       position: "relative",
       zIndex: 1,
       pointerEvents: "auto",
     } satisfies CSSProperties,
 
-    /** Tarjetas información: border-radius 24px, degradado cian → azul profundo (Slim) */
+    /** Tarjetas / botones Onda: relieve neumórfico muy marcado. */
     glassCard: {
       ...t.fx.glass,
-      borderRadius: 24,
-      boxShadow: `${insetSoft}, ${t.shadow.elevation}`,
+      borderRadius: 22,
+      boxShadow: neuRaisedStrong,
     } satisfies CSSProperties,
 
     header: {
@@ -76,10 +77,10 @@ export function ondaStyles(t: OndaTheme) {
       justifyContent: "space-between",
       padding: "20px 24px",
       ...t.fx.glass,
-      borderBottom: `1px solid ${glassBorderSoft}`,
-      boxShadow: insetSoft,
+      borderBottom: `2px solid ${glassBorderSoft}`,
+      boxShadow: neuRaisedStrong,
       flexShrink: 0,
-      transition: "background 0.2s ease, border-color 0.2s ease",
+      transition: "background 0.2s ease, box-shadow 0.2s ease",
       pointerEvents: "auto",
     } satisfies CSSProperties,
 
@@ -99,11 +100,10 @@ export function ondaStyles(t: OndaTheme) {
       display: "flex",
       gap: 10,
       padding: "12px 14px",
-      borderBottom: `1px solid ${t.c.border}`,
+      borderBottom: `1px solid ${t.glass.borderSoft}`,
       ...t.fx.glassSoft,
     } satisfies CSSProperties,
 
-    /** Tab: edge cue (highlight) on both active and inactive so surface always reads as glass. */
     tab: (active: boolean): CSSProperties => ({
       flex: 1,
       display: "inline-flex",
@@ -114,8 +114,8 @@ export function ondaStyles(t: OndaTheme) {
       borderRadius: 14,
       border: `1px solid ${glassBorder}`,
       color: active ? t.c.ink : t.c.muted,
-      background: active ? t.grad.activeTab : glassBg,
-      boxShadow: active ? `${insetStrong}, 0 4px 12px rgba(0,0,0,0.06)` : `${insetSoft}, 0 1px 3px rgba(0,0,0,0.03)`,
+      background: t.glass.bg,
+      boxShadow: active ? neuInsetSoft : neuRaised,
       cursor: "pointer",
       userSelect: "none",
       transition: `transform ${TR}, box-shadow ${TR}, border-color ${TR}, background ${TR}, color ${TR}`,
@@ -129,13 +129,17 @@ export function ondaStyles(t: OndaTheme) {
       pointerEvents: "auto",
     } satisfies CSSProperties,
 
-    /** Área de mensajes: tinte mínimo, sin blur, para que botones y clics funcionen siempre. */
+    /** Área de contenido: muy hundida (neumorphism profundo). */
     messages: {
       flex: 1,
       padding: 24,
       overflow: "auto",
       scrollBehavior: "smooth",
-      background: t.isDark ? "rgba(255,255,255,0.02)" : "rgba(255,255,255,0.03)",
+      background: t.glass.bg,
+      boxShadow: neuInset,
+      margin: 16,
+      borderRadius: 24,
+      border: `2px solid ${glassBorderSoft}`,
       pointerEvents: "auto",
     } satisfies CSSProperties,
 
@@ -153,7 +157,7 @@ export function ondaStyles(t: OndaTheme) {
       borderRadius: 999,
       background: `linear-gradient(135deg, rgba(251,80,2,0.9) 0%, ${t.c.orange} 100%)`,
       border: `1px solid rgba(255,255,255,0.5)`,
-      boxShadow: `${insetSoft}, 0 8px 20px ${t.c.orange}40`,
+      boxShadow: t.shadow.s3,
       flex: "0 0 auto",
     } satisfies CSSProperties,
 
@@ -167,8 +171,8 @@ export function ondaStyles(t: OndaTheme) {
       ...(isUser
         ? {}
         : {
-            ...t.fx.plate,
-            boxShadow: `${insetSoft}, 0 2px 4px rgba(0,0,0,0.04), 0 12px 28px rgba(0,0,0,0.06)`,
+            ...t.fx.glass,
+            boxShadow: neuRaisedStrong,
           }),
       boxShadow: isUser ? t.shadow.s3 : undefined,
       border: isUser ? "0" : `1px solid ${glassBorder}`,
@@ -190,7 +194,7 @@ export function ondaStyles(t: OndaTheme) {
       flexWrap: "wrap",
       gap: 10,
       padding: "10px 14px 14px",
-      borderTop: `1px solid ${t.c.border}`,
+      borderTop: `1px solid ${t.glass.borderSoft}`,
       ...t.fx.glassSoft,
       pointerEvents: "auto",
     } satisfies CSSProperties,
@@ -200,23 +204,23 @@ export function ondaStyles(t: OndaTheme) {
       alignItems: "center",
       gap: 8,
       padding: "10px 16px",
-      borderRadius: 14,
-      border: `1px solid ${glassBorder}`,
-      background: glassBg,
+      borderRadius: 16,
+      border: `2px solid ${glassBorder}`,
+      background: t.glass.bg,
       color: t.c.ink,
       fontSize: 13,
       cursor: "pointer",
-      boxShadow: `${insetSoft}, ${t.shadow.elevation}`,
-      transition: "transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease",
+      boxShadow: neuRaisedStrong,
+      transition: "transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease",
     } satisfies CSSProperties,
 
     composer: {
       ...t.fx.glass,
       padding: "20px 24px 24px",
-      borderTop: `1px solid ${glassBorderSoft}`,
-      boxShadow: insetSoft,
+      borderTop: `2px solid ${glassBorderSoft}`,
+      boxShadow: neuRaised,
       flexShrink: 0,
-      transition: "background 0.2s ease",
+      transition: "background 0.2s ease, box-shadow 0.2s ease",
       pointerEvents: "auto",
     } satisfies CSSProperties,
 
@@ -230,56 +234,58 @@ export function ondaStyles(t: OndaTheme) {
     iconBtn: {
       width: 44,
       height: 44,
-      borderRadius: 14,
-      ...crystal,
+      borderRadius: 16,
+      ...t.fx.crystal,
+      boxShadow: neuRaisedStrong,
       display: "grid",
       placeItems: "center",
       cursor: "pointer",
-      transition: "transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease",
+      transition: "transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease",
     } satisfies CSSProperties,
 
+    /** Input: muy hundido (neumorphism profundo). */
     input: {
       height: 46,
       width: "100%",
       padding: "0 20px",
-      borderRadius: 14,
-      border: `1px solid ${glassBorder}`,
-      background: t.glass.plate,
+      borderRadius: 16,
+      border: `2px solid ${t.glass.borderSoft}`,
+      background: t.glass.bg,
       color: t.c.ink,
-      boxShadow: `${insetSoft}, 0 2px 4px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.05)`,
+      boxShadow: neuInset,
       transition: "border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease",
       outline: "none",
     } satisfies CSSProperties,
 
-    /** Focus: crisp ring above the stack, independent of background (state stress). */
     inputFocusRing: {
-      boxShadow: `0 0 0 4px ${t.c.ring}`,
-      borderColor: t.c.orange,
+      boxShadow: `${neuInsetSoft}, 0 0 0 3px ${t.c.ring}`,
+      borderColor: t.neuColors.red,
     } satisfies CSSProperties,
 
-    /** Enviar: gradiente naranja + borde/highlight tipo vidrio para coherencia 100% vidrio. */
+    /** Enviar: neumorphism marcado (triple sombra + highlight interior). */
     send: {
       height: 46,
       padding: "0 24px",
-      borderRadius: 14,
-      border: "1px solid rgba(255,255,255,0.65)",
+      borderRadius: 16,
+      border: "2px solid rgba(255,255,255,0.4)",
       color: "#fff",
       fontWeight: 600,
       letterSpacing: ".03em",
       cursor: "pointer",
-      background: `linear-gradient(180deg, ${t.palette.gradientBright} 0%, ${t.c.naranja} 50%, ${t.palette.gradientMid} 100%)`,
-      boxShadow: `inset 0 1px 0 rgba(255,255,255,0.4), inset 0 0 0 1px rgba(255,255,255,0.15), 0 2px 8px rgba(251,80,2,0.2), 0 12px 28px rgba(251,80,2,0.35)`,
-      transition: "transform 0.18s ease, box-shadow 0.18s ease",
+      background: t.neuColors.red,
+      boxShadow: t.shadow.neuRaisedColored(t.neuColors.red),
+      transition: "transform 0.2s ease, box-shadow 0.2s ease",
     } satisfies CSSProperties,
   };
 
-  const pickerBaseShadow = `${insetSoft}, 0 2px 8px rgba(0,0,0,0.04), 0 16px 40px rgba(0,0,0,0.06)`;
-  const pickerHoverShadow = `${insetStrong}, 0 4px 12px rgba(0,0,0,0.05), 0 20px 44px rgba(0,0,0,0.07)`;
+  const pickerBaseShadow = neuRaised;
+  const pickerHoverShadow = neuRaisedStrong;
+  const pickerPressedShadow = neuInset;
 
   const lift = {
-    icon: liftHandlers(t.shadow.s3, t.shadow.s2),
-    chip: liftHandlers("none", t.shadow.s3),
-    menu: liftHandlers("none", t.shadow.s3),
+    icon: liftHandlers(t.shadow.s3, neuRaisedStrong),
+    chip: liftHandlers(neuRaised, neuRaisedStrong),
+    menu: liftHandlers(neuRaised, neuRaisedStrong),
     picker: {
       onMouseEnter: (e: Ev) => {
         e.currentTarget.style.transform = "translateY(-1px)";
@@ -292,20 +298,25 @@ export function ondaStyles(t: OndaTheme) {
     },
     send: {
       onMouseEnter: (e: Ev) => {
-        e.currentTarget.style.transform = "translateY(-1px)";
-        e.currentTarget.style.boxShadow = "inset 0 1px 0 rgba(255,255,255,0.35), 0 4px 12px rgba(251,80,2,0.25), 0 16px 36px rgba(251,80,2,0.4)";
+        e.currentTarget.style.transform = "translateY(-3px)";
+        e.currentTarget.style.boxShadow = t.shadow.neuRaisedColoredHover(t.neuColors.red);
       },
       onMouseLeave: (e: Ev) => {
         e.currentTarget.style.transform = "";
-        e.currentTarget.style.boxShadow = "inset 0 1px 0 rgba(255,255,255,0.3), 0 2px 8px rgba(251,80,2,0.2), 0 12px 28px rgba(251,80,2,0.35)";
+        e.currentTarget.style.boxShadow = t.shadow.neuRaisedColored(t.neuColors.red);
+      },
+      onMouseDown: (e: Ev) => {
+        e.currentTarget.style.transform = "translateY(1px)";
+        e.currentTarget.style.boxShadow = t.shadow.neuPressedColored(t.neuColors.red);
+      },
+      onMouseUp: (e: Ev) => {
+        e.currentTarget.style.transform = "";
+        e.currentTarget.style.boxShadow = t.shadow.neuRaisedColored(t.neuColors.red);
       },
     },
     tab: (active: boolean): LiftBind =>
-      liftHandlers(
-        active ? t.shadow.s2 : `${insetSoft}, 0 1px 3px rgba(0,0,0,0.03)`,
-        t.shadow.s2
-      ),
-    tts: liftHandlers("none", t.shadow.s3),
+      liftHandlers(active ? neuInsetSoft : neuRaised, neuRaisedStrong),
+    tts: liftHandlers(neuRaised, neuRaisedStrong),
   };
 
   return { ...S, lift };

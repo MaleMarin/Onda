@@ -1,5 +1,10 @@
 "use client";
 
+/**
+ * UI del chat Onda. Cambios estéticos: ver .cursor/rules/onda-ui-no-romper-interactividad.mdc
+ * No tocar: onClick/onSubmit en botones y form; no añadir pointer-events:none ni overlays sobre .onda-shell.
+ */
+
 import { useState, useRef, useEffect, useMemo, type CSSProperties } from "react";
 import {
   MAIN_WELCOME,
@@ -92,40 +97,10 @@ export default function ChatPage() {
   const [inputFocused, setInputFocused] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const switchHintRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const shellRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
-
-  /** Delegación de clics nativa para que los botones funcionen siempre (evita problemas con React/synthetic events). */
-  useEffect(() => {
-    const shell = shellRef.current;
-    if (!shell) return;
-    const handleClick = (e: MouseEvent) => {
-      const target = e.target as HTMLElement;
-      const button = target.closest?.("button[data-onda-eje]");
-      if (button) {
-        const eje = (button as HTMLButtonElement).getAttribute("data-onda-eje") as EjeOnda | null;
-        if (eje && (eje === EjeOnda.A_MANO || eje === EjeOnda.CIVITA || eje === EjeOnda.PROFES)) {
-          e.preventDefault();
-          e.stopPropagation();
-          setShowPickOndaNotice(false);
-          setCurrentEje(eje);
-          setShowMenu(true);
-          setShowIASubmenu(false);
-          if (switchHintRef.current) clearTimeout(switchHintRef.current);
-          setJustSwitchedEje(eje);
-          switchHintRef.current = setTimeout(() => {
-            setJustSwitchedEje(null);
-            switchHintRef.current = null;
-          }, 1500);
-        }
-      }
-    };
-    shell.addEventListener("click", handleClick, true);
-    return () => shell.removeEventListener("click", handleClick, true);
-  }, []);
 
   function confirmEjeSwitch(eje: EjeOnda): void {
     setCurrentEje(eje);
@@ -401,7 +376,12 @@ export default function ChatPage() {
 
   const isEmbed = embed;
   const compact = isEmbed;
-  const ejeColor = currentEje ? EJE_CONFIGS[currentEje].color : EJE_CONFIGS[EjeOnda.A_MANO].color;
+  const neuPickerColorMap: Record<EjeOnda, string> = {
+    [EjeOnda.A_MANO]: t.neuColors.red,
+    [EjeOnda.CIVITA]: t.neuColors.teal,
+    [EjeOnda.PROFES]: t.neuColors.purple,
+  };
+  const ejeColor = currentEje ? neuPickerColorMap[currentEje] : t.neuColors.red;
 
   const lastUserMessage = [...messages].reverse().find((m) => m.role === "user");
   const linkHelp = Boolean(
@@ -436,14 +416,24 @@ export default function ChatPage() {
 
   const msgsArea: CSSProperties = {
     ...S.messages,
-    padding: currentEje === null ? "8px 14px 0 14px" : "8px 14px 0 14px",
+    padding: 0,
     flex: currentEje === null ? "0 0 auto" : 1,
     minHeight: 0,
+    overflow: "hidden",
+    display: "flex",
+    flexDirection: "column",
+  };
+
+  const msgsInner: CSSProperties = {
+    flex: 1,
+    minHeight: 0,
     overflowY: currentEje === null ? "hidden" : "auto",
+    overflowX: "hidden",
     display: "flex",
     flexDirection: "column",
     justifyContent: currentEje === null ? "flex-start" : "flex-end",
     gap: compact ? 6 : 8,
+    padding: currentEje === null ? "8px 14px 0 14px" : "8px 14px 0 14px",
   };
 
   const disabledCursor = loading ? "not-allowed" : "pointer";
@@ -474,17 +464,40 @@ export default function ChatPage() {
     fontSize: "0.72rem",
   };
 
-  const pickerBtn: CSSProperties = {
+  /** Botones Onda: convexos con colores neumórficos (rojo, teal, púrpura). */
+  const pickerBtn = (eje: EjeOnda): CSSProperties => ({
     ...S.glassCard,
-    padding: "16px 18px",
-    borderRadius: 24,
+    background: neuPickerColorMap[eje],
+    border: "2px solid rgba(255,255,255,0.4)",
+    padding: "18px 20px",
+    borderRadius: 22,
     cursor: "pointer",
     textAlign: "left",
     display: "flex",
     flexDirection: "column",
     gap: 6,
-    transition: "transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease",
-  };
+    boxShadow: t.shadow.neuRaisedColored(neuPickerColorMap[eje]),
+    transition: "transform 0.2s ease, box-shadow 0.2s ease",
+  });
+
+  const pickerHover = (eje: EjeOnda) => ({
+    onMouseEnter: (e: React.MouseEvent<HTMLButtonElement>) => {
+      e.currentTarget.style.transform = "translateY(-3px)";
+      e.currentTarget.style.boxShadow = t.shadow.neuRaisedColoredHover(neuPickerColorMap[eje]);
+    },
+    onMouseLeave: (e: React.MouseEvent<HTMLButtonElement>) => {
+      e.currentTarget.style.transform = "";
+      e.currentTarget.style.boxShadow = t.shadow.neuRaisedColored(neuPickerColorMap[eje]);
+    },
+    onMouseDown: (e: React.MouseEvent<HTMLButtonElement>) => {
+      e.currentTarget.style.transform = "translateY(1px)";
+      e.currentTarget.style.boxShadow = t.shadow.neuPressedColored(neuPickerColorMap[eje]);
+    },
+    onMouseUp: (e: React.MouseEvent<HTMLButtonElement>) => {
+      e.currentTarget.style.transform = "";
+      e.currentTarget.style.boxShadow = t.shadow.neuRaisedColored(neuPickerColorMap[eje]);
+    },
+  });
 
   const menuList: CSSProperties = {
     display: "flex",
@@ -580,12 +593,12 @@ export default function ChatPage() {
   /* ── render ── */
 
   const content = (
-    <div ref={shellRef} className="onda-shell" style={shellStyle}>
+    <div className="onda-shell" style={shellStyle}>
       {/* Header */}
       <div style={headerStyle}>
         <div style={S.titleWrap}>
           <img src="/logo-onda.png" alt="ONDA" width={28} height={28} style={{ display: "block", objectFit: "contain" }} />
-          <div style={{ fontWeight: 700, fontSize: compact ? "0.85rem" : "1rem", letterSpacing: ".02em", color: t.c.ink }}>
+          <div style={{ fontWeight: 700, fontSize: compact ? "0.85rem" : "1rem", letterSpacing: ".04em", color: t.c.ink }}>
             {isEmbed ? "Chatea con ONDA" : "ONDA"}
           </div>
         </div>
@@ -595,6 +608,7 @@ export default function ChatPage() {
       <div style={chatBody}>
         {/* Messages */}
         <div className="onda-messages" style={msgsArea}>
+          <div className="onda-messages-inner" style={msgsInner}>
           {currentEje === null ? (
             <>
               {messages.length > 0 && (
@@ -614,15 +628,24 @@ export default function ChatPage() {
                   />
                 </div>
               )}
-              <div className="bubble-in" style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: -6, maxWidth: "min(88%, 420px)", flexShrink: 0 }}>
+              <div
+                className="bubble-in"
+                style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: -6, maxWidth: "min(88%, 420px)", flexShrink: 0 }}
+              >
                 {ORDERED_EJES.map((eje) => {
                   const config = EJE_CONFIGS[eje];
                   return (
-                    <button key={eje} type="button" data-onda-eje={eje} onClick={() => pickEje(eje)} style={pickerBtn}>
-                      <span style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 700, fontSize: "0.88rem", color: config.color }}>
+                    <button
+                      key={eje}
+                      type="button"
+                      style={pickerBtn(eje)}
+                      onClick={() => pickEje(eje)}
+                      {...pickerHover(eje)}
+                    >
+                      <span style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 700, fontSize: "0.88rem", color: "#fff" }}>
                         <span>{config.name}</span>
                       </span>
-                      <span style={{ fontSize: "0.74rem", color: t.c.muted, fontWeight: 400 }}>
+                      <span style={{ fontSize: "0.74rem", color: "rgba(255,255,255,0.92)", fontWeight: 400 }}>
                         {config.description}
                       </span>
                     </button>
@@ -659,7 +682,7 @@ export default function ChatPage() {
             <div className="bubble-in" style={S.row(false)}>
               <div style={noticeStyle}>
                 <span>{ONDA_MICROCOPY.pickOndaFirst}</span>
-                <button type="button" onClick={() => setShowPickOndaNotice(false)} style={noticeBtnStyle}>
+                <button type="button" data-onda-action="dismiss-notice" onClick={() => setShowPickOndaNotice(false)} style={noticeBtnStyle}>
                   Entendido
                 </button>
               </div>
@@ -671,6 +694,7 @@ export default function ChatPage() {
           )}
 
           <div ref={bottomRef} />
+          </div>
         </div>
 
         {/* Tabs, menu, chips, composer: no shrink so only messages area scrolls */}
@@ -680,7 +704,7 @@ export default function ChatPage() {
           <>
             <EjeSelector currentEje={currentEje} onSelect={confirmEjeSwitch} compact={compact} theme={t} />
             {justSwitchedEje !== null && (
-              <p style={{ margin: "-2px 0 4px", fontSize: compact ? "0.7rem" : "0.74rem", color: EJE_CONFIGS[justSwitchedEje].color, fontWeight: 500, padding: "0 4px" }}>
+              <p style={{ margin: "-2px 0 4px", fontSize: compact ? "0.7rem" : "0.74rem", color: neuPickerColorMap[justSwitchedEje], fontWeight: 500, padding: "0 4px" }}>
                 Ahora en {EJE_CONFIGS[justSwitchedEje].name}
               </p>
             )}
@@ -694,6 +718,10 @@ export default function ChatPage() {
               <button
                 key={opt.id}
                 type="button"
+                data-onda-menu-id={opt.id}
+                data-onda-menu-label={opt.label}
+                data-onda-menu-intro={opt.intro}
+                data-onda-menu-sub={opt.isSubmenu ? "1" : undefined}
                 onClick={() => handleMenuOption(opt.id, opt.label, opt.intro, opt.isSubmenu)}
                 disabled={loading}
                 style={menuBtnStyle}
@@ -701,10 +729,10 @@ export default function ChatPage() {
                 {opt.label}
               </button>
             ))}
-            <button type="button" onClick={() => setShowMenu(false)} style={menuSec}>
+            <button type="button" data-onda-action="close-menu" onClick={() => setShowMenu(false)} style={menuSec}>
               💬 Escribir libremente
             </button>
-            <button type="button" onClick={goToInicio} style={menuSec}>
+            <button type="button" data-onda-action="go-inicio" onClick={goToInicio} style={menuSec} title="Salir de esta Onda y elegir otra (A Mano, Civita, Profes)">
               🏠 Volver al inicio
             </button>
           </div>
@@ -717,6 +745,10 @@ export default function ChatPage() {
               <button
                 key={opt.id}
                 type="button"
+                data-onda-menu-id={opt.id}
+                data-onda-menu-label={opt.label}
+                data-onda-menu-intro={opt.intro}
+                data-onda-menu-sub="0"
                 onClick={() => handleMenuOption(opt.id, opt.label, opt.intro)}
                 disabled={loading}
                 style={menuBtnStyle}
@@ -724,10 +756,10 @@ export default function ChatPage() {
                 {opt.label}
               </button>
             ))}
-            <button type="button" onClick={() => setShowIASubmenu(false)} style={menuSec}>
+            <button type="button" data-onda-action="show-menu" onClick={() => setShowIASubmenu(false)} style={menuSec} title="Ver de nuevo las opciones de esta Onda">
               ↩️ Volver al menú
             </button>
-            <button type="button" onClick={goToInicio} style={menuSec}>
+            <button type="button" data-onda-action="go-inicio" onClick={goToInicio} style={menuSec} title="Salir de esta Onda y elegir otra (A Mano, Civita, Profes)">
               🏠 Volver al inicio
             </button>
           </div>
@@ -740,6 +772,7 @@ export default function ChatPage() {
               <button
                 key={suggestion}
                 type="button"
+                data-onda-chip={suggestion}
                 onClick={() => useSuggestion(suggestion)}
                 disabled={loading}
                 style={chipBase}
@@ -749,6 +782,7 @@ export default function ChatPage() {
             ))}
             <button
               type="button"
+              data-onda-action="show-menu"
               onClick={() => { setShowMenu(true); setShowIASubmenu(false); }}
               style={chipMuted}
             >
@@ -770,10 +804,12 @@ export default function ChatPage() {
             <div style={{ marginBottom: 10, display: "flex", flexWrap: "wrap", gap: "12px 16px", alignItems: "center" }}>
               <button
                 type="button"
+                data-onda-action="show-menu"
                 onClick={() => { setShowMenu(true); setShowIASubmenu(false); }}
+                title="Ver de nuevo las opciones de esta Onda"
                 style={{
                   fontSize: "0.8rem",
-                  color: EJE_CONFIGS[EjeOnda.A_MANO].color,
+                  color: ejeColor,
                   background: "none",
                   border: "none",
                   cursor: "pointer",
@@ -787,10 +823,12 @@ export default function ChatPage() {
               </button>
               <button
                 type="button"
+                data-onda-action="go-inicio"
                 onClick={goToInicio}
+                title="Salir de esta Onda y elegir otra (A Mano, Civita, Profes)"
                 style={{
                   fontSize: "0.8rem",
-                  color: EJE_CONFIGS[EjeOnda.A_MANO].color,
+                  color: ejeColor,
                   background: "none",
                   border: "none",
                   cursor: "pointer",
@@ -863,7 +901,7 @@ export default function ChatPage() {
 
           {/* Input row */}
           <form
-            onSubmit={handleSend}
+            onSubmit={(e) => { e.preventDefault(); handleSend(e); }}
             onPaste={handlePaste}
             style={{ display: "flex", gap: 10, alignItems: "center" }}
           >
@@ -886,6 +924,12 @@ export default function ChatPage() {
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSend(e as unknown as React.FormEvent);
+                }
+              }}
               placeholder={
                 linkHelp
                   ? ONDA_MICROCOPY.linkHelpPlaceholder
@@ -900,9 +944,14 @@ export default function ChatPage() {
             />
 
             <button
-              type="submit"
+              type="button"
               disabled={!canSend}
               style={sendStyle}
+              {...S.lift.send}
+              onClick={(e) => {
+                e.preventDefault();
+                handleSend(e as unknown as React.FormEvent);
+              }}
             >
               {linkHelp ? ONDA_MICROCOPY.linkHelpCta : ONDA_MICROCOPY.send}
             </button>
