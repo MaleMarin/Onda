@@ -440,7 +440,8 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
   /* ── derived styles from S + overrides ── */
 
   const isEmbed = embed;
-  const compact = isEmbed;
+  /** En embed (Wix) mismo aspecto que en local: no usar modo compacto. */
+  const compact = false;
   const neuPickerColorMap: Record<EjeOnda, string> = {
     [EjeOnda.A_MANO]: t.neuColors.red,
     [EjeOnda.CIVITA]: t.neuColors.teal,
