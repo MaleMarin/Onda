@@ -1,0 +1,11 @@
+<!-- CÓDIGO COMPLETO PARA WIX – Igual que en local: fondo gris que ilumina el bot, neumorfismo. -->
+<!-- Copiar TODO (desde la línea del div hasta el </script>) y pegar en Wix → Integrar / HTML. -->
+
+<div style="width:100%;min-height:100vh;margin:0;padding:24px 20px;background:#d2d6dc;box-sizing:border-box;">
+  <div style="width:100%;max-width:720px;margin:0 auto;border-radius:28px;overflow:hidden;box-shadow:22px 22px 44px rgba(100,105,115,0.8), -22px -22px 44px rgba(255,255,255,0.99);background:#d2d6dc;">
+    <iframe id="onda-bot" src="https://onda-git-main-precisar.vercel.app/chat?embed=1" title="Chat ONDA - Fundación Precisar" scrolling="no" style="display:block;border:none;width:100%;min-height:620px;"></iframe>
+  </div>
+</div>
+<script>
+(function(){var f=document.getElementById('onda-bot');if(!f)return;window.addEventListener('message',function(e){if(e.data&&typeof e.data.height==='number'&&e.data.height>0)f.style.height=e.data.height+'px';});})();
+</script>

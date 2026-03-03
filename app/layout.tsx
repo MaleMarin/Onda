@@ -44,9 +44,9 @@ button[data-onda-send]:focus{background:${SEND_ORANGE} !important;color:#fff !im
 .onda-shell input::placeholder{color:#5a5d62;opacity:0.9;font-weight:500;letter-spacing:0.02em}
 .onda-shell *,.onda-shell *:focus,.onda-shell *:focus-visible{outline:none !important}
 .onda-page-wrap{outline:none;position:relative;z-index:0;font-size:1.125rem}
-/* Área de mensajes: debajo del composer para que los botones reciban clics */
+/* Área de mensajes: flujo hacia abajo (arriba = viejo, abajo = nuevo), como WhatsApp */
 .onda-messages{min-height:0;display:flex;flex-direction:column;overflow:hidden;position:relative;z-index:1}
-.onda-messages-inner{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;position:relative;z-index:1}
+.onda-messages-inner{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;overflow-anchor:auto;-webkit-overflow-scrolling:touch;position:relative;z-index:1;display:flex;flex-direction:column;justify-content:flex-start;align-items:stretch}
 .onda-messages-inner::-webkit-scrollbar{width:6px}
 .onda-messages-inner::-webkit-scrollbar-track{background:transparent}
 .onda-messages-inner::-webkit-scrollbar-thumb{background:rgba(0,0,0,0.2);border-radius:3px}

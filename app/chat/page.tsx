@@ -442,10 +442,11 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
   const isEmbed = embed;
   /** En embed (Wix) mismo aspecto que en local: no usar modo compacto. */
   const compact = false;
+  /** Colores de los botones Onda como en el diseño: rojo, verde, púrpura (EJE_CONFIGS). */
   const neuPickerColorMap: Record<EjeOnda, string> = {
-    [EjeOnda.A_MANO]: t.neuColors.red,
-    [EjeOnda.CIVITA]: t.neuColors.teal,
-    [EjeOnda.PROFES]: t.neuColors.purple,
+    [EjeOnda.A_MANO]: EJE_CONFIGS[EjeOnda.A_MANO].color,
+    [EjeOnda.CIVITA]: EJE_CONFIGS[EjeOnda.CIVITA].color,
+    [EjeOnda.PROFES]: EJE_CONFIGS[EjeOnda.PROFES].color,
   };
   /** Colores oscuros para el texto "Ahora en A Mano / Civita / Profes". */
   const neuPickerColorDarkMap: Record<EjeOnda, string> = {

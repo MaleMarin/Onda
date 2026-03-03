@@ -20,19 +20,15 @@ Así el visitante ve el chat dentro de precisar.net.
 
 ### Código profesional (recomendado)
 
-Incluye un contenedor con tamaño fijo para que el iframe se abra bien en cualquier editor. Puedes cambiar `400` y `600` por el ancho y alto que quieras (en píxeles).
+El bot dentro del iframe se ve **igual que en local**: mismo fondo gris neumórfico (#d2d6dc), mismo estilo y sombras. El iframe se redimensiona solo según el contenido (postMessage). Puedes cambiar `720` por el ancho máximo que quieras (en px).
 
 ```html
-<div class="onda-chat-container" style="width:100%;max-width:400px;height:600px;min-height:400px;margin:0 auto;border-radius:16px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.12);">
-  <iframe
-    src="https://onda2026.vercel.app/chat?embed=1"
-    title="Chat ONDA - Fundación Precisar"
-    width="100%"
-    height="100%"
-    style="display:block;border:0;"
-    loading="lazy"
-  ></iframe>
+<div style="width:100%;max-width:min(720px,92vw);margin:0 auto;border-radius:28px;overflow:hidden;box-shadow:22px 22px 44px rgba(100,105,115,0.8), -22px -22px 44px rgba(255,255,255,0.99);">
+  <iframe id="onda-bot" src="https://onda-git-main-precisar.vercel.app/chat?embed=1" width="100%" scrolling="no" style="border:0;display:block;min-height:600px;" title="Chat ONDA - Fundación Precisar"></iframe>
 </div>
+<script>
+(function(){var f=document.getElementById('onda-bot');if(!f)return;window.addEventListener('message',function(e){if(e.data&&typeof e.data.height==='number'&&e.data.height>0)f.style.height=e.data.height+'px';});})();
+</script>
 ```
 
 ### Código mínimo (solo iframe)
@@ -41,7 +37,7 @@ Si el editor solo acepta un iframe suelto, usa este. Luego en Wix redimensiona e
 
 ```html
 <iframe
-  src="https://onda2026.vercel.app/chat?embed=1"
+  src="https://onda-git-main-precisar.vercel.app/chat?embed=1"
   title="Chat ONDA - Fundación Precisar"
   width="400"
   height="600"
@@ -55,9 +51,9 @@ Si el editor solo acepta un iframe suelto, usa este. Luego en Wix redimensiona e
 
 ### Importante
 
-- La URL del iframe debe ser: **`https://onda2026.vercel.app/chat?embed=1`**
+- La URL del iframe debe ser: **`https://onda-git-main-precisar.vercel.app/chat?embed=1`**
 - Escribe **`embed`** con **m** (no "enbed"); si está mal escrito, el chat no se abre bien en la página.
-- El **`?embed=1`** hace que el chat se vea compacto y con el botón "Enviar" correcto.
+- Con **`?embed=1`** el chat se ve **igual que en local**: mismo fondo gris, neumorfismo y botón Enviar.
 - El servidor permite que esta página se abra dentro de iframes (Wix, etc.).
 
 ---
@@ -71,7 +67,7 @@ Si prefieres no embeber, puedes poner un botón o texto que abra el chat en otra
 1. En el editor, **añade un botón** o un **texto**.
 2. **Enlázalo** a esta URL:
    ```
-   https://onda2026.vercel.app/chat
+   https://onda-git-main-precisar.vercel.app/chat
    ```
 3. Configura el enlace para que abra en **"Nueva pestaña"** (si Wix lo permite).
 
@@ -83,8 +79,8 @@ Ejemplos de texto: **"Chatea con ONDA"**, **"Pregúntale a ONDA"**, **"Hablar co
 
 | Uso | URL |
 |-----|-----|
-| Embeber en Wix (iframe) | `https://onda2026.vercel.app/chat?embed=1` |
-| Abrir en nueva pestaña / enlace | `https://onda2026.vercel.app/chat` |
+| Embeber en Wix (iframe) | `https://onda-git-main-precisar.vercel.app/chat?embed=1` |
+| Abrir en nueva pestaña / enlace | `https://onda-git-main-precisar.vercel.app/chat` |
 
 ---
 
@@ -102,7 +98,7 @@ Eso significa que **Vercel está sirviendo un deploy viejo**. Para que precisar.
 
 Algunos planes de Wix restringen HTML. En ese caso:
 
-- Usa la **Opción 2** (botón o enlace a `https://onda2026.vercel.app/chat`), o
+- Usa la **Opción 2** (botón o enlace a `https://onda-git-main-precisar.vercel.app/chat`), o
 - Revisa en la ayuda de Wix cómo añadir **"Embed"** o **"Código personalizado"** en tu plan.
 
 ---

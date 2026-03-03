@@ -1,14 +1,15 @@
 <!-- Wix: Ajustes HTML → Código. Pega TODO (div + iframe + script). -->
-<!-- El bot envía su altura por postMessage; el script redimensiona el iframe. Fondo transparente. -->
-<!-- Si Wix no permite <script>, usa solo el div+iframe y pon en el div: style="...;height:1000px;" -->
+<!-- El bot se ve igual que en local: mismo fondo gris neumórfico (#d2d6dc) y estilo. -->
+<!-- El iframe envía su altura por postMessage; el script redimensiona para que no quede espacio vacío. -->
 
-<div style="width:100%;background:transparent;">
+<!-- Fondo gris neumórfico (#d2d6dc) para que brille el relieve del bot. -->
+<div style="width:100%;max-width:min(720px,92vw);margin:0 auto;padding:24px 20px;background:#d2d6dc;border-radius:28px;overflow:hidden;box-shadow:22px 22px 44px rgba(100,105,115,0.8), -22px -22px 44px rgba(255,255,255,0.99);">
   <iframe
     id="onda-bot"
     src="https://onda-git-main-precisar.vercel.app/chat?embed=1"
     width="100%"
     scrolling="no"
-    style="border:0;display:block;background:transparent;min-height:560px;"
+    style="border:0;display:block;min-height:600px;"
     title="Chat ONDA - Fundación Precisar"
   ></iframe>
 </div>

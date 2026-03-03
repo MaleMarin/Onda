@@ -45,9 +45,10 @@ export function ondaStyles(t: OndaTheme) {
       position: "relative",
     } satisfies CSSProperties,
 
-    /** Panel principal: muy elevado (neumorphism máximo). */
+    /** Panel principal: tarjeta blanca/clara sobre fondo gris (como diseño de referencia). */
     shell: {
       ...t.fx.crystal,
+      background: "#ffffff",
       width: "100%",
       maxWidth: "min(720px, 92vw)",
       flex: 1,
@@ -71,16 +72,16 @@ export function ondaStyles(t: OndaTheme) {
       boxShadow: neuRaisedStrong,
     } satisfies CSSProperties,
 
-    /** Parte superior: elevada (neumorphism marcado, “sube” sobre el contenido). */
+    /** Parte superior: misma tarjeta blanca, borde sutil. */
     header: {
       display: "flex",
       alignItems: "center",
       justifyContent: "space-between",
       padding: "20px 24px",
-      background: t.glass.bg,
-      border: `2px solid ${glassBorder}`,
-      borderBottom: `2px solid ${glassBorderSoft}`,
-      boxShadow: `${t.shadow.neuRaisedExtra}, 0 6px 20px rgba(0,0,0,0.06)`,
+      background: "#ffffff",
+      border: "none",
+      borderBottom: `1px solid ${glassBorderSoft}`,
+      boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
       flexShrink: 0,
       transition: "background 0.2s ease, box-shadow 0.2s ease",
       pointerEvents: "auto",
@@ -131,17 +132,17 @@ export function ondaStyles(t: OndaTheme) {
       pointerEvents: "auto",
     } satisfies CSSProperties,
 
-    /** Área de contenido: muy hundida (neumorphism profundo). */
+    /** Área de contenido: fondo claro como la tarjeta (igual que diseño de referencia). */
     messages: {
       flex: 1,
       padding: 24,
       overflow: "auto",
       scrollBehavior: "smooth",
-      background: t.glass.bg,
-      boxShadow: neuInset,
+      background: "#f8f9fa",
+      boxShadow: "none",
       margin: 16,
       borderRadius: 24,
-      border: `2px solid ${glassBorderSoft}`,
+      border: "none",
       pointerEvents: "auto",
     } satisfies CSSProperties,
 
@@ -218,12 +219,12 @@ export function ondaStyles(t: OndaTheme) {
 
     /** Área inferior (composer): neumorphism, sin franja gris debajo del input. */
     composer: {
-      background: t.glass.bg,
+      background: "#ffffff",
       padding: "22px 24px 12px",
-      border: `2px solid ${glassBorder}`,
-      borderTop: `3px solid ${glassBorderSoft}`,
+      border: "none",
+      borderTop: `1px solid ${glassBorderSoft}`,
       borderRadius: "24px 24px 0 0",
-      boxShadow: `${t.shadow.neuInset}, 0 -8px 24px rgba(100,105,115,0.25)`,
+      boxShadow: "0 -2px 12px rgba(0,0,0,0.04)",
       flexShrink: 0,
       transition: "background 0.2s ease, box-shadow 0.2s ease",
       pointerEvents: "auto",
