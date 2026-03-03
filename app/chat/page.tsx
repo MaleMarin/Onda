@@ -17,6 +17,7 @@ import {
   ONDA_MICROCOPY,
   ORDERED_EJES,
 } from "@/content/shared";
+import { formatMenuIntro } from "@/content/menuQuestions";
 import { EjeOnda, type Message } from "@/content/types";
 import { parseResponseFormat } from "@/lib/responseFormat";
 import { useOndaTheme } from "@/lib/useOndaTheme";
@@ -100,6 +101,20 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
     setEmbed(new URLSearchParams(window.location.search).get("embed") === "1");
   }, []);
 
+  /** Inferir Onda desde el último mensaje de usuario (ej. ítem de menú) para que pestaña y chips coincidan con la conversación. */
+  function inferEjeFromMessages(messages: Message[]): EjeOnda | null {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].role !== "user") continue;
+      const label = messages[i].content;
+      for (const eje of ORDERED_EJES) {
+        if (EJE_MENU_OPTIONS[eje].some((o) => o.label === label)) return eje;
+        if (eje === EjeOnda.A_MANO && IA_SUBMENU_OPTIONS.some((o) => o.label === label)) return eje;
+      }
+      break;
+    }
+    return null;
+  }
+
   /** Bienvenida ágil + retomar: si ya conoce Onda, ir directo a las tres Ondas; si hay estado guardado, restaurar. */
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -109,7 +124,8 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
         const r = JSON.parse(raw) as { messages?: Message[]; currentEje?: EjeOnda | null; savedAt?: number };
         if (r.savedAt && Date.now() - r.savedAt < RESTORE_MAX_AGE_MS && Array.isArray(r.messages) && r.messages.length > 0) {
           setMessages(r.messages);
-          if (r.currentEje != null) setCurrentEje(r.currentEje);
+          const inferred = inferEjeFromMessages(r.messages);
+          setCurrentEje(inferred ?? r.currentEje ?? null);
           trackUsage("session_start");
           return;
         }
@@ -276,10 +292,12 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
     }
   }
 
+  /** Siempre muestra las 3 preguntas del ítem clicado (por optionId). Cada ítem tiene sus propias 3 preguntas en menuQuestions.ts. */
   function handleMenuOption(optionId: string, label: string, intro: string, isSubmenu?: boolean): void {
+    const botText = formatMenuIntro(optionId) ?? intro;
     if (isSubmenu) {
       setShowIASubmenu(true);
-      setMessages((m) => [...m, newMessage("model", intro)]);
+      setMessages((m) => [...m, newMessage("model", botText)]);
       return;
     }
     setShowMenu(false);
@@ -287,7 +305,7 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
     setMessages((m) => [
       ...m,
       newMessage("user", label),
-      newMessage("model", intro),
+      newMessage("model", botText),
     ]);
   }
 
