@@ -646,14 +646,13 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
 
   const content = (
     <div className="onda-shell" style={shellStyle}>
-      {/* Header: logo, nombre y badge (parte de arriba del bot). */}
+      {/* Header: logo y nombre (como Onda local, sin segundo círculo). */}
       <div style={{ ...headerStyle, flexShrink: 0 }}>
         <div style={S.titleWrap}>
           <img src="/logo-onda.png" alt="ONDA" width={28} height={28} style={{ display: "block", objectFit: "contain" }} />
           <div style={{ fontWeight: 700, fontSize: compact ? "1.0625rem" : "1.25rem", letterSpacing: ".04em", color: t.c.ink }}>
             ONDA
           </div>
-          <div style={S.titleBadge} title="Onda activa" aria-hidden />
         </div>
       </div>
 
