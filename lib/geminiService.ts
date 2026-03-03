@@ -1,6 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 import { EjeOnda, type Message } from "@/content/types";
-import { GLOBAL_RULES_ONDA, EJE_PROMPTS } from "@/content/shared";
+import { GLOBAL_RULES_ONDA, EJE_PROMPTS, CAPA_CONTEXTO_GLOBAL, MANDATO_NO_ALUCINACION, REGLA_VALIDACION_RIGOR_FUENTES, REGLA_VALIDACION_NEUTRALIDAD, PROTOCOLO_CERO_ALUCINACION, FRASES_BLINDAJE_POR_EJE, INTUICION_GLOBAL_GRAFEO, INTUICION_POR_EJE } from "@/content/shared";
 
 function getApiKey(): string {
   return (
@@ -33,8 +33,25 @@ export class GeminiService {
   ): Promise<string> {
     const systemInstruction = `${GLOBAL_RULES_ONDA}
 
+${CAPA_CONTEXTO_GLOBAL}
+
+${MANDATO_NO_ALUCINACION}
+
+${REGLA_VALIDACION_RIGOR_FUENTES}
+
+${REGLA_VALIDACION_NEUTRALIDAD}
+
+${PROTOCOLO_CERO_ALUCINACION}
+
 --- EJE ACTUAL: ${eje} ---
 ${EJE_PROMPTS[eje]}
+
+--- FRASES DE BLINDAJE (consulta política, provocación o falta de datos) ---
+${FRASES_BLINDAJE_POR_EJE[eje]}
+
+${INTUICION_GLOBAL_GRAFEO}
+--- INTUICIÓN GLOBAL (esta Onda) ---
+${INTUICION_POR_EJE[eje]}
 ${country ? `PAÍS DEL USUARIO: ${country}` : ""}
 ${flowPrompt ? `--- INSTRUCCIÓN DE FLUJO ESPECÍFICA ---\n${flowPrompt}` : ""}
 `;

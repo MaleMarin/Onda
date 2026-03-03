@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import fs from "fs";
+import os from "os";
 import path from "path";
 import { randomUUID } from "crypto";
 
@@ -8,6 +9,9 @@ function getOpenAI(): OpenAI {
   if (!key) throw new Error("OPENAI_API_KEY is required for transcription.");
   return new OpenAI({ apiKey: key });
 }
+
+/** Mínimo de bytes para que Whisper pueda procesar (evita errores de formato). */
+const MIN_AUDIO_BYTES = 1000;
 
 /**
  * Transcribe audio from base64 (data URL or raw base64) using OpenAI Whisper.
@@ -32,13 +36,19 @@ export async function transcribeAudio(audioBase64: string): Promise<string> {
     buffer = Buffer.from(audioBase64, "base64");
   }
 
-  const tmpDir = path.join(process.cwd(), "tmp");
+  if (buffer.length < MIN_AUDIO_BYTES) {
+    throw new Error("El audio es muy corto. Grabá al menos un par de segundos.");
+  }
+
+  const tmpDir = path.join(os.tmpdir(), "onda-whisper");
   if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir, { recursive: true });
-  const tmpPath = path.join(tmpDir, `whisper-${randomUUID()}.${ext}`);
+  const filename = `audio-${randomUUID()}.${ext}`;
+  const tmpPath = path.join(tmpDir, filename);
 
   try {
     fs.writeFileSync(tmpPath, buffer);
-    const stream = fs.createReadStream(tmpPath);
+    const stream = fs.createReadStream(tmpPath) as fs.ReadStream & { path?: string };
+    stream.path = tmpPath;
 
     const transcription = await openai.audio.transcriptions.create({
       file: stream,
@@ -47,6 +57,10 @@ export async function transcribeAudio(audioBase64: string): Promise<string> {
     });
 
     return (transcription as { text?: string }).text?.trim() ?? "";
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("[transcribe]", msg, "ext:", ext, "size:", buffer.length);
+    throw err;
   } finally {
     try {
       if (fs.existsSync(tmpPath)) fs.unlinkSync(tmpPath);

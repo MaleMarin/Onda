@@ -1,6 +1,6 @@
 import OpenAI from "openai";
 import { EjeOnda } from "../content/types";
-import { EJE_PROMPTS, FUENTES_ONDA_PARA_RESPUESTA, FUENTES_ONDA_EJES_LATAM_AMI, REGLAS_FUENTES_Y_VERIFICACION, REGLAS_EJES_LATAM_AMI } from "../content/shared";
+import { EJE_PROMPTS, FILTRO_AUDITORIA_Y_CONSTITUCION, FRASES_BLINDAJE_POR_EJE, BLINDAJE_WHATSAPP_POR_EJE, INSTRUCCION_WHATSAPP, PROTOCOLO_CERO_ALUCINACION, CAPA_CONTEXTO_GLOBAL, MANDATO_NO_ALUCINACION, REGLA_VALIDACION_RIGOR_FUENTES, REGLA_VALIDACION_NEUTRALIDAD, INTUICION_GLOBAL_GRAFEO, INTUICION_POR_EJE, FUENTES_ONDA_PARA_RESPUESTA, FUENTES_ONDA_EJES_LATAM_AMI, REGLAS_FUENTES_Y_VERIFICACION, REGLAS_EJES_LATAM_AMI } from "../content/shared";
 import {
   RAW_A_MANO_FULL,
   RAW_CIVITA_FULL,
@@ -14,6 +14,8 @@ function getOpenAI(): OpenAI {
 }
 
 const SYSTEM_PROMPT_FUSIONADO = `
+${FILTRO_AUDITORIA_Y_CONSTITUCION}
+
 🛑 REGLA PRINCIPAL: Responde SIEMPRE a lo que la persona pregunta. No importa el tema ni de qué esté hablando: si preguntan por una persona, un concepto, una organización, una noticia, un país o cualquier cosa, responde usando tu conocimiento. No te limites a "solo cuando tengas un enlace" ni digas "no tengo esa información en mis registros" salvo que sea algo muy específico de la organización Precisar que no esté en tu base. Para el resto (personas, medios, política digital, educación, instituciones, etc.), responde con lo que sepas y, si conviene, sugiere fuentes de la lista oficial para profundizar.
 
 🛑 PROCESO: Analiza la pregunta → responde con tu conocimiento (o con el contenido extraído si compartieron un enlace) → tono cercano y sin tecnicismos. No desvíes ni rechaces la pregunta.
@@ -37,6 +39,16 @@ Eres Onda, el Asistente de IA del proyecto Precisar (www.precisar.net). Tu misi�
 ${REGLAS_FUENTES_Y_VERIFICACION}
 
 ${REGLAS_EJES_LATAM_AMI}
+
+${CAPA_CONTEXTO_GLOBAL}
+
+${MANDATO_NO_ALUCINACION}
+
+${REGLA_VALIDACION_RIGOR_FUENTES}
+
+${REGLA_VALIDACION_NEUTRALIDAD}
+
+${PROTOCOLO_CERO_ALUCINACION}
 
 Actúas según el eje (A_MANO, CIVITA, PROFES). Solo si la persona no sabe por dónde empezar o pide orientación, ofrece las 3 Ondas (🔴 A Mano, 🟢 Civita, 🟣 Profes) con naturalidad; no desvíes a menú cuando ya están preguntando algo concreto.
 
@@ -136,27 +148,38 @@ ${newsContext}
 
 const MAX_HISTORY_MESSAGES = 20; // últimos N mensajes para no exceder contexto
 
+/** Canal de uso: web (respuestas completas) o whatsapp (breves, blindaje rápido). */
+export type CanalOnda = "web" | "whatsapp";
+
 /**
  * Obtiene la respuesta de ONDA para un mensaje de usuario (lógica central reutilizable).
  * Si se pasa eje, el modelo prioriza ese contexto. Si se pasa history, el modelo ve la conversación anterior.
  * Si includeSourcesList es true (p. ej. el usuario pidió "fuentes"), el modelo recibe la lista oficial y debe incluirla en la respuesta.
+ * Si canal es "whatsapp", se priorizan respuestas breves y las frases de blindaje rápido para WhatsApp.
  */
 export async function getOndaReply(
   userText: string,
   eje?: EjeOnda | null,
   history?: HistoryEntry[] | null,
   includeSourcesList?: boolean,
-  articleContext?: ArticleContext | null
+  articleContext?: ArticleContext | null,
+  canal?: CanalOnda
 ): Promise<string> {
   const openai = getOpenAI();
   const ejeContext =
-    eje != null ? `\n--- CONTEXTO ACTUAL (responde en este marco) ---\n${EJE_PROMPTS[eje]}\n` : "";
+    eje != null
+      ? `\n--- CONTEXTO ACTUAL (responde en este marco) ---\n${EJE_PROMPTS[eje]}\n\n--- FRASES DE BLINDAJE (usa cuando haya consulta política, provocación o falta de datos verificados) ---\n${FRASES_BLINDAJE_POR_EJE[eje]}\n\n${INTUICION_GLOBAL_GRAFEO}\n--- INTUICIÓN GLOBAL (esta Onda) ---\n${INTUICION_POR_EJE[eje]}\n`
+      : "";
+  const whatsappBlock =
+    canal === "whatsapp"
+      ? `\n\n${INSTRUCCION_WHATSAPP}\n\n--- RESPUESTAS RÁPIDAS DE BLINDAJE (WhatsApp) - usa estas frases exactas cuando aplique ---\n${BLINDAJE_WHATSAPP_POR_EJE[EjeOnda.A_MANO]}\n${BLINDAJE_WHATSAPP_POR_EJE[EjeOnda.CIVITA]}\n${BLINDAJE_WHATSAPP_POR_EJE[EjeOnda.PROFES]}\n`
+      : "";
   const sourcesBlock =
     includeSourcesList === true
       ? `\n\n📚 EL USUARIO PIDIÓ FUENTES. Incluí al final una sección "Fuentes" o "Referencias" usando SOLO las listas oficiales ONDA (nombre + URL):\n\n--- Base 50 nodos (agencias, ciencia, política digital, datos, AMI) ---\n${FUENTES_ONDA_PARA_RESPUESTA}\n\n--- 50 fuentes Gobernanza LatAm, IA Docentes, Convivencia Escolar, AMI ---\n${FUENTES_ONDA_EJES_LATAM_AMI}\n\nSi no pidió fuentes, no incluyas esta sección.\n`
       : "";
   const noticiaBlock = articleContext != null ? NOTICIA_SYSTEM_BLOCK(articleContext) : "";
-  const systemContent = SYSTEM_PROMPT_FUSIONADO + ejeContext + sourcesBlock + noticiaBlock;
+  const systemContent = SYSTEM_PROMPT_FUSIONADO + ejeContext + whatsappBlock + sourcesBlock + noticiaBlock;
 
   const historySlice = (history ?? []).slice(-MAX_HISTORY_MESSAGES);
   const historyForApi: Array<{ role: "user" | "assistant"; content: string }> = historySlice.map(
@@ -195,7 +218,9 @@ export async function* getOndaReplyStream(
 ): AsyncGenerator<string, void, unknown> {
   const openai = getOpenAI();
   const ejeContext =
-    eje != null ? `\n--- CONTEXTO ACTUAL (responde en este marco) ---\n${EJE_PROMPTS[eje]}\n` : "";
+    eje != null
+      ? `\n--- CONTEXTO ACTUAL (responde en este marco) ---\n${EJE_PROMPTS[eje]}\n\n--- FRASES DE BLINDAJE ---\n${FRASES_BLINDAJE_POR_EJE[eje]}\n\n${INTUICION_GLOBAL_GRAFEO}\n--- INTUICIÓN GLOBAL (esta Onda) ---\n${INTUICION_POR_EJE[eje]}\n`
+      : "";
   const sourcesBlock =
     includeSourcesList === true
       ? `\n\n📚 EL USUARIO PIDIÓ FUENTES. Incluí al final una sección "Fuentes" o "Referencias" usando SOLO las listas oficiales ONDA:\n\n--- Base 50 nodos ---\n${FUENTES_ONDA_PARA_RESPUESTA}\n\n--- 50 fuentes Gobernanza LatAm, IA Docentes, Convivencia, AMI ---\n${FUENTES_ONDA_EJES_LATAM_AMI}\n`
@@ -230,22 +255,30 @@ export async function* getOndaReplyStream(
 /**
  * Respuesta ONDA cuando el usuario envía imagen (y opcional texto). Usa OpenAI GPT-4o-mini (visión).
  * Si includeSourcesList es true, el modelo incluye la sección de fuentes al final.
+ * Si canal es "whatsapp", prioriza respuestas breves y blindaje rápido.
  */
 export async function getOndaReplyWithImage(
   userText: string,
   imageDataUrl: string,
   eje: EjeOnda | null,
   history?: HistoryEntry[] | null,
-  includeSourcesList?: boolean
+  includeSourcesList?: boolean,
+  canal?: CanalOnda
 ): Promise<string> {
   const openai = getOpenAI();
   const ejeContext =
-    eje != null ? `\n--- CONTEXTO ACTUAL (responde en este marco) ---\n${EJE_PROMPTS[eje]}\n` : "";
+    eje != null
+      ? `\n--- CONTEXTO ACTUAL (responde en este marco) ---\n${EJE_PROMPTS[eje]}\n\n--- FRASES DE BLINDAJE ---\n${FRASES_BLINDAJE_POR_EJE[eje]}\n\n${INTUICION_GLOBAL_GRAFEO}\n--- INTUICIÓN GLOBAL (esta Onda) ---\n${INTUICION_POR_EJE[eje]}\n`
+      : "";
+  const whatsappBlock =
+    canal === "whatsapp"
+      ? `\n\n${INSTRUCCION_WHATSAPP}\n\n--- RESPUESTAS RÁPIDAS DE BLINDAJE (WhatsApp) ---\n${BLINDAJE_WHATSAPP_POR_EJE[EjeOnda.A_MANO]}\n${BLINDAJE_WHATSAPP_POR_EJE[EjeOnda.CIVITA]}\n${BLINDAJE_WHATSAPP_POR_EJE[EjeOnda.PROFES]}\n`
+      : "";
   const sourcesBlock =
     includeSourcesList === true
       ? `\n\n📚 EL USUARIO PIDIÓ FUENTES. Incluí al final una sección "Fuentes" o "Referencias" usando SOLO las listas oficiales ONDA:\n\n--- Base 50 nodos ---\n${FUENTES_ONDA_PARA_RESPUESTA}\n\n--- 50 fuentes Gobernanza LatAm, IA Docentes, Convivencia, AMI ---\n${FUENTES_ONDA_EJES_LATAM_AMI}\n`
       : "";
-  const systemContent = SYSTEM_PROMPT_FUSIONADO + ejeContext + sourcesBlock;
+  const systemContent = SYSTEM_PROMPT_FUSIONADO + ejeContext + whatsappBlock + sourcesBlock;
 
   const historySlice = (history ?? []).slice(-MAX_HISTORY_MESSAGES);
   const historyForApi: Array<{ role: "user" | "assistant"; content: string }> = historySlice.map(

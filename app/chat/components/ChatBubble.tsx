@@ -38,12 +38,22 @@ interface ChatBubbleProps {
   color: string;
   compact?: boolean;
   onPlayTTS?: (text: string) => void;
+  /** Llamado para parar el audio (cuando isTTSPlaying es true). */
+  onStopTTS?: () => void;
+  /** true mientras se genera o reproduce el audio (evita doble clic y segunda voz). */
+  isTTSPlaying?: boolean;
   theme: OndaTheme;
   /** En la primera vista, la burbuja de bienvenida crece para llenar el espacio (sin huecos). */
   fillHeight?: boolean;
 }
 
 const LINK_REGEX = /\[([^\]]*)\]\((https?:\/\/[^)\s]+)\)/g;
+
+/** Indica si el texto tiene enlaces en formato markdown [texto](url). */
+function hasMarkdownLinks(text: string): boolean {
+  LINK_REGEX.lastIndex = 0;
+  return LINK_REGEX.test(text);
+}
 
 function formatBold(segment: string, keyBase: number): React.ReactNode[] {
   return segment.split(/(\*\*[^*]+\*\*)/g).map((part, i) => {
@@ -82,13 +92,15 @@ function formatContent(text: string): React.ReactNode[] {
   return out;
 }
 
-export function ChatBubble({ message, color, compact, onPlayTTS, theme: t, fillHeight }: ChatBubbleProps) {
+export function ChatBubble({ message, color, compact, onPlayTTS, onStopTTS, isTTSPlaying, theme: t, fillHeight }: ChatBubbleProps) {
   const S = ondaStyles(t);
   const [copied, setCopied] = useState(false);
   const isUser = message.role === "user";
   const isEmpty = message.role === "model" && message.content === "";
   const text = isEmpty ? ONDA_MICROCOPY.typing : message.content;
   const showCopyDownload = message.role === "model" && message.content && hasTable(message.content);
+  const showFuenteVerificada = message.role === "model" && message.content && hasMarkdownLinks(message.content);
+  const showCompartir = message.role === "model" && message.content && !isEmpty;
 
   const handleCopy = useCallback(async () => {
     if (!message.content) return;
@@ -142,7 +154,7 @@ export function ChatBubble({ message, color, compact, onPlayTTS, theme: t, fillH
     borderRadius: t.isDark ? 6 : "0 22px 22px 22px",
     borderTopLeftRadius: t.isDark ? 6 : 0,
     borderLeft: color ? `4px solid ${color}` : undefined,
-    ...(isEmpty ? { fontStyle: "italic", color: t.c.muted, animation: "pulse 1.4s ease-in-out infinite" } : {}),
+    ...(isEmpty ? { fontStyle: "italic", color: t.c.ink, opacity: 0.9, animation: "pulse 1.4s ease-in-out infinite" } : {}),
     ...(fillHeight ? { flex: 1, minHeight: 0, display: "flex", flexDirection: "column", justifyContent: "flex-start" } : {}),
     transition: "box-shadow 0.18s ease, background 0.18s ease",
   };
@@ -232,8 +244,22 @@ export function ChatBubble({ message, color, compact, onPlayTTS, theme: t, fillH
       <div style={isUser ? userBubbleStyle : botBubbleStyle}>
         <div className="prose-onda">{formatContent(text)}</div>
         {onPlayTTS && message.content && (
-          <button type="button" onClick={() => onPlayTTS(message.content)} style={ttsStyle}>
-            🔊 Escuchar
+          <button
+            type="button"
+            onClick={() => (isTTSPlaying && onStopTTS ? onStopTTS() : onPlayTTS(message.content))}
+            style={{ ...ttsStyle, opacity: isTTSPlaying ? 0.9 : 1, cursor: "pointer" }}
+          >
+            {isTTSPlaying ? "⏹ Parar audio" : "🔊 Escuchar"}
+          </button>
+        )}
+        {showFuenteVerificada && (
+          <span style={{ marginTop: 6, fontSize: "0.8125rem", color: t.c.muted, display: "inline-block" }}>
+            ✓ {ONDA_MICROCOPY.fuenteVerificada}
+          </span>
+        )}
+        {showCompartir && (
+          <button type="button" onClick={handleCopy} style={{ ...ttsStyle, marginTop: 6 }}>
+            {copied ? ONDA_MICROCOPY.compartirCopiado : ONDA_MICROCOPY.compartir}
           </button>
         )}
         {showCopyDownload && (

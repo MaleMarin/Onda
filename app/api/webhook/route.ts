@@ -154,7 +154,8 @@ export async function POST(req: Request) {
                   media.dataUrl,
                   null,
                   null,
-                  includeSources
+                  includeSources,
+                  "whatsapp"
                 );
               } else {
                 response = "No pude procesar la imagen. ¿Probás enviándola de nuevo?";
@@ -172,7 +173,7 @@ export async function POST(req: Request) {
               if (media?.dataUrl) {
                 const transcribed = await transcribeAudio(media.dataUrl);
                 const userMessage = transcribed || "(no se pudo transcribir el audio)";
-                response = await getOndaReply(userMessage, null, null, wantsSources(userMessage));
+                response = await getOndaReply(userMessage, null, null, wantsSources(userMessage), null, "whatsapp");
               } else {
                 response = "No pude descargar el audio. ¿Probás enviando un mensaje de texto?";
               }
@@ -185,7 +186,7 @@ export async function POST(req: Request) {
           else if (text && (type === "text" || !type)) {
             console.log(`💬 Mensaje recibido de ${from}: ${text}`);
             try {
-              response = await getOndaReply(text, null, null, includeSources);
+              response = await getOndaReply(text, null, null, includeSources, null, "whatsapp");
             } catch (err) {
               console.error("❌ Error procesando mensaje:", err);
             }

@@ -8,6 +8,8 @@
 import { useState, useRef, useEffect, useLayoutEffect, useMemo, useCallback, type CSSProperties } from "react";
 import {
   MAIN_WELCOME,
+  SHORT_WELCOME,
+  PILDORAS_INTUICION,
   EJE_CONFIGS,
   EJE_SUGGESTIONS,
   EJE_MENU_OPTIONS,
@@ -71,6 +73,17 @@ function compressImage(dataUrl: string): Promise<string> {
   });
 }
 
+const STORAGE_KEY_VISITED = "onda_visited";
+const STORAGE_KEY_RESTORE = "onda_chat_restore";
+const RESTORE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 días
+
+/** Métricas de uso anónimas (fire-and-forget). */
+function trackUsage(event: "eje_select" | "message_sent" | "session_start", eje?: EjeOnda | null) {
+  if (typeof window === "undefined") return;
+  const payload = JSON.stringify({ event, eje: eje ?? undefined });
+  fetch("/api/usage", { method: "POST", headers: { "Content-Type": "application/json" }, body: payload, keepalive: true }).catch(() => {});
+}
+
 type ChatPageProps = { initialEje?: EjeOnda | null };
 
 export default function ChatPage({ initialEje = null }: ChatPageProps) {
@@ -86,6 +99,50 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
   useEffect(() => {
     setEmbed(new URLSearchParams(window.location.search).get("embed") === "1");
   }, []);
+
+  /** Bienvenida ágil + retomar: si ya conoce Onda, ir directo a las tres Ondas; si hay estado guardado, restaurar. */
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const raw = localStorage.getItem(STORAGE_KEY_RESTORE);
+    if (raw) {
+      try {
+        const r = JSON.parse(raw) as { messages?: Message[]; currentEje?: EjeOnda | null; savedAt?: number };
+        if (r.savedAt && Date.now() - r.savedAt < RESTORE_MAX_AGE_MS && Array.isArray(r.messages) && r.messages.length > 0) {
+          setMessages(r.messages);
+          if (r.currentEje != null) setCurrentEje(r.currentEje);
+          trackUsage("session_start");
+          return;
+        }
+      } catch {
+        // ignore
+      }
+    }
+    const visited = localStorage.getItem(STORAGE_KEY_VISITED) === "1";
+    if (visited) {
+      setMessages([newMessage("model", SHORT_WELCOME)]);
+      trackUsage("session_start");
+    } else {
+      localStorage.setItem(STORAGE_KEY_VISITED, "1");
+    }
+  }, []);
+
+  /** Persistir conversación para retomar sin login (últimos 30 mensajes). */
+  useEffect(() => {
+    if (typeof window === "undefined" || messages.length === 0) return;
+    const id = setTimeout(() => {
+      const payload = {
+        messages: messages.slice(-30),
+        currentEje,
+        savedAt: Date.now(),
+      };
+      try {
+        localStorage.setItem(STORAGE_KEY_RESTORE, JSON.stringify(payload));
+      } catch {
+        // ignore quota etc.
+      }
+    }, 1200);
+    return () => clearTimeout(id);
+  }, [messages, currentEje]);
 
   /** Al cargar: si la URL tiene ?eje=, usar esa Onda (por enlace o recarga). Luego limpiar la URL. */
   useEffect(() => {
@@ -104,6 +161,7 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
   const [attachmentImage, setAttachmentImage] = useState<string | null>(null);
   const [attachmentAudio, setAttachmentAudio] = useState<string | null>(null);
   const [recording, setRecording] = useState(false);
+  const [audioTooShortHint, setAudioTooShortHint] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const [loading, setLoading] = useState(false);
   const [showPickOndaNotice, setShowPickOndaNotice] = useState(false);
@@ -116,6 +174,19 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
   const messagesInnerRef = useRef<HTMLDivElement>(null);
   const switchHintRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const embedWrapRef = useRef<HTMLDivElement>(null);
+  const ttsAudioContextRef = useRef<AudioContext | null>(null);
+  const ttsSourceRef = useRef<AudioBufferSourceNode | null>(null);
+  const [ttsPlaying, setTtsPlaying] = useState(false);
+
+  /** Desbloquea el audio en Chrome/Mac: debe llamarse de forma síncrona en el gesto del usuario (click). */
+  function getTTSAudioContext(): AudioContext | null {
+    if (typeof window === "undefined") return null;
+    const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    if (!Ctx) return null;
+    if (!ttsAudioContextRef.current) ttsAudioContextRef.current = new Ctx();
+    ttsAudioContextRef.current.resume();
+    return ttsAudioContextRef.current;
+  }
 
   /** Bajar al final: respuestas siempre ABAJO (orden cronológico: usuario → bot), como WhatsApp. */
   const scrollToBottom = useCallback(() => {
@@ -169,6 +240,7 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
   }, [embed, messages.length, currentEje, showMenu, showIASubmenu, input, attachmentImage, attachmentAudio]);
 
   function confirmEjeSwitch(eje: EjeOnda): void {
+    trackUsage("eje_select", eje);
     setCurrentEje(eje);
     if (switchHintRef.current) clearTimeout(switchHintRef.current);
     setJustSwitchedEje(eje);
@@ -209,19 +281,22 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
     ]);
   }
 
-  async function handleSend(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleSend(e: React.FormEvent | null, opts?: { audioOverride?: string }) {
+    e?.preventDefault();
+    const audioOverride = opts?.audioOverride;
     const text = input.trim();
-    const hasContent = text || attachmentImage || attachmentAudio;
+    const hasContent = text || attachmentImage || attachmentAudio || !!audioOverride;
     if (!hasContent || loading) return;
     if (currentEje === null) {
       setShowPickOndaNotice(true);
+      if (audioOverride) setAttachmentAudio(audioOverride);
       return;
     }
+    trackUsage("message_sent", currentEje);
 
     setInput("");
     const imageToSend = attachmentImage;
-    const audioToSend = attachmentAudio;
+    const audioToSend = audioOverride ?? attachmentAudio;
     setAttachmentImage(null);
     setAttachmentAudio(null);
 
@@ -351,6 +426,109 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
     setShowPickOndaNotice(false);
   }
 
+  /** Enviar un mensaje de texto directo (p. ej. chip de pregunta relacionada) sin pasar por el input. */
+  function sendChipText(text: string) {
+    const t = text.trim();
+    if (!t || loading || currentEje === null) return;
+    trackUsage("message_sent", currentEje);
+    const history = messages.map((m) => ({ role: m.role, content: m.content }));
+    const userMsg = newMessage("user", t);
+    const placeholderMsg = newMessage("model", "", { isGenerated: true });
+    setMessages((m) => [...m, userMsg, placeholderMsg]);
+    setLoading(true);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 60_000);
+    (async () => {
+      try {
+        const res = await fetch("/api/chat/stream", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message: t, eje: currentEje, history }),
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          setMessages((m) =>
+            m.map((msg) =>
+              msg.id === placeholderMsg.id ? { ...msg, content: data?.error || ONDA_MICROCOPY.errorGeneric } : msg
+            )
+          );
+          setLoading(false);
+          return;
+        }
+        const reader = res.body?.getReader();
+        const decoder = new TextDecoder();
+        let acc = "";
+        let fullContent = "";
+        let receivedAnyText = false;
+        if (reader) {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            const lines = (acc + decoder.decode(value, { stream: true })).split("\n");
+            acc = lines.pop() ?? "";
+            for (const line of lines) {
+              if (!line.trim()) continue;
+              try {
+                const obj = JSON.parse(line);
+                if (obj.done) break;
+                if (typeof obj.text === "string") {
+                  receivedAnyText = true;
+                  fullContent += obj.text;
+                  setMessages((m) =>
+                    m.map((msg) =>
+                      msg.id === placeholderMsg.id ? { ...msg, content: msg.content + obj.text } : msg
+                    )
+                  );
+                }
+                if (obj.error) {
+                  receivedAnyText = true;
+                  fullContent = obj.error;
+                  setMessages((m) =>
+                    m.map((msg) =>
+                      msg.id === placeholderMsg.id ? { ...msg, content: obj.error } : msg
+                    )
+                  );
+                  break;
+                }
+              } catch {
+                // ignore
+              }
+            }
+          }
+        }
+        if (receivedAnyText && fullContent) {
+          const parsed = parseResponseFormat(fullContent);
+          setMessages((m) =>
+            m.map((msg) =>
+              msg.id === placeholderMsg.id
+                ? { ...msg, content: parsed.text, guideId: parsed.guideId ?? undefined }
+                : msg
+            )
+          );
+        } else if (!receivedAnyText) {
+          setMessages((m) =>
+            m.map((msg) =>
+              msg.id === placeholderMsg.id ? { ...msg, content: ONDA_MICROCOPY.errorGeneric } : msg
+            )
+          );
+        }
+      } catch (err) {
+        const isAbort = err instanceof Error && err.name === "AbortError";
+        setMessages((m) =>
+          m.map((msg) =>
+            msg.id === placeholderMsg.id
+              ? { ...msg, content: isAbort ? ONDA_MICROCOPY.errorTimeout : ONDA_MICROCOPY.errorConnection }
+              : msg
+          )
+        );
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }
+
   function handleImageFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file || !file.type.startsWith("image/")) return;
@@ -398,11 +576,27 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
       recorder.onstop = () => {
         stream.getTracks().forEach((tr) => tr.stop());
         const blob = new Blob(chunks, { type: "audio/webm" });
+        // Evitar enviar audio vacío o demasiado corto (Whisper falla)
+        if (blob.size < 2000) {
+          setRecording(false);
+          setAudioTooShortHint(true);
+          setTimeout(() => setAudioTooShortHint(false), 4000);
+          return;
+        }
         const reader = new FileReader();
-        reader.onload = () => setAttachmentAudio(reader.result as string);
+        reader.onload = () => {
+          const dataUrl = reader.result as string;
+          if (currentEje === null) {
+            setAttachmentAudio(dataUrl);
+            setShowPickOndaNotice(true);
+            return;
+          }
+          handleSend(null, { audioOverride: dataUrl });
+        };
         reader.readAsDataURL(blob);
       };
-      recorder.start();
+      // Pedir datos cada 250 ms para que haya chunks al detener (Chrome)
+      recorder.start(250);
       mediaRecorderRef.current = recorder;
       setRecording(true);
     } catch (err) {
@@ -420,21 +614,63 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
 
   async function playTTS(text: string) {
     if (!text.trim()) return;
+    if (ttsPlaying) return;
+    // Desbloquear audio en Chrome/Mac: tiene que ser síncrono en el click
+    const ctx = getTTSAudioContext();
+    if (!ctx) {
+      console.warn("TTS: AudioContext no disponible");
+      return;
+    }
+    stopTTS();
+    setTtsPlaying(true);
     try {
       const res = await fetch("/api/tts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: text.slice(0, 4096) }),
+        body: JSON.stringify({ text: text.slice(0, 2048) }),
       });
-      if (!res.ok) return;
+      if (!res.ok) {
+        setTtsPlaying(false);
+        return;
+      }
       const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const audio = new Audio(url);
-      audio.onended = () => URL.revokeObjectURL(url);
-      audio.play();
+      const arrayBuffer = await blob.arrayBuffer();
+      ctx.decodeAudioData(
+        arrayBuffer,
+        (buffer) => {
+          const source = ctx.createBufferSource();
+          source.buffer = buffer;
+          source.connect(ctx.destination);
+          ttsSourceRef.current = source;
+          source.onended = () => {
+            ttsSourceRef.current = null;
+            setTtsPlaying(false);
+          };
+          source.start(0);
+        },
+        (err) => {
+          console.warn("TTS decode error", err);
+          setTtsPlaying(false);
+        }
+      );
     } catch (err) {
       console.error("TTS failed", err);
+      ttsSourceRef.current = null;
+      setTtsPlaying(false);
     }
+  }
+
+  function stopTTS() {
+    try {
+      if (ttsSourceRef.current) {
+        ttsSourceRef.current.stop();
+        ttsSourceRef.current.disconnect();
+      }
+    } catch {
+      // ignore if already stopped
+    }
+    ttsSourceRef.current = null;
+    setTtsPlaying(false);
   }
 
   /* ── derived styles from S + overrides ── */
@@ -457,20 +693,12 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
   const ejeColor = currentEje ? neuPickerColorMap[currentEje] : t.neuColors.red;
 
   const lastUserMessage = [...messages].reverse().find((m) => m.role === "user");
+  /** Modo "pega noticia/link y te lo explico" solo en Onda A Mano; en Civita la persona hace preguntas, no envía noticias. */
   const linkHelp = Boolean(
+    currentEje === EjeOnda.A_MANO &&
     lastUserMessage &&
-    (hasUrl(lastUserMessage.content) || lastUserMessage.content.includes("Entender una noticia"))
+    (hasUrl(lastUserMessage.content) || lastUserMessage.content.includes("Entender una noticia") || lastUserMessage.content.includes("noticia o un texto"))
   );
-  /** Regla: no repetir frases. No mostrar el bloque "Pega el texto..." si el bot ya lo dijo en cualquier mensaje del chat. */
-  const botAlreadySaidLinkHelp = messages.some(
-    (m) =>
-      m.role === "model" &&
-      m.content &&
-      (m.content.trim() === ONDA_MICROCOPY.linkHelpBotMessage.trim() ||
-        m.content.trim().startsWith("Pega el texto, el pantallazo"))
-  );
-  const showLinkHelpBlock = linkHelp && currentEje !== null && !botAlreadySaidLinkHelp;
-
   /** Mismo shell en local y en embed (Wix): mismo ancho máx, mismo comportamiento. */
   const shellStyle: CSSProperties =
     currentEje === null
@@ -673,7 +901,9 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
                     message={messages[0]}
                     color={ejeColor}
                     compact={compact}
-                    onPlayTTS={undefined}
+                    onPlayTTS={messages[0].content?.trim() ? playTTS : undefined}
+                    onStopTTS={stopTTS}
+                    isTTSPlaying={ttsPlaying}
                     theme={t}
                   />
                 </div>
@@ -692,7 +922,9 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
                 message={msg}
                 color={ejeColor}
                 compact={compact}
-                onPlayTTS={msg.role === "model" && msg.content && msg.isGenerated ? playTTS : undefined}
+                onPlayTTS={msg.role === "model" && msg.content?.trim() ? playTTS : undefined}
+                onStopTTS={stopTTS}
+                isTTSPlaying={ttsPlaying}
                 theme={t}
               />
             </div>
@@ -702,11 +934,36 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
           {loading &&
             !(messages.length > 0 && messages[messages.length - 1].role === "model" && messages[messages.length - 1].content === "") && (
               <div ref={lastBubbleRef} className="bubble-in" style={S.row(false)}>
-                <div style={{ ...S.bubble(false), fontStyle: "italic", color: t.c.muted, animation: "pulse 1.4s ease-in-out infinite" }}>
+                <div style={{ ...S.bubble(false), fontStyle: "italic", color: t.c.ink, opacity: 0.85, animation: "pulse 1.4s ease-in-out infinite" }}>
                   {ONDA_MICROCOPY.typing}
                 </div>
               </div>
             )}
+
+          {/* Píldoras de intuición (Predictive Engine): sugerencias dinámicas por Onda, estilo neumórfico extruido. */}
+          {!loading && currentEje !== null && (() => {
+            const last = messages[messages.length - 1];
+            const hasUserMessage = messages.some((m) => m.role === "user");
+            return hasUserMessage && last?.role === "model" && last?.content?.trim();
+          })() && (() => {
+            const pildoras = PILDORAS_INTUICION[currentEje];
+            const toShow = pildoras.slice(0, 2);
+            return (
+              <div className="bubble-in" style={{ ...S.row(false), flexWrap: "wrap", gap: 10, marginTop: 6 }}>
+                {toShow.map((texto) => (
+                  <button
+                    key={texto}
+                    type="button"
+                    onClick={() => sendChipText(texto)}
+                    style={S.pildoraIntuicion}
+                    {...S.lift.pildora}
+                  >
+                    {texto}
+                  </button>
+                ))}
+              </div>
+            );
+          })()}
 
           {/* Pick onda notice */}
           {showPickOndaNotice && (
@@ -762,9 +1019,11 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
                 {opt.label}
               </button>
             ))}
-            <button type="button" className="onda-menu-btn" data-onda-action="close-menu" onClick={() => setShowMenu(false)} style={menuSec} {...S.lift.menu}>
-              💬 Escribir libremente
-            </button>
+            {currentEje === EjeOnda.A_MANO && (
+              <button type="button" className="onda-menu-btn" data-onda-action="close-menu" onClick={() => setShowMenu(false)} style={menuSec} {...S.lift.menu}>
+                ✏️ Escribe lo que quieras
+              </button>
+            )}
             <button type="button" className="onda-menu-btn" data-onda-action="go-inicio" onClick={goToInicio} style={menuSec} title="Salir de esta Onda y elegir otra (A Mano, Civita, Profes)" {...S.lift.menu}>
               🏠 Volver al inicio
             </button>
@@ -885,12 +1144,6 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
               </div>
             </div>
           )}
-          {/* Recordatorio solo si el bot aún no ha dicho "Pega el texto..." en el chat (evita duplicado) */}
-          {showLinkHelpBlock && (
-            <div style={{ marginBottom: 10, fontSize: "1.0625rem", color: t.c.ink, lineHeight: 1.4 }}>
-              {ONDA_MICROCOPY.linkHelpBotMessage}
-            </div>
-          )}
           {/* Volver al menú / Volver al inicio (cuando no estás en el menú) */}
           {currentEje !== null && !showMenu && (
             <div style={{ marginBottom: 10, display: "flex", flexWrap: "wrap", gap: "12px 16px", alignItems: "center" }}>
@@ -932,6 +1185,11 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
               >
                 🏠 Volver al inicio
               </button>
+            </div>
+          )}
+          {audioTooShortHint && (
+            <div style={{ marginBottom: 8, fontSize: "0.875rem", color: t.c.muted }}>
+              Grabá un poco más (al menos 2 segundos) y volvé a intentar.
             </div>
           )}
           {/* Attachment preview */}
@@ -1007,7 +1265,7 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
                 ⏹ Detener
               </button>
             ) : (
-              <button type="button" onClick={startRecording} disabled={loading} style={iconStyle} title="Grabar voz">
+              <button type="button" onClick={startRecording} disabled={loading} style={iconStyle} title="Preguntar en voz">
                 🎤
               </button>
             )}

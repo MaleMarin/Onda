@@ -129,6 +129,10 @@ export function createOndaTheme(mode: OndaMode, options?: OndaThemeOptions) {
   const neuPressedColored = (hex: string) =>
     `inset 8px 8px 16px ${hexToRgba(hex, 0.5)}, inset -8px -8px 16px rgba(0,0,0,0.15)`;
 
+  /** Extruido neumórfico: luz arriba-izquierda, sombra abajo-derecha (píldoras de intuición). */
+  const extruded = `-4px -4px 8px ${neu.shadowLight}, 4px 4px 8px ${neu.shadowDark}`;
+  const extrudedHover = `-6px -6px 12px ${neu.shadowLight}, 6px 6px 12px ${neu.shadowDark}`;
+
   const shadow = {
     s1: neuRaisedStrong,
     s2: neuRaised,
@@ -142,6 +146,9 @@ export function createOndaTheme(mode: OndaMode, options?: OndaThemeOptions) {
     neuRaisedExtra,
     neuInset,
     neuInsetSoft,
+    /** Píldoras de intuición: elementos extruidos del fondo (luz arriba-izquierda, sombra abajo-derecha). */
+    extruded,
+    extrudedHover,
     neuRaisedColored,
     neuRaisedColoredHover,
     neuRaisedColoredSolid,

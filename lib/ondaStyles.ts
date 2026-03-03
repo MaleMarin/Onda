@@ -217,6 +217,22 @@ export function ondaStyles(t: OndaTheme) {
       transition: "transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease",
     } satisfies CSSProperties,
 
+    /** Píldoras de intuición: elementos extruidos del fondo (luz arriba-izquierda, sombra abajo-derecha). */
+    pildoraIntuicion: {
+      display: "inline-flex",
+      alignItems: "center",
+      padding: "10px 16px",
+      borderRadius: 18,
+      border: `1px solid ${glassBorderSoft}`,
+      background: t.glass.bg,
+      color: t.c.ink,
+      fontSize: "0.9375rem",
+      fontWeight: 600,
+      cursor: "pointer",
+      boxShadow: t.shadow.extruded,
+      transition: "transform 0.2s ease, box-shadow 0.2s ease",
+    } satisfies CSSProperties,
+
     /** Área inferior (composer): neumorphism, sin franja gris debajo del input. */
     composer: {
       background: "#ffffff",
@@ -319,6 +335,8 @@ export function ondaStyles(t: OndaTheme) {
     tab: (active: boolean): LiftBind =>
       liftHandlers(active ? neuInsetSoft : neuRaised, neuRaisedStrong),
     tts: liftHandlers(neuRaised, neuRaisedStrong),
+    /** Píldoras de intuición: hover extruido (más relieve). */
+    pildora: liftHandlers(t.shadow.extruded, t.shadow.extrudedHover),
   };
 
   return { ...S, lift };

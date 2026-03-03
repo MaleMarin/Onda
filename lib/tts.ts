@@ -1,6 +1,7 @@
 import OpenAI from "openai";
 
-const MAX_TEXT_LENGTH = 4096;
+/** Máximo de caracteres para TTS: menos texto = respuesta más rápida. */
+const MAX_TEXT_LENGTH = 2048;
 
 function getOpenAI(): OpenAI {
   const key = process.env.OPENAI_API_KEY;
@@ -10,13 +11,14 @@ function getOpenAI(): OpenAI {
 
 /**
  * Genera audio (MP3) a partir de texto. Reutilizable en web (/api/tts) y en WhatsApp.
+ * Usa tts-1 para menor latencia (más rápido que tts-1-hd).
  */
 export async function generateSpeech(text: string): Promise<Buffer> {
   const toSpeak = text.trim().slice(0, MAX_TEXT_LENGTH);
   if (!toSpeak) throw new Error("Text is required for TTS.");
   const openai = getOpenAI();
   const speech = await openai.audio.speech.create({
-    model: "gpt-4o-mini-tts",
+    model: "tts-1",
     voice: "alloy",
     input: toSpeak,
   });

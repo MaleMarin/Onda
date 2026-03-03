@@ -85,9 +85,13 @@ export async function POST(req: Request) {
         const transcribed = await transcribeAudio(audio);
         message = message ? `${message}\n\n[Voz transcrita]: ${transcribed}` : transcribed;
       } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
         console.error("[chat/stream] transcribe", err);
+        const userMessage = msg.includes("muy corto")
+          ? "El audio es muy corto. Grabá al menos un par de segundos y probá de nuevo."
+          : "No pude transcribir el audio. Probá con otro formato o envíalo por texto.";
         return Response.json(
-          { error: "No pude transcribir el audio. Probá con otro formato o envíalo por texto." },
+          { error: userMessage },
           { status: 400 }
         );
       }
