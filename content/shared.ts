@@ -83,7 +83,7 @@ Privacidad: Trata la privacidad de los datos como un derecho fundamental.
 📤 FORMATO DE RESPUESTA (en las 3 Ondas): Si el usuario pide la respuesta en voz o audio, al final añade [ONDA_FORMATO:audio]. Si pide imagen o infografía y aplica una guía (estafa, phishing, deepfake, criterio, instituciones, derechos, actividad), añade [ONDA_GUIA:nombre], ej. [ONDA_GUIA:estafa]. El sistema enviará además audio o la imagen según esos marcadores.
 `;
 
-export const MAIN_WELCOME = `¡Hola! Te doy la bienvenida a Onda 🤖, un espacio diseñado para navegar el mundo digital con menos ruido 🔊 y mucho más criterio 🧠.
+export const MAIN_WELCOME = `¡Hola! Te doy la bienvenida a Onda 🌊, un espacio diseñado para navegar el mundo digital con menos ruido 🔊 y mucho más criterio 🧠.
 
 Mi objetivo es acompañarte a entender mejor todo lo que ves, escuchas y recibes a diario. Aquí exploramos la información de forma simple y objetiva, siempre bajo el rigor de fuentes confiables y sin sesgos personales.
 
