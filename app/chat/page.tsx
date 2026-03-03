@@ -470,9 +470,9 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
   );
   const showLinkHelpBlock = linkHelp && currentEje !== null && !botAlreadySaidLinkHelp;
 
-  const shellStyle: CSSProperties = isEmbed
-    ? { ...S.shell, maxWidth: "100%", flex: "0 0 auto", minHeight: 520, borderRadius: t.r.lg, display: "flex", flexDirection: "column", overflow: "hidden" }
-    : currentEje === null
+  /** Mismo shell en local y en embed (Wix): mismo ancho máx, mismo comportamiento. */
+  const shellStyle: CSSProperties =
+    currentEje === null
       ? { ...S.shell, flex: "0 0 auto", minHeight: 420, maxHeight: "calc(100dvh - 48px)", display: "flex", flexDirection: "column", overflow: "hidden" }
       : S.shell;
 
@@ -500,11 +500,7 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
     ? { ...S.header, padding: "10px 14px" }
     : S.header;
 
-  const chatBody: CSSProperties = {
-    ...S.chat,
-    overflow: "hidden",
-    ...(isEmbed ? { flex: "0 0 auto", minHeight: 480 } : {}),
-  };
+  const chatBody: CSSProperties = { ...S.chat, overflow: "hidden" };
 
   const msgsArea: CSSProperties = {
     ...S.messages,
