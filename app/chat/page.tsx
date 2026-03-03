@@ -5,7 +5,7 @@
  * No tocar: onClick/onSubmit en botones y form; no añadir pointer-events:none ni overlays sobre .onda-shell.
  */
 
-import { useState, useRef, useEffect, useMemo, type CSSProperties } from "react";
+import { useState, useRef, useEffect, useLayoutEffect, useMemo, useCallback, type CSSProperties } from "react";
 import {
   MAIN_WELCOME,
   EJE_CONFIGS,
@@ -112,12 +112,46 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
   const [showIASubmenu, setShowIASubmenu] = useState(false);
   const [inputFocused, setInputFocused] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const lastBubbleRef = useRef<HTMLDivElement>(null);
+  const messagesInnerRef = useRef<HTMLDivElement>(null);
   const switchHintRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const embedWrapRef = useRef<HTMLDivElement>(null);
 
+  /** Bajar al final: respuestas siempre ABAJO (orden cronológico: usuario → bot), como WhatsApp. */
+  const scrollToBottom = useCallback(() => {
+    const scrollEl = messagesInnerRef.current;
+    if (scrollEl) {
+      const max = scrollEl.scrollHeight - scrollEl.clientHeight;
+      scrollEl.scrollTop = max > 0 ? max : scrollEl.scrollHeight;
+    }
+    lastBubbleRef.current?.scrollIntoView({ block: "end", behavior: "auto", inline: "nearest" });
+  }, []);
+
+  useLayoutEffect(() => {
+    scrollToBottom();
+  }, [messages, loading, scrollToBottom]);
+
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+    scrollToBottom();
+    const t1 = requestAnimationFrame(scrollToBottom);
+    const t2 = setTimeout(scrollToBottom, 30);
+    const t3 = setTimeout(scrollToBottom, 120);
+    const t4 = setTimeout(scrollToBottom, 300);
+    return () => {
+      cancelAnimationFrame(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+      clearTimeout(t4);
+    };
+  }, [messages, loading, scrollToBottom]);
+
+  useEffect(() => {
+    const scrollEl = messagesInnerRef.current;
+    if (!scrollEl) return;
+    const ro = new ResizeObserver(scrollToBottom);
+    ro.observe(scrollEl);
+    return () => ro.disconnect();
+  }, [scrollToBottom]);
 
   /** En embed: notificar al padre (Wix) la altura real para que el iframe se redimensione sin espacio vacío. */
   useEffect(() => {
@@ -425,20 +459,40 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
     lastUserMessage &&
     (hasUrl(lastUserMessage.content) || lastUserMessage.content.includes("Entender una noticia"))
   );
+  /** Regla: no repetir frases. No mostrar el bloque "Pega el texto..." si el bot ya lo dijo en cualquier mensaje del chat. */
+  const botAlreadySaidLinkHelp = messages.some(
+    (m) =>
+      m.role === "model" &&
+      m.content &&
+      (m.content.trim() === ONDA_MICROCOPY.linkHelpBotMessage.trim() ||
+        m.content.trim().startsWith("Pega el texto, el pantallazo"))
+  );
+  const showLinkHelpBlock = linkHelp && currentEje !== null && !botAlreadySaidLinkHelp;
 
   const shellStyle: CSSProperties = isEmbed
     ? { ...S.shell, maxWidth: "100%", flex: "0 0 auto", minHeight: 520, borderRadius: t.r.lg, display: "flex", flexDirection: "column", overflow: "hidden" }
     : currentEje === null
-      ? { ...S.shell, flex: "0 0 auto", minHeight: 420 }
+      ? { ...S.shell, flex: "0 0 auto", minHeight: 420, maxHeight: "calc(100dvh - 48px)", display: "flex", flexDirection: "column", overflow: "hidden" }
       : S.shell;
 
+  /** En embed (Wix, etc.): mismo fondo y layout que en local para que se vea idéntico. */
   const embedWrap: CSSProperties | undefined = isEmbed
-    ? { width: "100%", height: "auto", minHeight: 520, display: "flex", flexDirection: "column", padding: 0, background: "transparent", overflow: "hidden", boxSizing: "border-box" }
+    ? {
+        ...S.page,
+        width: "100%",
+        height: "auto",
+        minHeight: "100dvh",
+        padding: "24px 20px",
+        background: t.grad.pageBg,
+        overflow: "hidden",
+        boxSizing: "border-box",
+      }
     : undefined;
 
   const pageStyle: CSSProperties = {
     ...S.page,
-    ...(currentEje === null ? { justifyContent: "center", alignItems: "center" } : {}),
+    /* Con onda sin elegir: shell arriba (flex-start) para que el header se vea siempre, no centrado. */
+    ...(currentEje === null ? { justifyContent: "flex-start", alignItems: "center" } : {}),
   };
 
   const headerStyle: CSSProperties = compact
@@ -461,14 +515,17 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
     flexDirection: "column",
   };
 
+  /** Contenedor de mensajes: flujo estricto hacia abajo (arriba = viejo, abajo = nuevo), como WhatsApp. */
   const msgsInner: CSSProperties = {
     flex: 1,
     minHeight: 0,
     overflowY: "auto",
     overflowX: "hidden",
+    overflowAnchor: "none",
     display: "flex",
     flexDirection: "column",
-    justifyContent: currentEje === null ? "flex-start" : "flex-end",
+    justifyContent: "flex-start",
+    alignContent: "flex-start",
     gap: compact ? 6 : 8,
     padding: currentEje === null ? "8px 14px 0 14px" : "8px 14px 0 14px",
   };
@@ -602,13 +659,14 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
 
   const content = (
     <div className="onda-shell" style={shellStyle}>
-      {/* Header */}
-      <div style={headerStyle}>
+      {/* Header: logo, nombre y badge (parte de arriba del bot). */}
+      <div style={{ ...headerStyle, flexShrink: 0 }}>
         <div style={S.titleWrap}>
           <img src="/logo-onda.png" alt="ONDA" width={28} height={28} style={{ display: "block", objectFit: "contain" }} />
           <div style={{ fontWeight: 700, fontSize: compact ? "1.0625rem" : "1.25rem", letterSpacing: ".04em", color: t.c.ink }}>
             ONDA
           </div>
+          <div style={S.titleBadge} title="Onda activa" aria-hidden />
         </div>
       </div>
 
@@ -616,7 +674,7 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
       <div style={chatBody}>
         {/* Messages */}
         <div className="onda-messages" style={msgsArea}>
-          <div className="onda-messages-inner" style={msgsInner}>
+          <div ref={messagesInnerRef} className="onda-messages-inner" style={msgsInner}>
           {currentEje === null ? (
             <>
               {messages.length > 0 && (
@@ -637,8 +695,13 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
             </>
           ) : (
             <>
-          {messages.map((msg) => (
-            <div key={msg.id} className="bubble-in" style={S.row(msg.role === "user")}>
+          {messages.map((msg, idx) => (
+            <div
+              key={msg.id}
+              ref={idx === messages.length - 1 ? lastBubbleRef : undefined}
+              className="bubble-in"
+              style={S.row(msg.role === "user")}
+            >
               <ChatBubble
                 message={msg}
                 color={ejeColor}
@@ -649,10 +712,10 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
             </div>
           ))}
 
-          {/* Loading */}
+          {/* Loading: "Escribiendo..." siempre abajo para que se vea debajo del mensaje de bienvenida */}
           {loading &&
             !(messages.length > 0 && messages[messages.length - 1].role === "model" && messages[messages.length - 1].content === "") && (
-              <div className="bubble-in" style={S.row(false)}>
+              <div ref={lastBubbleRef} className="bubble-in" style={S.row(false)}>
                 <div style={{ ...S.bubble(false), fontStyle: "italic", color: t.c.muted, animation: "pulse 1.4s ease-in-out infinite" }}>
                   {ONDA_MICROCOPY.typing}
                 </div>
@@ -836,8 +899,8 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
               </div>
             </div>
           )}
-          {/* Modo link/noticia: mensaje del bot sin lenguaje de audio */}
-          {linkHelp && currentEje !== null && (
+          {/* Recordatorio solo si el bot aún no ha dicho "Pega el texto..." en el chat (evita duplicado) */}
+          {showLinkHelpBlock && (
             <div style={{ marginBottom: 10, fontSize: "1.0625rem", color: t.c.ink, lineHeight: 1.4 }}>
               {ONDA_MICROCOPY.linkHelpBotMessage}
             </div>
