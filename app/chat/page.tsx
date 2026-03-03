@@ -477,25 +477,14 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
       ? { ...S.shell, flex: "0 0 auto", minHeight: 420, maxHeight: "calc(100dvh - 48px)", display: "flex", flexDirection: "column", overflow: "hidden" }
       : S.shell;
 
-  /** En embed (Wix, etc.): mismo fondo y layout que en local para que se vea idéntico. */
-  const embedWrap: CSSProperties | undefined = isEmbed
-    ? {
-        ...S.page,
-        width: "100%",
-        height: "auto",
-        minHeight: "100dvh",
-        padding: "24px 20px",
-        background: t.grad.pageBg,
-        overflow: "hidden",
-        boxSizing: "border-box",
-      }
-    : undefined;
-
   const pageStyle: CSSProperties = {
     ...S.page,
     /* Con onda sin elegir: shell arriba (flex-start) para que el header se vea siempre, no centrado. */
     ...(currentEje === null ? { justifyContent: "flex-start", alignItems: "center" } : {}),
   };
+
+  /** En embed (Wix): mismo wrapper que la página normal para que se vea idéntico a local. */
+  const embedWrap: CSSProperties | undefined = isEmbed ? pageStyle : undefined;
 
   const headerStyle: CSSProperties = compact
     ? { ...S.header, padding: "10px 14px" }
