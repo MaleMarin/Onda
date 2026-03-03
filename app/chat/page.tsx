@@ -113,10 +113,26 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
   const [inputFocused, setInputFocused] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const switchHintRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const embedWrapRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  /** En embed: notificar al padre (Wix) la altura real para que el iframe se redimensione sin espacio vacío. */
+  useEffect(() => {
+    if (!embed) return;
+    const el = embedWrapRef.current;
+    if (!el || typeof window === "undefined") return;
+    const sendHeight = () => {
+      const h = el.scrollHeight;
+      if (h > 0) window.parent.postMessage({ height: h }, "*");
+    };
+    sendHeight();
+    const ro = new ResizeObserver(sendHeight);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [embed, messages.length, currentEje, showMenu, showIASubmenu, input, attachmentImage, attachmentAudio]);
 
   function confirmEjeSwitch(eje: EjeOnda): void {
     setCurrentEje(eje);
@@ -411,13 +427,13 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
   );
 
   const shellStyle: CSSProperties = isEmbed
-    ? { ...S.shell, maxWidth: "100%", flex: 1, minHeight: 0, borderRadius: t.r.lg }
+    ? { ...S.shell, maxWidth: "100%", flex: "0 0 auto", minHeight: 520, borderRadius: t.r.lg, display: "flex", flexDirection: "column", overflow: "hidden" }
     : currentEje === null
       ? { ...S.shell, flex: "0 0 auto", minHeight: 420 }
       : S.shell;
 
   const embedWrap: CSSProperties | undefined = isEmbed
-    ? { width: "100%", height: "100%", minHeight: 320, display: "flex", flexDirection: "column", padding: 0, background: "transparent", overflow: "hidden" }
+    ? { width: "100%", height: "auto", minHeight: 520, display: "flex", flexDirection: "column", padding: 0, background: "transparent", overflow: "hidden", boxSizing: "border-box" }
     : undefined;
 
   const pageStyle: CSSProperties = {
@@ -432,13 +448,13 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
   const chatBody: CSSProperties = {
     ...S.chat,
     overflow: "hidden",
-    ...(currentEje === null ? { flex: "0 0 auto" } : {}),
+    ...(isEmbed ? { flex: "0 0 auto", minHeight: 480 } : {}),
   };
 
   const msgsArea: CSSProperties = {
     ...S.messages,
     padding: 0,
-    flex: currentEje === null ? "0 0 auto" : 1,
+    flex: 1,
     minHeight: 0,
     overflow: "hidden",
     display: "flex",
@@ -448,7 +464,7 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
   const msgsInner: CSSProperties = {
     flex: 1,
     minHeight: 0,
-    overflowY: currentEje === null ? "hidden" : "auto",
+    overflowY: "auto",
     overflowX: "hidden",
     display: "flex",
     flexDirection: "column",
@@ -466,7 +482,7 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
     background: t.c.warnBg,
     border: `1px solid ${t.c.warnBorder}`,
     color: t.c.warnText,
-    fontSize: "0.82rem",
+    fontSize: "0.9375rem",
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
@@ -482,7 +498,7 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
     color: t.c.warnText,
     fontWeight: 600,
     cursor: "pointer",
-    fontSize: "0.72rem",
+    fontSize: "0.875rem",
   };
 
   const menuList: CSSProperties = {
@@ -502,7 +518,7 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
     border: `2px solid ${t.glass.border}`,
     background: t.glass.bg,
     color: t.c.ink,
-    fontSize: compact ? "0.75rem" : "0.8rem",
+    fontSize: compact ? "0.9375rem" : "1rem",
     fontWeight: 500,
     cursor: disabledCursor,
     opacity: disabledOpacity,
@@ -519,7 +535,7 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
     border: `2px solid ${t.glass.borderSoft}`,
     background: t.glass.bg,
     color: t.c.muted,
-    fontSize: compact ? "0.7rem" : "0.75rem",
+    fontSize: compact ? "0.875rem" : "1rem",
     cursor: "pointer",
     textAlign: "center",
     width: "100%",
@@ -529,7 +545,7 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
 
   const chipBase: CSSProperties = {
     ...S.chip,
-    ...(compact ? { padding: "6px 10px", fontSize: "0.7rem" } : {}),
+    ...(compact ? { padding: "8px 12px", fontSize: "0.8125rem" } : {}),
     cursor: disabledCursor,
     opacity: disabledOpacity,
     whiteSpace: "nowrap",
@@ -543,7 +559,7 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
     color: t.c.muted,
     borderColor: t.glass.borderSoft,
     background: "rgba(255,255,255,0.06)",
-    ...(compact ? { padding: "6px 10px", fontSize: "0.7rem" } : {}),
+    ...(compact ? { padding: "8px 12px", fontSize: "0.8125rem" } : {}),
   };
 
   const iconStyle: CSSProperties = {
@@ -560,7 +576,7 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
     borderColor: t.c.danger,
     color: "#fff",
     fontWeight: 600,
-    fontSize: "0.78rem",
+    fontSize: "0.875rem",
   };
 
   const hasContent = !!(input.trim() || attachmentImage || attachmentAudio);
@@ -568,7 +584,7 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
 
   const inpStyle: CSSProperties = {
     ...S.input,
-    ...(compact ? { height: 40, fontSize: "0.8rem" } : {}),
+    ...(compact ? { height: 46, fontSize: "1rem" } : {}),
     flex: 1,
     minWidth: 0,
     ...(inputFocused ? { boxShadow: `${t.shadow.neuInsetSoft}, 0 0 0 3px rgba(0,0,0,0.1)` } : {}),
@@ -590,8 +606,8 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
       <div style={headerStyle}>
         <div style={S.titleWrap}>
           <img src="/logo-onda.png" alt="ONDA" width={28} height={28} style={{ display: "block", objectFit: "contain" }} />
-          <div style={{ fontWeight: 700, fontSize: compact ? "0.85rem" : "1rem", letterSpacing: ".04em", color: t.c.ink }}>
-            {isEmbed ? "Chatea con ONDA" : "ONDA"}
+          <div style={{ fontWeight: 700, fontSize: compact ? "1.0625rem" : "1.25rem", letterSpacing: ".04em", color: t.c.ink }}>
+            ONDA
           </div>
         </div>
       </div>
@@ -670,7 +686,7 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
           <>
             <EjeSelector currentEje={currentEje} onSelect={confirmEjeSwitch} compact={compact} theme={t} />
             {justSwitchedEje !== null && (
-              <p style={{ margin: "-2px 0 4px", fontSize: compact ? "0.7rem" : "0.74rem", color: neuPickerColorDarkMap[justSwitchedEje], fontWeight: 600, padding: "0 4px" }}>
+              <p style={{ margin: "-2px 0 4px", fontSize: compact ? "0.8125rem" : "0.875rem", color: neuPickerColorDarkMap[justSwitchedEje], fontWeight: 600, padding: "0 4px" }}>
                 Ahora en {EJE_CONFIGS[justSwitchedEje].name}
               </p>
             )}
@@ -795,7 +811,7 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
                         border: "none",
                         background: neuPickerColorMap[eje],
                         color: "#fff",
-                        fontSize: "0.88rem",
+                        fontSize: "1.0625rem",
                         fontWeight: 700,
                         cursor: "pointer",
                         touchAction: "manipulation",
@@ -811,7 +827,7 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
                       }}
                     >
                       <span className="onda-picker-btn-inner">{config.name}</span>
-                      <span className="onda-picker-btn-inner" style={{ fontSize: "0.74rem", fontWeight: 400, color: "rgba(255,255,255,0.92)" }}>
+                      <span className="onda-picker-btn-inner" style={{ fontSize: "0.875rem", fontWeight: 400, color: "rgba(255,255,255,0.92)" }}>
                         {config.description}
                       </span>
                     </a>
@@ -822,7 +838,7 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
           )}
           {/* Modo link/noticia: mensaje del bot sin lenguaje de audio */}
           {linkHelp && currentEje !== null && (
-            <div style={{ marginBottom: 10, fontSize: "0.85rem", color: t.c.ink, lineHeight: 1.4 }}>
+            <div style={{ marginBottom: 10, fontSize: "1.0625rem", color: t.c.ink, lineHeight: 1.4 }}>
               {ONDA_MICROCOPY.linkHelpBotMessage}
             </div>
           )}
@@ -835,7 +851,7 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
                 onClick={() => { setShowMenu(true); setShowIASubmenu(false); }}
                 title="Ver de nuevo las opciones de esta Onda"
                 style={{
-                  fontSize: "0.8rem",
+                  fontSize: "0.9375rem",
                   color: ejeColor,
                   background: "none",
                   border: "none",
@@ -854,7 +870,7 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
                 onClick={goToInicio}
                 title="Salir de esta Onda y elegir otra (A Mano, Civita, Profes)"
                 style={{
-                  fontSize: "0.8rem",
+                  fontSize: "0.9375rem",
                   color: ejeColor,
                   background: "none",
                   border: "none",
@@ -893,7 +909,7 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
                       background: t.c.muted,
                       color: "#fff",
                       cursor: "pointer",
-                      fontSize: 13,
+                      fontSize: 14,
                       lineHeight: 1,
                       display: "grid",
                       placeItems: "center",
@@ -904,7 +920,7 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
                 </div>
               )}
               {attachmentAudio && (
-                <span style={{ fontSize: "0.74rem", color: t.c.muted, display: "flex", alignItems: "center", gap: 6 }}>
+                <span style={{ fontSize: "0.875rem", color: t.c.muted, display: "flex", alignItems: "center", gap: 6 }}>
                   🎤 Audio listo
                   <button
                     type="button"
@@ -916,7 +932,7 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
                       background: t.isDark ? "rgba(130,150,210,.12)" : "rgba(110,135,190,.10)",
                       color: t.c.muted,
                       cursor: "pointer",
-                      fontSize: "0.68rem",
+                      fontSize: "0.8125rem",
                     }}
                   >
                     Quitar
@@ -993,7 +1009,11 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
   );
 
   if (isEmbed) {
-    return <div className="onda-page-wrap" style={embedWrap}>{content}</div>;
+    return (
+      <div ref={embedWrapRef} className="onda-page-wrap" style={embedWrap}>
+        {content}
+      </div>
+    );
   }
   return <div className="onda-page-wrap" style={pageStyle}>{content}</div>;
 }

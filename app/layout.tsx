@@ -1,9 +1,16 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 
 export const metadata: Metadata = {
   title: "Onda - Asistente Digital Precisar",
   description:
     "Webhook WhatsApp para ONDA. Asistente de Alfabetización Mediática e Informacional (AMI).",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  userScalable: true,
 };
 
 /** Naranja del botón Enviar (neumórfico). Env NEXT_PUBLIC_ONDA_ORANGE o naranja oscuro #C43E00 por defecto. */
@@ -36,13 +43,19 @@ button[data-onda-send]:focus{background:${SEND_ORANGE} !important;color:#fff !im
 .bubble-in{animation:bubbleIn .28s cubic-bezier(.25,.75,.2,1) both}
 .onda-shell input::placeholder{color:#5a5d62;opacity:0.9;font-weight:500;letter-spacing:0.02em}
 .onda-shell *,.onda-shell *:focus,.onda-shell *:focus-visible{outline:none !important}
-.onda-page-wrap{outline:none;position:relative;z-index:0}
+.onda-page-wrap{outline:none;position:relative;z-index:0;font-size:1.125rem}
 /* Área de mensajes: debajo del composer para que los botones reciban clics */
 .onda-messages{min-height:0;display:flex;flex-direction:column;overflow:hidden;position:relative;z-index:1}
 .onda-messages-inner{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;position:relative;z-index:1}
 .onda-messages-inner::-webkit-scrollbar{width:6px}
 .onda-messages-inner::-webkit-scrollbar-track{background:transparent}
 .onda-messages-inner::-webkit-scrollbar-thumb{background:rgba(0,0,0,0.2);border-radius:3px}
+/* Móvil: tipografía legible y zonas táctiles ≥44px */
+@media (max-width:480px){
+  html{font-size:18px}
+  .onda-shell button,.onda-shell [role="button"],.onda-shell label[for]{min-height:44px;min-width:44px}
+  .onda-shell input{min-height:48px;font-size:1rem}
+}
 `;
 
 export default function RootLayout({

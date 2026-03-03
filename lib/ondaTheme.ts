@@ -40,7 +40,7 @@ export const NEU_COLORS = {
 /** Neumorphism 100%. Fondo gris claro; no oscurecer la página. */
 const NEU_LIGHT = {
   bg: "#d2d6dc",
-  surface: "#e0e4e8",
+  surface: "#e0e5ec",
   shadowDark: "rgba(100, 105, 115, 0.8)",
   shadowLight: "rgba(255, 255, 255, 0.99)",
   insetDark: "rgba(100, 105, 115, 0.75)",

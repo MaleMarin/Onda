@@ -71,14 +71,16 @@ export function ondaStyles(t: OndaTheme) {
       boxShadow: neuRaisedStrong,
     } satisfies CSSProperties,
 
+    /** Parte superior: elevada (neumorphism marcado, “sube” sobre el contenido). */
     header: {
       display: "flex",
       alignItems: "center",
       justifyContent: "space-between",
       padding: "20px 24px",
-      ...t.fx.glass,
+      background: t.glass.bg,
+      border: `2px solid ${glassBorder}`,
       borderBottom: `2px solid ${glassBorderSoft}`,
-      boxShadow: neuRaisedStrong,
+      boxShadow: `${t.shadow.neuRaisedExtra}, 0 6px 20px rgba(0,0,0,0.06)`,
       flexShrink: 0,
       transition: "background 0.2s ease, box-shadow 0.2s ease",
       pointerEvents: "auto",
@@ -208,16 +210,16 @@ export function ondaStyles(t: OndaTheme) {
       border: `2px solid ${glassBorder}`,
       background: t.glass.bg,
       color: t.c.ink,
-      fontSize: 13,
+      fontSize: "1rem",
       cursor: "pointer",
       boxShadow: neuRaisedStrong,
       transition: "transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease",
     } satisfies CSSProperties,
 
-    /** Área gris inferior: 100% neumorphism — bandeja hundida (inset) + borde y relieve muy marcados. */
+    /** Área inferior (composer): neumorphism, sin franja gris debajo del input. */
     composer: {
       background: t.glass.bg,
-      padding: "22px 24px 26px",
+      padding: "22px 24px 12px",
       border: `2px solid ${glassBorder}`,
       borderTop: `3px solid ${glassBorderSoft}`,
       borderRadius: "24px 24px 0 0",
@@ -255,6 +257,7 @@ export function ondaStyles(t: OndaTheme) {
       border: `2px solid ${t.glass.borderSoft}`,
       background: t.glass.bg,
       color: t.c.ink,
+      fontSize: "1.0625rem",
       boxShadow: neuInset,
       transition: "border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease",
       outline: "none",
@@ -272,6 +275,7 @@ export function ondaStyles(t: OndaTheme) {
       borderRadius: 16,
       border: "none",
       color: "#fff",
+      fontSize: "1.0625rem",
       fontWeight: 700,
       letterSpacing: ".04em",
       cursor: "pointer",

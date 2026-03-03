@@ -28,7 +28,7 @@ export function EjeSelector({ currentEje, onSelect, compact, theme }: EjeSelecto
             onClick={() => onSelect(eje)}
             style={{
               ...S.tab(isActive),
-              ...(compact ? { padding: "8px 6px", fontSize: "0.7rem" } : {}),
+              ...(compact ? { padding: "10px 8px", fontSize: "0.9375rem" } : {}),
             }}
           >
             <span>{shortName}</span>

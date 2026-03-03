@@ -113,7 +113,7 @@ export function ChatBubble({ message, color, compact, onPlayTTS, theme: t, fillH
   }, [message.content]);
 
   const padding = compact ? "10px 14px" : "12px 16px";
-  const fontSize = compact ? "0.8125rem" : "0.875rem";
+  const fontSize = compact ? "1rem" : "1.125rem";
 
   const wrapStyle: CSSProperties = {
     display: "flex",
@@ -137,7 +137,7 @@ export function ChatBubble({ message, color, compact, onPlayTTS, theme: t, fillH
     ...bubbleBase,
     background: t.glass.bg,
     border: `2px solid ${t.glass.border}`,
-    boxShadow: t.shadow.neuRaisedStrong,
+    boxShadow: t.shadow.neuRaisedExtra,
     color: t.c.ink,
     borderRadius: t.isDark ? 6 : "0 22px 22px 22px",
     borderTopLeftRadius: t.isDark ? 6 : 0,
@@ -175,7 +175,7 @@ export function ChatBubble({ message, color, compact, onPlayTTS, theme: t, fillH
     borderRadius: t.r.sm,
     border: `1px solid ${t.c.border}`,
     background: t.isDark ? "rgba(255,255,255,.08)" : t.glass.bg,
-    fontSize: "0.72rem",
+    fontSize: "0.9375rem",
     color: t.c.muted,
     cursor: "pointer",
     display: "inline-flex",
@@ -184,7 +184,7 @@ export function ChatBubble({ message, color, compact, onPlayTTS, theme: t, fillH
   };
 
   const metaStyle: CSSProperties = {
-    fontSize: 10,
+    fontSize: "0.875rem",
     color: t.c.darkGray,
     marginTop: 3,
     paddingLeft: 4,
@@ -202,7 +202,7 @@ export function ChatBubble({ message, color, compact, onPlayTTS, theme: t, fillH
     gap: 8,
   };
   const copyDownloadHint: CSSProperties = {
-    fontSize: "0.75rem",
+    fontSize: "0.9375rem",
     color: t.c.muted,
     marginRight: 4,
   };
@@ -212,7 +212,7 @@ export function ChatBubble({ message, color, compact, onPlayTTS, theme: t, fillH
     border: `1px solid ${t.c.border}`,
     background: t.isDark ? "rgba(255,255,255,.08)" : t.glass.bg,
     color: t.c.ink,
-    fontSize: "0.75rem",
+    fontSize: "0.9375rem",
     fontWeight: 600,
     cursor: "pointer",
   };
