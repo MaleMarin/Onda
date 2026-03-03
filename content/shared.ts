@@ -137,28 +137,26 @@ export const PREGUNTAS_RELACIONADAS = [
  * Píldoras de Intuición (Matriz de Pruebas): incluyen frases de la Matriz de Escenarios
  * para validar intuición global y efecto neumórfico en UI.
  */
+/** Fallback cuando el modelo no devuelve [ONDA_SUGERENCIAS]. Fraseo siempre como si la usuaria preguntara (no "¿Deseas saber...?"). */
 export const PILDORAS_INTUICION: Record<EjeOnda, string[]> = {
   [EjeOnda.A_MANO]: [
-    "¿Quieres ver cómo se está detectando esta misma campaña de desinformación en otros continentes hoy?",
-    "¿Quieres ver cómo se originó esta narrativa a nivel global?",
-    "¿Te interesa saber qué intereses económicos hay detrás de esta fuente?",
+    "¿Cómo se está detectando esta campaña de desinformación en otros continentes?",
+    "¿Qué intereses económicos hay detrás de esta fuente?",
     "¿Cómo se ha movido este tipo de rumor en otros países?",
     "¿Cómo identifico patrones de desinformación en contextos electorales?",
   ],
   [EjeOnda.CIVITA]: [
-    "¿Te gustaría entender cómo la tensión en el Estrecho de Ormuz influye directamente en el transporte público de tu región?",
-    "¿Deseas saber qué países no reconocen su jurisdicción y por qué esto es clave para la geopolítica actual?",
-    "¿Cómo se compara esta ley con la de países líderes en este índice?",
-    "¿Qué impacto geopolítico tiene esta decisión en el mercado internacional?",
+    "¿Cómo funciona el Congreso en mi país?",
+    "¿Qué hace un diputado o senador?",
+    "¿Qué países no reconocen la jurisdicción de la CPI y por qué es clave para la geopolítica?",
     "¿Qué dice la ONU o la OCDE sobre mejores prácticas en este tema?",
-    "¿Cómo se resuelve este proceso en el Parlamento Europeo u otras democracias?",
+    "¿Cómo se compara esta ley con la de otros países?",
   ],
   [EjeOnda.PROFES]: [
-    "¿Quieres conocer el protocolo que están usando en los colegios de Singapur para evitar el plagio con IA?",
-    "¿Deseas conocer los protocolos de seguridad digital para menores recomendados por la UNESCO?",
-    "¿Buscas ejemplos de éxito de esta tecnología en otros sistemas educativos?",
-    "¿Te interesa una guía de derechos digitales bajo estándares de la Unión Europea?",
+    "¿Qué protocolo usan en Singapur para evitar el plagio con IA?",
+    "¿Qué protocolos de seguridad digital para menores recomienda la UNESCO?",
     "¿Cómo abordan este tema en Finlandia o Corea del Sur?",
+    "¿Dónde encuentro una guía de derechos digitales con estándares de la UE?",
   ],
 };
 
@@ -253,7 +251,15 @@ export const REGLA_VALIDACION_RIGOR_FUENTES = `
 export const REGLA_VALIDACION_NEUTRALIDAD = `
 🛑 VALIDACIÓN DE NEUTRALIDAD (Fundación Precisar):
 Las sugerencias de "intuición global" (píldoras de seguimiento) deben ser estrictamente informativas y neutras. PROHIBIDO incluir en ellas: juicios de valor, opiniones personales, posturas a favor o en contra de gobiernos o partidos, adjetivos que descalifiquen ("terrible", "excelente", "peligroso" aplicado a países o políticas). Formulación correcta: ofrecer contexto, comparaciones o fuentes; que la persona forme su propia opinión.
-`;
+`.trim();
+
+/** Regla obligatoria: preguntas de seguimiento relacionadas y redactadas como si la persona preguntara. */
+export const REGLA_PREGUNTAS_SEGUIMIENTO = `
+🛑 PREGUNTAS DE SEGUIMIENTO (obligatoria)
+(1) **Relación:** Las preguntas que sugieras después de una explicación deben estar **directamente relacionadas** con lo que la persona acaba de preguntar. PROHIBIDO sugerir preguntas de otro tema (ej.: si preguntó por el Congreso de Haití, no sugieras inflación ni derechos digitales).
+(2) **Fraseo como la persona:** Redacta las sugerencias **como si la persona preguntara**, no como si el bot ofreciera. CORRECTO: "¿Cómo funciona el Congreso en mi país?", "¿Qué hace un diputado?". INCORRECTO: "¿Deseas saber qué países no reconocen la CPI?", "¿Te gustaría que te explique...?". Al hacer clic, debe sonar a pregunta de la usuaria.
+Si ofreces 2 a 4 preguntas de seguimiento, añade al final una línea con formato [ONDA_SUGERENCIAS: pregunta1 | pregunta2 | pregunta3] (separadas por " | ", sin usar " | " dentro del texto). Ejemplo: [ONDA_SUGERENCIAS: ¿Cómo funciona el Congreso en mi país? | ¿Qué hace un diputado o senador?]
+`.trim();
 
 /**
  * Frases de blindaje por Onda: usar cuando la consulta sea política, provocación/insulto o falte información verificada.

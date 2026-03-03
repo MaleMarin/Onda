@@ -84,6 +84,8 @@ const GUIDE_IDS_SET = new Set(GUIDE_IDS);
 
 const FORMATO_AUDIO_REGEX = /\[ONDA_FORMATO:audio\]/gi;
 const GUIA_REGEX = /\[ONDA_GUIA:([a-z0-9_-]+)\]/gi;
+/** [ONDA_SUGERENCIAS: pregunta1 | pregunta2 | pregunta3] → preguntas relacionadas, fraseo como usuario */
+const SUGERENCIAS_REGEX = /\[ONDA_SUGERENCIAS:\s*([^\]]+)\]/gi;
 
 export interface ParsedResponse {
   /** Texto limpio (sin marcadores) para mostrar y para TTS */
@@ -92,6 +94,8 @@ export interface ParsedResponse {
   sendAudio: boolean;
   /** Si el modelo indicó una guía, el id (solo si está en GUIDE_IDS) */
   guideId: string | null;
+  /** 2–4 preguntas de seguimiento relacionadas, redactadas como la usuaria preguntaría */
+  suggestions: string[];
 }
 
 /**
@@ -102,6 +106,7 @@ export function parseResponseFormat(reply: string): ParsedResponse {
   let text = reply || "";
   let sendAudio = false;
   let guideId: string | null = null;
+  let suggestions: string[] = [];
 
   text = text.replace(FORMATO_AUDIO_REGEX, () => {
     sendAudio = true;
@@ -114,7 +119,12 @@ export function parseResponseFormat(reply: string): ParsedResponse {
     }
     return "";
   });
+  text = text.replace(SUGERENCIAS_REGEX, (_, inner: string) => {
+    const parts = inner.split(/\s*\|\s*/).map((p: string) => p.trim()).filter(Boolean);
+    if (parts.length >= 1 && parts.length <= 6) suggestions = parts;
+    return "";
+  });
 
   text = text.replace(/\n{3,}/g, "\n\n").trim();
-  return { text, sendAudio, guideId };
+  return { text, sendAudio, guideId, suggestions };
 }

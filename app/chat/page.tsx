@@ -389,7 +389,12 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
         setMessages((m) =>
           m.map((msg) =>
             msg.id === placeholderMsg.id
-              ? { ...msg, content: parsed.text, guideId: parsed.guideId ?? undefined }
+              ? {
+                  ...msg,
+                  content: parsed.text,
+                  guideId: parsed.guideId ?? undefined,
+                  suggestions: parsed.suggestions?.length ? parsed.suggestions : undefined,
+                }
               : msg
           )
         );
@@ -940,15 +945,17 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
               </div>
             )}
 
-          {/* Píldoras de intuición (Predictive Engine): sugerencias dinámicas por Onda, estilo neumórfico extruido. */}
+          {/* Preguntas de seguimiento: si el modelo devolvió sugerencias relacionadas, se muestran; si no, fallback a píldoras genéricas (fraseo como usuario). */}
           {!loading && currentEje !== null && (() => {
             const last = messages[messages.length - 1];
             const hasUserMessage = messages.some((m) => m.role === "user");
             return hasUserMessage && last?.role === "model" && last?.content?.trim();
           })() && (() => {
-            const pildoras = PILDORAS_INTUICION[currentEje];
-            const toShow = pildoras.slice(0, 2);
-            return (
+            const last = messages[messages.length - 1];
+            const toShow = (last?.role === "model" && last?.suggestions?.length)
+              ? last.suggestions.slice(0, 4)
+              : PILDORAS_INTUICION[currentEje].slice(0, 2);
+            return toShow.length > 0 ? (
               <div className="bubble-in" style={{ ...S.row(false), flexWrap: "wrap", gap: 10, marginTop: 6 }}>
                 {toShow.map((texto) => (
                   <button
@@ -962,7 +969,7 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
                   </button>
                 ))}
               </div>
-            );
+            ) : null;
           })()}
 
           {/* Pick onda notice */}

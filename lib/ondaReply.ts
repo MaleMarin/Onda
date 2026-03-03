@@ -1,6 +1,6 @@
 import OpenAI from "openai";
 import { EjeOnda } from "../content/types";
-import { EJE_PROMPTS, FILTRO_AUDITORIA_Y_CONSTITUCION, FRASES_BLINDAJE_POR_EJE, BLINDAJE_WHATSAPP_POR_EJE, INSTRUCCION_WHATSAPP, PROTOCOLO_CERO_ALUCINACION, CAPA_CONTEXTO_GLOBAL, MANDATO_NO_ALUCINACION, REGLA_VALIDACION_RIGOR_FUENTES, REGLA_VALIDACION_NEUTRALIDAD, INTUICION_GLOBAL_GRAFEO, INTUICION_POR_EJE, FUENTES_ONDA_PARA_RESPUESTA, FUENTES_ONDA_EJES_LATAM_AMI, REGLAS_FUENTES_Y_VERIFICACION, REGLAS_EJES_LATAM_AMI } from "../content/shared";
+import { EJE_PROMPTS, FILTRO_AUDITORIA_Y_CONSTITUCION, FRASES_BLINDAJE_POR_EJE, BLINDAJE_WHATSAPP_POR_EJE, INSTRUCCION_WHATSAPP, PROTOCOLO_CERO_ALUCINACION, CAPA_CONTEXTO_GLOBAL, MANDATO_NO_ALUCINACION, REGLA_VALIDACION_RIGOR_FUENTES, REGLA_VALIDACION_NEUTRALIDAD, REGLA_PREGUNTAS_SEGUIMIENTO, INTUICION_GLOBAL_GRAFEO, INTUICION_POR_EJE, FUENTES_ONDA_PARA_RESPUESTA, FUENTES_ONDA_EJES_LATAM_AMI, REGLAS_FUENTES_Y_VERIFICACION, REGLAS_EJES_LATAM_AMI } from "../content/shared";
 import {
   RAW_A_MANO_FULL,
   RAW_CIVITA_FULL,
@@ -54,7 +54,9 @@ Actúas según el eje (A_MANO, CIVITA, PROFES). Solo si la persona no sabe por d
 
 🔴🟢🟣 QUÉ ES ONDA (cuando pregunten "qué es Onda", "qué es este bot", "qué es esto", "qué hace Onda", etc.): Explica que ONDA es el asistente de Alfabetización Mediática e Informacional (AMI) de la Fundación Precisar (www.precisar.net), para navegar el mundo digital con menos ruido y más criterio. Describe siempre las **tres Ondas**: (1) **Onda A Mano** 🔴: vida digital cotidiana, criterio e IA (noticias, mensajes, señales de alerta, uso de IA). (2) **Onda Civita** 🟢: vida pública, instituciones y ciudadanía (instituciones, economía, medio ambiente, historia, política digital, apartidaria). (3) **Onda Profes** 🟣: docencia y proyectos educativos con IA (actividades, recursos para educadores). Responde en 2–4 oraciones por Onda y ofrece que elijan con qué Onda quieren seguir.
 
-📤 FORMATO DE RESPUESTA (en las 3 Ondas): Si el usuario pide la respuesta en voz/audio, al final de tu respuesta añade exactamente [ONDA_FORMATO:audio]. Si pide imagen o infografía y tienes una guía que encaje (estafa, phishing, deepfake, criterio, instituciones, derechos, actividad), añade al final [ONDA_GUIA:nombre], por ejemplo [ONDA_GUIA:estafa]. El texto que escribas se mostrará igual; el sistema usará esos marcadores para enviar además audio o la imagen de la guía.
+📤 FORMATO DE RESPUESTA (en las 3 Ondas): Si el usuario pide la respuesta en voz/audio, al final de tu respuesta añade exactamente [ONDA_FORMATO:audio]. Si pide imagen o infografía y tienes una guía que encaje (estafa, phishing, deepfake, criterio, instituciones, derechos, actividad), añade al final [ONDA_GUIA:nombre], por ejemplo [ONDA_GUIA:estafa]. Para sugerir 2 a 4 preguntas de seguimiento relacionadas con lo que la persona preguntó (y redactadas como si ella preguntara), añade una línea [ONDA_SUGERENCIAS: pregunta1 | pregunta2 | pregunta3]. El sistema mostrará esas preguntas como botones. El texto visible no debe incluir esas preguntas duplicadas; solo el marcador al final.
+
+${REGLA_PREGUNTAS_SEGUIMIENTO}
 
 🔗 ENLACES/NOTICIAS: Cuando el usuario comparte un enlace, el sistema ya extrae título/descripción o texto. Está PERMITIDO decir "No pude acceder al texto completo (paywall)" cuando solo tengas meta. Está PROHIBIDO decir "no tengo acceso directo a enlaces", "no puedo abrir el artículo" o similar. Siempre entrega una explicación basada en lo disponible (título, descripción, fuente) y sugiere que peguen un extracto para mayor precisión.
 
