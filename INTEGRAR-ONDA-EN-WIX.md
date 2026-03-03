@@ -1,5 +1,7 @@
 # Cómo poner el chat ONDA en www.precisar.net (Wix)
 
+**Importante:** Para que en Wix se vea **igual que en local** (http://localhost:2999/), en Vercel debe haber **un solo** proyecto conectado a este repo (MaleMarin/Onda). Si tienes dos (Onda y Onda 2026) y ninguno coincide con local, sigue la guía **UN-SOLO-ONDA-PARA-WIX.md**.
+
 El chat ONDA puede estar en tu sitio Wix de dos maneras: **embebido** en una página o como **enlace** que abre el chat.
 
 ---
@@ -20,11 +22,13 @@ Así el visitante ve el chat dentro de precisar.net.
 
 ### Código profesional (recomendado)
 
-El bot dentro del iframe se ve **igual que en local**: mismo fondo gris neumórfico (#d2d6dc), mismo estilo y sombras. El iframe se redimensiona solo según el contenido (postMessage). Puedes cambiar `720` por el ancho máximo que quieras (en px).
+El bot dentro del iframe se ve **igual que en local**: mismo fondo gris neumórfico (#d2d6dc), mismo estilo y sombras. El iframe se redimensiona solo según el contenido (postMessage).
+
+**Sustituye `TU-PROYECTO-VERCEL`** por la URL del proyecto de Vercel conectado a MaleMarin/Onda (ej. `onda2026` o `onda-git-main-precisar`). Ver **UN-SOLO-ONDA-PARA-WIX.md** si tienes dos proyectos y ninguno coincide con local.
 
 ```html
 <div style="width:100%;max-width:min(720px,92vw);margin:0 auto;border-radius:28px;overflow:hidden;box-shadow:22px 22px 44px rgba(100,105,115,0.8), -22px -22px 44px rgba(255,255,255,0.99);">
-  <iframe id="onda-bot" src="https://onda-git-main-precisar.vercel.app/chat?embed=1" width="100%" scrolling="no" style="border:0;display:block;min-height:600px;" title="Chat ONDA - Fundación Precisar"></iframe>
+  <iframe id="onda-bot" src="https://TU-PROYECTO-VERCEL.vercel.app/chat?embed=1" width="100%" scrolling="no" style="border:0;display:block;min-height:600px;" title="Chat ONDA - Fundación Precisar"></iframe>
 </div>
 <script>
 (function(){var f=document.getElementById('onda-bot');if(!f)return;window.addEventListener('message',function(e){if(e.data&&typeof e.data.height==='number'&&e.data.height>0)f.style.height=e.data.height+'px';});})();
@@ -33,11 +37,11 @@ El bot dentro del iframe se ve **igual que en local**: mismo fondo gris neumórf
 
 ### Código mínimo (solo iframe)
 
-Si el editor solo acepta un iframe suelto, usa este. Luego en Wix redimensiona el elemento para darle ancho y alto.
+Si el editor solo acepta un iframe suelto, usa este. Sustituye `TU-PROYECTO-VERCEL` por tu URL de Vercel. Luego en Wix redimensiona el elemento para darle ancho y alto.
 
 ```html
 <iframe
-  src="https://onda-git-main-precisar.vercel.app/chat?embed=1"
+  src="https://TU-PROYECTO-VERCEL.vercel.app/chat?embed=1"
   title="Chat ONDA - Fundación Precisar"
   width="400"
   height="600"
@@ -51,7 +55,7 @@ Si el editor solo acepta un iframe suelto, usa este. Luego en Wix redimensiona e
 
 ### Importante
 
-- La URL del iframe debe ser: **`https://onda-git-main-precisar.vercel.app/chat?embed=1`**
+- La URL del iframe debe ser: **`https://[TU-PROYECTO].vercel.app/chat?embed=1`** (sustituye `[TU-PROYECTO]` por el proyecto de Vercel conectado a MaleMarin/Onda).
 - Escribe **`embed`** con **m** (no "enbed"); si está mal escrito, el chat no se abre bien en la página.
 - Con **`?embed=1`** el chat se ve **igual que en local**: mismo fondo gris, neumorfismo y botón Enviar.
 - El servidor permite que esta página se abra dentro de iframes (Wix, etc.).
@@ -65,9 +69,9 @@ Si prefieres no embeber, puedes poner un botón o texto que abra el chat en otra
 ### Pasos en Wix
 
 1. En el editor, **añade un botón** o un **texto**.
-2. **Enlázalo** a esta URL:
+2. **Enlázalo** a esta URL (sustituye `TU-PROYECTO-VERCEL` por tu proyecto de Vercel):
    ```
-   https://onda-git-main-precisar.vercel.app/chat
+   https://TU-PROYECTO-VERCEL.vercel.app/chat
    ```
 3. Configura el enlace para que abra en **"Nueva pestaña"** (si Wix lo permite).
 
@@ -77,16 +81,18 @@ Ejemplos de texto: **"Chatea con ONDA"**, **"Pregúntale a ONDA"**, **"Hablar co
 
 ## Resumen de URLs
 
+Sustituye `TU-PROYECTO-VERCEL` por la URL del proyecto de Vercel conectado a MaleMarin/Onda (ej. `onda2026` o `onda-git-main-precisar`).
+
 | Uso | URL |
 |-----|-----|
-| Embeber en Wix (iframe) | `https://onda-git-main-precisar.vercel.app/chat?embed=1` |
-| Abrir en nueva pestaña / enlace | `https://onda-git-main-precisar.vercel.app/chat` |
+| Embeber en Wix (iframe) | `https://TU-PROYECTO-VERCEL.vercel.app/chat?embed=1` |
+| Abrir en nueva pestaña / enlace | `https://TU-PROYECTO-VERCEL.vercel.app/chat` |
 
 ---
 
 ## Si ves otro texto de bienvenida o una versión antigua del chat
 
-Eso significa que **Vercel está sirviendo un deploy viejo**. Para que precisar.net muestre la ONDA actual (texto de bienvenida con 🤖🧠, tres Ondas, etc.):
+Eso significa que **Vercel está sirviendo un deploy viejo** o que el proyecto no está conectado a este repo. Para que precisar.net muestre la ONDA actual (texto de bienvenida con 🌊, tres Ondas, etc.):
 
 1. Sube el código más reciente a GitHub (`git push origin main`).
 2. En [vercel.com](https://vercel.com) → tu proyecto → **Deployments** → **Redeploy** del último deployment (o espera al deploy automático tras el push).
@@ -98,7 +104,7 @@ Eso significa que **Vercel está sirviendo un deploy viejo**. Para que precisar.
 
 Algunos planes de Wix restringen HTML. En ese caso:
 
-- Usa la **Opción 2** (botón o enlace a `https://onda-git-main-precisar.vercel.app/chat`), o
+- Usa la **Opción 2** (botón o enlace a `https://TU-PROYECTO-VERCEL.vercel.app/chat`), o
 - Revisa en la ayuda de Wix cómo añadir **"Embed"** o **"Código personalizado"** en tu plan.
 
 ---
