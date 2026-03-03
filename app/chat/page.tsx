@@ -257,11 +257,23 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
     setShowIASubmenu(false);
   }
 
+  /** Reiniciar el bot: conversación nueva, elegir Onda de nuevo. Siempre disponible (no se deshabilita con loading). */
   function goToInicio(): void {
+    setMessages([newMessage("model", SHORT_WELCOME)]);
     setCurrentEje(null);
     setShowMenu(true);
     setShowIASubmenu(false);
     setShowPickOndaNotice(false);
+    setInput("");
+    setAttachmentImage(null);
+    setAttachmentAudio(null);
+    setRecording(false);
+    setAudioTooShortHint(false);
+    try {
+      localStorage.removeItem(STORAGE_KEY_RESTORE);
+    } catch {
+      // ignore
+    }
   }
 
   function handleMenuOption(optionId: string, label: string, intro: string, isSubmenu?: boolean): void {
@@ -272,12 +284,10 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
     }
     setShowMenu(false);
     setShowIASubmenu(false);
-    const botMessage =
-      optionId === "A_M1" ? ONDA_MICROCOPY.linkHelpBotMessage : intro;
     setMessages((m) => [
       ...m,
       newMessage("user", label),
-      newMessage("model", botMessage),
+      newMessage("model", intro),
     ]);
   }
 
@@ -994,15 +1004,38 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
 
         {/* Tabs, menu, chips, composer: capa con z-index alto para que todos los botones reciban clics */}
         <div className="onda-composer-layer" style={{ flexShrink: 0, display: "flex", flexDirection: "column", minHeight: 0 }}>
-        {/* Tabs */}
+        {/* Tabs + Volver al inicio siempre visible cuando hay Onda elegida */}
         {currentEje !== null && (
           <>
-            <EjeSelector currentEje={currentEje} onSelect={confirmEjeSwitch} compact={compact} theme={t} />
-            {justSwitchedEje !== null && (
-              <p style={{ margin: "-2px 0 4px", fontSize: compact ? "0.8125rem" : "0.875rem", color: neuPickerColorDarkMap[justSwitchedEje], fontWeight: 600, padding: "0 4px" }}>
-                Ahora en {EJE_CONFIGS[justSwitchedEje].name}
-              </p>
-            )}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 4 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                <EjeSelector currentEje={currentEje} onSelect={confirmEjeSwitch} compact={compact} theme={t} />
+                {justSwitchedEje !== null && (
+                  <p style={{ margin: 0, fontSize: compact ? "0.8125rem" : "0.875rem", color: neuPickerColorDarkMap[justSwitchedEje], fontWeight: 600 }}>
+                    Ahora en {EJE_CONFIGS[justSwitchedEje].name}
+                  </p>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={goToInicio}
+                title="Reiniciar y elegir otra Onda"
+                style={{
+                  flexShrink: 0,
+                  padding: "6px 12px",
+                  fontSize: "0.875rem",
+                  fontWeight: 600,
+                  color: t.c.muted,
+                  background: t.c.surface,
+                  border: `1px solid ${t.c.border}`,
+                  borderRadius: t.r.sm,
+                  cursor: "pointer",
+                  boxShadow: t.shadow?.neuRaised ?? "none",
+                }}
+              >
+                🏠 Volver al inicio
+              </button>
+            </div>
           </>
         )}
 
@@ -1031,7 +1064,7 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
                 ✏️ Escribe lo que quieras
               </button>
             )}
-            <button type="button" className="onda-menu-btn" data-onda-action="go-inicio" onClick={goToInicio} style={menuSec} title="Salir de esta Onda y elegir otra (A Mano, Civita, Profes)" {...S.lift.menu}>
+            <button type="button" className="onda-menu-btn" data-onda-action="go-inicio" onClick={goToInicio} disabled={false} style={menuSec} title="Reiniciar y elegir otra Onda (A Mano, Civita, Profes)" {...S.lift.menu}>
               🏠 Volver al inicio
             </button>
           </div>
@@ -1060,7 +1093,7 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
             <button type="button" className="onda-menu-btn" data-onda-action="show-menu" onClick={() => setShowIASubmenu(false)} style={menuSec} title="Ver de nuevo las opciones de esta Onda" {...S.lift.menu}>
               ↩️ Volver al menú
             </button>
-            <button type="button" className="onda-menu-btn" data-onda-action="go-inicio" onClick={goToInicio} style={menuSec} title="Salir de esta Onda y elegir otra (A Mano, Civita, Profes)" {...S.lift.menu}>
+            <button type="button" className="onda-menu-btn" data-onda-action="go-inicio" onClick={goToInicio} disabled={false} style={menuSec} title="Reiniciar y elegir otra Onda" {...S.lift.menu}>
               🏠 Volver al inicio
             </button>
           </div>
@@ -1177,7 +1210,7 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
                 type="button"
                 data-onda-action="go-inicio"
                 onClick={goToInicio}
-                title="Salir de esta Onda y elegir otra (A Mano, Civita, Profes)"
+                title="Reiniciar conversación y elegir otra Onda"
                 style={{
                   fontSize: "0.9375rem",
                   color: ejeColor,
