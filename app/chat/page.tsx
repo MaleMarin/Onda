@@ -759,7 +759,7 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
 
   /** En embed: mismo layout que local (altura fija) para que el scroll funcione dentro del área de mensajes. */
   const embedWrap: CSSProperties | undefined = isEmbed ? pageStyle : undefined;
-  /** Marco neumórfico en embed: mismo aspecto que el div que envuelve el iframe en localhost/HTML (debossed, #d2d6dc). */
+  /** Marco neumórfico en embed: ocupa el espacio disponible (flex:1 minHeight:0) y es contenedor flex para que el shell tenga altura acotada y el área de mensajes haga scroll. */
   const embedFrameStyle: CSSProperties | undefined = isEmbed
     ? {
         width: "100%",
@@ -769,6 +769,10 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
         overflow: "hidden",
         boxShadow: t.shadow.neuRaisedExtra,
         background: t.grad.pageBg,
+        flex: 1,
+        minHeight: 0,
+        display: "flex",
+        flexDirection: "column",
       }
     : undefined;
 
