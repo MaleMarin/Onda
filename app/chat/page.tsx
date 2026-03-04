@@ -1013,8 +1013,8 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
               </div>
             )}
 
-          {/* Preguntas de seguimiento: si el modelo devolvió sugerencias relacionadas, se muestran; si no, fallback a píldoras genéricas (fraseo como usuario). */}
-          {!loading && currentEje !== null && (() => {
+          {/* Preguntas de seguimiento: solo si el modelo devolvió sugerencias relacionadas con lo que preguntó el usuario. Si el último mensaje es la intro del ítem (3 preguntas), no mostramos píldoras genéricas (Singapur, UNESCO, etc.) porque no tienen que ver con lo que la persona eligió. */}
+          {!loading && currentEje !== null && !isMenuIntroActive && (() => {
             const last = messages[messages.length - 1];
             const hasUserMessage = messages.some((m) => m.role === "user");
             return hasUserMessage && last?.role === "model" && last?.content?.trim();
