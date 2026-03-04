@@ -28,6 +28,8 @@ export interface Message {
   isGenerated?: boolean;
   /** true si es el mensaje con las 3 preguntas del ítem de menú; en ese caso no se muestran los chips de sugerencias genéricas abajo. */
   isMenuIntro?: boolean;
+  /** Si isMenuIntro, id del ítem de menú (ej. A_M1, C_N1) para mostrar las 3 preguntas como botones. */
+  menuOptionId?: string;
   /** Preguntas de seguimiento relacionadas con la respuesta (2–4), redactadas como la usuaria preguntaría. Si existen, se muestran como chips en lugar de las genéricas. */
   suggestions?: string[];
 }

@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import type { CSSProperties } from "react";
 import type { Message } from "@/content/types";
 import { ONDA_MICROCOPY } from "@/content/shared";
+import { MENU_QUESTIONS } from "@/content/menuQuestions";
 import type { OndaTheme } from "@/lib/ondaTheme";
 import { ondaStyles } from "@/lib/ondaStyles";
 
@@ -45,6 +46,8 @@ interface ChatBubbleProps {
   theme: OndaTheme;
   /** En la primera vista, la burbuja de bienvenida crece para llenar el espacio (sin huecos). */
   fillHeight?: boolean;
+  /** Cuando el mensaje es intro de menú (3 preguntas), clic en un botón: envía ese texto o abre el input (frase libre). */
+  onMenuIntroChipClick?: (text: string) => void;
 }
 
 const LINK_REGEX = /\[([^\]]*)\]\((https?:\/\/[^)\s]+)\)/g;
@@ -92,7 +95,7 @@ function formatContent(text: string): React.ReactNode[] {
   return out;
 }
 
-export function ChatBubble({ message, color, compact, onPlayTTS, onStopTTS, isTTSPlaying, theme: t, fillHeight }: ChatBubbleProps) {
+export function ChatBubble({ message, color, compact, onPlayTTS, onStopTTS, isTTSPlaying, theme: t, fillHeight, onMenuIntroChipClick }: ChatBubbleProps) {
   const S = ondaStyles(t);
   const [copied, setCopied] = useState(false);
   const isUser = message.role === "user";
@@ -242,8 +245,27 @@ export function ChatBubble({ message, color, compact, onPlayTTS, onStopTTS, isTT
         </div>
       )}
       <div style={isUser ? userBubbleStyle : botBubbleStyle}>
-        <div className="prose-onda">{formatContent(text)}</div>
-        {onPlayTTS && message.content && (
+        {message.isMenuIntro &&
+        message.menuOptionId &&
+        MENU_QUESTIONS[message.menuOptionId] &&
+        onMenuIntroChipClick ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 2 }}>
+            {[...MENU_QUESTIONS[message.menuOptionId], ONDA_MICROCOPY.menuIntroFreeText].map((label) => (
+              <button
+                key={label}
+                type="button"
+                onClick={() => onMenuIntroChipClick(label)}
+                style={S.pildoraIntuicion}
+                {...S.lift.pildora}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div className="prose-onda">{formatContent(text)}</div>
+        )}
+        {onPlayTTS && message.content && !(message.isMenuIntro && message.menuOptionId && MENU_QUESTIONS[message.menuOptionId]) && (
           <button
             type="button"
             onClick={() => (isTTSPlaying && onStopTTS ? onStopTTS() : onPlayTTS(message.content))}
@@ -252,17 +274,17 @@ export function ChatBubble({ message, color, compact, onPlayTTS, onStopTTS, isTT
             {isTTSPlaying ? "⏹ Parar audio" : "🔊 Escuchar"}
           </button>
         )}
-        {showFuenteVerificada && (
+        {showFuenteVerificada && !(message.isMenuIntro && message.menuOptionId && MENU_QUESTIONS[message.menuOptionId]) && (
           <span style={{ marginTop: 6, fontSize: "0.8125rem", color: t.c.muted, display: "inline-block" }}>
             ✓ {ONDA_MICROCOPY.fuenteVerificada}
           </span>
         )}
-        {showCompartir && (
+        {showCompartir && !(message.isMenuIntro && message.menuOptionId && MENU_QUESTIONS[message.menuOptionId]) && (
           <button type="button" onClick={handleCopy} style={{ ...ttsStyle, marginTop: 6 }}>
             {copied ? ONDA_MICROCOPY.compartirCopiado : ONDA_MICROCOPY.compartir}
           </button>
         )}
-        {showCopyDownload && (
+        {showCopyDownload && !(message.isMenuIntro && message.menuOptionId && MENU_QUESTIONS[message.menuOptionId]) && (
           <div style={copyDownloadWrap}>
             <span style={copyDownloadHint}>Puedes copiar o descargar la tabla:</span>
             <button type="button" onClick={handleCopy} style={copyDownloadBtn}>

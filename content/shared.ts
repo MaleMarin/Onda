@@ -690,6 +690,8 @@ export const ONDA_MICROCOPY = {
   linkHelpCta: "Explicar",
   /** Placeholder genérico del input cuando hay Onda elegida (menú o no). */
   placeholderGeneric: "Dime en qué te puedo ayudar hoy",
+  /** Opción dentro de la burbuja de las 3 preguntas: preguntar libremente (abre el input en lugar de enviar texto). */
+  menuIntroFreeText: "O pregúntame libremente qué quieres saber",
   compartir: "Compartir",
   compartirCopiado: "Copiado",
   fuenteVerificada: "Fuente verificada por Onda",

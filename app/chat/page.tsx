@@ -190,6 +190,7 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
   const messagesInnerRef = useRef<HTMLDivElement>(null);
   const switchHintRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const embedWrapRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const ttsAudioContextRef = useRef<AudioContext | null>(null);
   const ttsSourceRef = useRef<AudioBufferSourceNode | null>(null);
   const [ttsPlaying, setTtsPlaying] = useState(false);
@@ -305,7 +306,7 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
     setMessages((m) => [
       ...m,
       newMessage("user", label),
-      newMessage("model", botText, { isMenuIntro: true }),
+      newMessage("model", botText, { isMenuIntro: true, menuOptionId: optionId }),
     ]);
   }
 
@@ -457,6 +458,15 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
   function useSuggestion(suggestion: string) {
     setInput(suggestion);
     setShowPickOndaNotice(false);
+  }
+
+  /** Clic en un botón de la burbuja de las 3 preguntas: envía esa pregunta o enfoca el input (frase libre). */
+  function handleMenuIntroChipClick(text: string) {
+    if (text === ONDA_MICROCOPY.menuIntroFreeText) {
+      inputRef.current?.focus();
+      return;
+    }
+    sendChipText(text);
   }
 
   /** Enviar un mensaje de texto directo (p. ej. chip de pregunta relacionada) sin pasar por el input. */
@@ -747,8 +757,20 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
     ...(currentEje === null ? { justifyContent: "flex-start", alignItems: "center" } : {}),
   };
 
-  /** En embed (Wix): mismo wrapper que la página normal para que se vea idéntico a local. */
+  /** En embed (Wix): mismo wrapper que la página normal + marco neumórfico igual que local (HTML con iframe). */
   const embedWrap: CSSProperties | undefined = isEmbed ? pageStyle : undefined;
+  /** Marco neumórfico en embed: mismo aspecto que el div que envuelve el iframe en localhost/HTML (debossed, #d2d6dc). */
+  const embedFrameStyle: CSSProperties | undefined = isEmbed
+    ? {
+        width: "100%",
+        maxWidth: 720,
+        margin: "0 auto",
+        borderRadius: 28,
+        overflow: "hidden",
+        boxShadow: t.shadow.neuRaisedExtra,
+        background: t.grad.pageBg,
+      }
+    : undefined;
 
   const headerStyle: CSSProperties = compact
     ? { ...S.header, padding: "10px 14px" }
@@ -941,6 +963,7 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
                     onStopTTS={stopTTS}
                     isTTSPlaying={ttsPlaying}
                     theme={t}
+                    onMenuIntroChipClick={handleMenuIntroChipClick}
                   />
                 </div>
               )}
@@ -962,6 +985,7 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
                 onStopTTS={stopTTS}
                 isTTSPlaying={ttsPlaying}
                 theme={t}
+                onMenuIntroChipClick={handleMenuIntroChipClick}
               />
             </div>
           ))}
@@ -1311,12 +1335,6 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
             </div>
           )}
 
-          {isMenuIntroActive && (
-            <p style={{ margin: "0 0 8px", fontSize: "0.9375rem", color: t.c.muted }}>
-              O pregúntame libremente qué quieres saber
-            </p>
-          )}
-
           {/* Input row */}
           <form
             onSubmit={(e) => { e.preventDefault(); handleSend(e); }}
@@ -1339,6 +1357,7 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
             )}
 
             <input
+              ref={inputRef}
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
@@ -1388,7 +1407,9 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
   if (isEmbed) {
     return (
       <div ref={embedWrapRef} className="onda-page-wrap" style={embedWrap}>
-        {content}
+        <div className="onda-embed-frame" style={embedFrameStyle}>
+          {content}
+        </div>
       </div>
     );
   }
