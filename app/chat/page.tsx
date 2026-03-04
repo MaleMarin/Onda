@@ -241,13 +241,15 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
     return () => ro.disconnect();
   }, [scrollToBottom]);
 
-  /** En embed: notificar al padre (Wix) la altura real para que el iframe se redimensione sin espacio vacío. */
+  /** En embed: notificar al padre (Wix) la altura real para que el iframe no corte el bot. Mínimo viewport para que se vea completo. */
   useEffect(() => {
     if (!embed) return;
     const el = embedWrapRef.current;
     if (!el || typeof window === "undefined") return;
     const sendHeight = () => {
-      const h = el.scrollHeight;
+      const contentH = el.scrollHeight;
+      const minH = typeof window !== "undefined" ? Math.max(window.innerHeight || 700, 700) : 700;
+      const h = Math.max(contentH, minH);
       if (h > 0) window.parent.postMessage({ height: h }, "*");
     };
     sendHeight();
@@ -745,11 +747,20 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
   /** Último mensaje son las 3 preguntas del ítem: placeholder vacío y mostrar "O pregúntame libremente qué quieres saber". */
   const lastMsg = messages.length > 0 ? messages[messages.length - 1] : null;
   const isMenuIntroActive = lastMsg?.role === "model" && (lastMsg as Message).isMenuIntro;
-  /** Mismo shell en local y en embed (Wix): mismo ancho máx, mismo comportamiento. */
+  /** Mismo shell en local y en embed (Wix): mismo ancho máx. En embed, minHeight para que el iframe reciba altura suficiente y no se corte. */
   const shellStyle: CSSProperties =
     currentEje === null
-      ? { ...S.shell, flex: "0 0 auto", minHeight: 420, maxHeight: "calc(100dvh - 48px)", display: "flex", flexDirection: "column", overflow: "hidden" }
-      : S.shell;
+      ? {
+          ...S.shell,
+          flex: "0 0 auto",
+          minHeight: 420,
+          maxHeight: isEmbed ? "none" : "calc(100dvh - 48px)",
+          ...(isEmbed ? { minHeight: "min(600px, 82dvh)" } : {}),
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+        }
+      : { ...S.shell, ...(isEmbed ? { minHeight: "min(600px, 82dvh)" } : {}) };
 
   const pageStyle: CSSProperties = {
     ...S.page,
@@ -757,8 +768,10 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
     ...(currentEje === null ? { justifyContent: "flex-start", alignItems: "center" } : {}),
   };
 
-  /** En embed (Wix): mismo wrapper que la página normal + marco neumórfico igual que local (HTML con iframe). */
-  const embedWrap: CSSProperties | undefined = isEmbed ? pageStyle : undefined;
+  /** En embed: dejar que el wrapper crezca con el contenido y no cortar (height: auto, overflow: visible). */
+  const embedWrap: CSSProperties | undefined = isEmbed
+    ? { ...pageStyle, height: "auto", minHeight: "100dvh", overflow: "visible" }
+    : undefined;
   /** Marco neumórfico en embed: mismo aspecto que el div que envuelve el iframe en localhost/HTML (debossed, #d2d6dc). */
   const embedFrameStyle: CSSProperties | undefined = isEmbed
     ? {

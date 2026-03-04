@@ -58,6 +58,19 @@ function hasMarkdownLinks(text: string): boolean {
   return LINK_REGEX.test(text);
 }
 
+/** Parsea el contenido de intro de menú (formato "1. Pregunta\n\n2. Pregunta\n\n3. Pregunta") para extraer las 3 preguntas como botones. */
+function parseMenuIntroQuestions(content: string): [string, string, string] | null {
+  if (!content?.trim()) return null;
+  const blocks = content.split(/\n\n+/).map((b) => b.trim()).filter(Boolean);
+  if (blocks.length < 3) return null;
+  const stripNum = (s: string) => s.replace(/^\d+\.\s*/, "").trim();
+  const q1 = stripNum(blocks[0]);
+  const q2 = stripNum(blocks[1]);
+  const q3 = stripNum(blocks[2]);
+  if (!q1 || !q2 || !q3) return null;
+  return [q1, q2, q3];
+}
+
 function formatBold(segment: string, keyBase: number): React.ReactNode[] {
   return segment.split(/(\*\*[^*]+\*\*)/g).map((part, i) => {
     if (part.startsWith("**") && part.endsWith("**")) {
@@ -232,6 +245,12 @@ export function ChatBubble({ message, color, compact, onPlayTTS, onStopTTS, isTT
     cursor: "pointer",
   };
 
+  const menuIntroQuestions =
+    message.isMenuIntro && onMenuIntroChipClick
+      ? (message.menuOptionId && MENU_QUESTIONS[message.menuOptionId]) ?? parseMenuIntroQuestions(message.content ?? "")
+      : null;
+  const showAsMenuIntroButtons = !!menuIntroQuestions;
+
   return (
     <div style={wrapStyle}>
       {message.image && (
@@ -245,16 +264,13 @@ export function ChatBubble({ message, color, compact, onPlayTTS, onStopTTS, isTT
         </div>
       )}
       <div style={isUser ? userBubbleStyle : botBubbleStyle}>
-        {message.isMenuIntro &&
-        message.menuOptionId &&
-        MENU_QUESTIONS[message.menuOptionId] &&
-        onMenuIntroChipClick ? (
+        {showAsMenuIntroButtons && menuIntroQuestions ? (
           <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 2 }}>
-            {[...MENU_QUESTIONS[message.menuOptionId], ONDA_MICROCOPY.menuIntroFreeText].map((label) => (
+            {[...menuIntroQuestions, ONDA_MICROCOPY.menuIntroFreeText].map((label) => (
               <button
                 key={label}
                 type="button"
-                onClick={() => onMenuIntroChipClick(label)}
+                onClick={() => onMenuIntroChipClick!(label)}
                 style={S.pildoraIntuicion}
                 {...S.lift.pildora}
               >
@@ -265,7 +281,7 @@ export function ChatBubble({ message, color, compact, onPlayTTS, onStopTTS, isTT
         ) : (
           <div className="prose-onda">{formatContent(text)}</div>
         )}
-        {onPlayTTS && message.content && !(message.isMenuIntro && message.menuOptionId && MENU_QUESTIONS[message.menuOptionId]) && (
+        {onPlayTTS && message.content && !showAsMenuIntroButtons && (
           <button
             type="button"
             onClick={() => (isTTSPlaying && onStopTTS ? onStopTTS() : onPlayTTS(message.content))}
@@ -274,17 +290,17 @@ export function ChatBubble({ message, color, compact, onPlayTTS, onStopTTS, isTT
             {isTTSPlaying ? "⏹ Parar audio" : "🔊 Escuchar"}
           </button>
         )}
-        {showFuenteVerificada && !(message.isMenuIntro && message.menuOptionId && MENU_QUESTIONS[message.menuOptionId]) && (
+        {showFuenteVerificada && !showAsMenuIntroButtons && (
           <span style={{ marginTop: 6, fontSize: "0.8125rem", color: t.c.muted, display: "inline-block" }}>
             ✓ {ONDA_MICROCOPY.fuenteVerificada}
           </span>
         )}
-        {showCompartir && !(message.isMenuIntro && message.menuOptionId && MENU_QUESTIONS[message.menuOptionId]) && (
+        {showCompartir && !showAsMenuIntroButtons && (
           <button type="button" onClick={handleCopy} style={{ ...ttsStyle, marginTop: 6 }}>
             {copied ? ONDA_MICROCOPY.compartirCopiado : ONDA_MICROCOPY.compartir}
           </button>
         )}
-        {showCopyDownload && !(message.isMenuIntro && message.menuOptionId && MENU_QUESTIONS[message.menuOptionId]) && (
+        {showCopyDownload && !showAsMenuIntroButtons && (
           <div style={copyDownloadWrap}>
             <span style={copyDownloadHint}>Puedes copiar o descargar la tabla:</span>
             <button type="button" onClick={handleCopy} style={copyDownloadBtn}>
