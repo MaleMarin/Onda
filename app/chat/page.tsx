@@ -732,7 +732,7 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
     lastUserMessage &&
     (hasUrl(lastUserMessage.content) || lastUserMessage.content.includes("Entender una noticia") || lastUserMessage.content.includes("noticia o un texto"))
   );
-  /** Último mensaje son las 3 preguntas del ítem: placeholder vacío y mostrar "O escríbeme en qué puedo ayudarte". */
+  /** Último mensaje son las 3 preguntas del ítem: placeholder vacío y mostrar "O pregúntame libremente qué quieres saber". */
   const lastMsg = messages.length > 0 ? messages[messages.length - 1] : null;
   const isMenuIntroActive = lastMsg?.role === "model" && (lastMsg as Message).isMenuIntro;
   /** Mismo shell en local y en embed (Wix): mismo ancho máx, mismo comportamiento. */
@@ -1313,7 +1313,7 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
 
           {isMenuIntroActive && (
             <p style={{ margin: "0 0 8px", fontSize: "0.9375rem", color: t.c.muted }}>
-              O escríbeme en qué puedo ayudarte
+              O pregúntame libremente qué quieres saber
             </p>
           )}
 
