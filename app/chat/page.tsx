@@ -10,7 +10,6 @@ import {
   MAIN_WELCOME,
   getShortWelcome,
   EJE_CONFIGS,
-  EJE_SUGGESTIONS,
   EJE_MENU_OPTIONS,
   IA_SUBMENU_OPTIONS,
   ONDA_MICROCOPY,
@@ -1144,23 +1143,9 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
           </div>
         )}
 
-        {/* Suggestion chips: solo antes de que empiece el diálogo. Cuando ya hay conversación, ocultar las otras preguntas (Congreso, diputado, etc.) para no confundir; solo "Ver menú". */}
+        {/* Regla 3 Ondas: no mostrar preguntas de otros temas (Congreso, diputado, inflación, etc.) — provocan ruido informacional. Solo "Ver menú". */}
         {currentEje !== null && !showMenu && !showIASubmenu && (
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 6, padding: "0 4px", alignItems: "center" }}>
-            {!isMenuIntroActive &&
-              !messages.some((m) => m.role === "user") &&
-              EJE_SUGGESTIONS[currentEje].map((suggestion) => (
-                <button
-                  key={suggestion}
-                  type="button"
-                  data-onda-chip={suggestion}
-                  onClick={() => useSuggestion(suggestion)}
-                  disabled={loading}
-                  style={chipBase}
-                >
-                  {suggestion}
-                </button>
-              ))}
             <button
               type="button"
               data-onda-action="show-menu"
