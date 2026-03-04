@@ -1144,10 +1144,11 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
           </div>
         )}
 
-        {/* Suggestion chips: no se muestran cuando el último mensaje son las 3 preguntas del ítem (isMenuIntro); solo "Ver menú". */}
+        {/* Suggestion chips: solo antes de que empiece el diálogo. Cuando ya hay conversación, ocultar las otras preguntas (Congreso, diputado, etc.) para no confundir; solo "Ver menú". */}
         {currentEje !== null && !showMenu && !showIASubmenu && (
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 6, padding: "0 4px", alignItems: "center" }}>
             {!isMenuIntroActive &&
+              !messages.some((m) => m.role === "user") &&
               EJE_SUGGESTIONS[currentEje].map((suggestion) => (
                 <button
                   key={suggestion}
