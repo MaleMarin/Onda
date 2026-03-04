@@ -124,6 +124,12 @@ Puedes enviarme lo que necesites analizar en el formato que prefieras:
 /** Cuando la persona ya conoce Onda: ir directo a las tres Ondas (bienvenida ágil). */
 export const SHORT_WELCOME = `¿Con qué Onda seguimos hoy? 👇`;
 
+/** Bienvenida para quien ya conoce Onda: saludo según la hora + frase amable e invitadora. Simpático, educado, que invite a quedarse. */
+export function getShortWelcome(): string {
+  const greeting = getTimeGreeting();
+  return `¡Hola! ${greeting}\n\n¿Con qué Onda te gustaría seguir hoy? Estoy aquí para lo que necesites — cuando quieras, elige una y seguimos. 👇`;
+}
+
 /** Chips de pregunta relacionada después de una respuesta del bot (fallback genérico). */
 export const PREGUNTAS_RELACIONADAS = [
   "¿Cómo verifico esto?",
@@ -172,7 +178,7 @@ Aquí podemos:
 **¿Qué quieres hacer ahora en Onda a Mano?** 👇`;
 
 export const WELCOME_CIVITA = `🟢 **Estás en Onda Civita.**  
-Aquí **hacés preguntas** sobre vida pública: 🏛️ instituciones, ⚖️ leyes, 💰 economía, 🌱 medio ambiente, 🕰️ historia. No es para enviar una noticia o un link y que te la explique; eso es **Onda A Mano**.
+Aquí **haces preguntas** sobre vida pública: 🏛️ instituciones, ⚖️ leyes, 💰 economía, 🌱 medio ambiente, 🕰️ historia. No es para enviar una noticia o un link y que te la explique; eso es **Onda A Mano**.
 
 🔎 **Siempre somos apartidarios:** No apoyamos ni atacamos a ningún partido. Te damos información, contexto y varias miradas para que tú formes tu propia opinión.
 
@@ -670,11 +676,11 @@ Cuando pregunten por la **UF** (Unidad de Fomento), **IPC**, **UTM** o el valor 
 /** Mensajes de error en tono Onda (cercano, sin tecnicismos). */
 export const ONDA_MICROCOPY = {
   errorGeneric: "Uy, algo se trabó. ¿Probamos de nuevo?",
-  errorImage: "No pude analizar la imagen. Probá con otra más liviana o contame por texto qué ves.",
-  errorConnection: "No pude conectar. ¿Revisás tu internet y probamos otra vez?",
+  errorImage: "No pude analizar la imagen. Prueba con otra más liviana o cuéntame por texto qué ves.",
+  errorConnection: "No pude conectar. ¿Revisas tu internet y probamos otra vez?",
   errorTimeout: "La respuesta tardó demasiado. ¿Probamos de nuevo?",
-  errorServer: "Del lado mío hubo un problemita. Intentá en un ratito.",
-  pickOndaFirst: "Elegí primero una Onda 👇 así sé cómo ayudarte mejor.",
+  errorServer: "Del lado mío hubo un problemita. Intenta en un ratito.",
+  pickOndaFirst: "Elige primero una Onda 👇 así sé cómo ayudarte mejor.",
   typing: "ONDA está escribiendo...",
   send: "Enviar",
   /** Modo link/noticia: sin lenguaje de audio. */

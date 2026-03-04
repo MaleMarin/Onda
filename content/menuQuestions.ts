@@ -1,7 +1,7 @@
 /**
  * Single source of truth: each menu item has EXACTLY 3 questions.
  * When the user clicks an option, the bot shows only these 3 questions as a friendly message.
- * Language: neutral Spanish (tú, acá), warm and direct.
+ * Language: neutral Spanish (tú, aquí), warm and direct. Not Argentine (no vos, no voseo).
  */
 
 export type MenuQuestionTriple = [string, string, string];
@@ -9,7 +9,7 @@ export type MenuQuestionTriple = [string, string, string];
 export const MENU_QUESTIONS: Record<string, MenuQuestionTriple> = {
   // ═══════════════════════════════ ONDA A MANO ═══════════════════════════════
   A_M1: [
-    "¿Tienes el texto o la noticia a mano? Puedes pegarlo acá directamente.",
+    "¿Tienes el texto o la noticia a mano? Puedes pegarlo aquí directamente.",
     "¿Qué es lo que no te quedó claro — el tema en sí, el contexto, o las palabras que usa?",
     "¿Quieres que te lo explique simple, o prefieres una versión más completa con fuentes?",
   ],
@@ -118,7 +118,7 @@ export const MENU_QUESTIONS: Record<string, MenuQuestionTriple> = {
     "¿Tienes un tema o asignatura en mente, o quieres que te proponga algo?",
   ],
   P_T2: [
-    "¿Cuál es la tarea que quieres transformar? Puedes describirla o pegarla acá.",
+    "¿Cuál es la tarea que quieres transformar? Puedes describirla o pegarla aquí.",
     "¿Qué quieres que cambie — que sea más interactiva, que incluya IA, o que fomente el pensamiento propio?",
     "¿El objetivo es que los estudiantes usen IA como herramienta, o que aprendan a cuestionarla?",
   ],

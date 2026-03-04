@@ -8,7 +8,7 @@
 import { useState, useRef, useEffect, useLayoutEffect, useMemo, useCallback, type CSSProperties } from "react";
 import {
   MAIN_WELCOME,
-  SHORT_WELCOME,
+  getShortWelcome,
   PILDORAS_INTUICION,
   EJE_CONFIGS,
   EJE_SUGGESTIONS,
@@ -135,7 +135,7 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
     }
     const visited = localStorage.getItem(STORAGE_KEY_VISITED) === "1";
     if (visited) {
-      setMessages([newMessage("model", SHORT_WELCOME)]);
+      setMessages([newMessage("model", getShortWelcome())]);
       trackUsage("session_start");
     } else {
       localStorage.setItem(STORAGE_KEY_VISITED, "1");
@@ -275,7 +275,7 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
 
   /** Reiniciar el bot: conversación nueva, elegir Onda de nuevo. Siempre disponible (no se deshabilita con loading). */
   function goToInicio(): void {
-    setMessages([newMessage("model", SHORT_WELCOME)]);
+    setMessages([newMessage("model", getShortWelcome())]);
     setCurrentEje(null);
     setShowMenu(true);
     setShowIASubmenu(false);
