@@ -692,6 +692,8 @@ export const ONDA_MICROCOPY = {
   placeholderGeneric: "Dime en qué te puedo ayudar hoy",
   /** Opción dentro de la burbuja de las 3 preguntas: preguntar libremente (abre el input en lugar de enviar texto). */
   menuIntroFreeText: "O pregúntame libremente qué quieres saber",
+  /** Atajos de un clic cuando se muestran las 3 preguntas del ítem; el usuario escribe lo mínimo. */
+  menuIntroAtajos: ["Tengo otra pregunta", "Quiero contarte algo", "Busco información sobre un tema"] as const,
   compartir: "Compartir",
   compartirCopiado: "Copiado",
   fuenteVerificada: "Fuente verificada por Onda",

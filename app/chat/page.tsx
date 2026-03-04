@@ -1335,6 +1335,24 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
             </div>
           )}
 
+          {/* Atajos de un clic cuando están las 3 preguntas: el usuario escribe lo mínimo */}
+          {isMenuIntroActive && currentEje !== null && (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 10, alignItems: "center" }}>
+              {ONDA_MICROCOPY.menuIntroAtajos.map((texto) => (
+                <button
+                  key={texto}
+                  type="button"
+                  data-onda-chip={texto}
+                  onClick={() => sendChipText(texto)}
+                  disabled={loading}
+                  style={chipBase}
+                >
+                  {texto}
+                </button>
+              ))}
+            </div>
+          )}
+
           {/* Input row */}
           <form
             onSubmit={(e) => { e.preventDefault(); handleSend(e); }}
