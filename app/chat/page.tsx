@@ -9,7 +9,6 @@ import { useState, useRef, useEffect, useLayoutEffect, useMemo, useCallback, typ
 import {
   MAIN_WELCOME,
   getShortWelcome,
-  PILDORAS_INTUICION,
   EJE_CONFIGS,
   EJE_SUGGESTIONS,
   EJE_MENU_OPTIONS,
@@ -747,31 +746,19 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
   /** Último mensaje son las 3 preguntas del ítem: placeholder vacío y mostrar "O pregúntame libremente qué quieres saber". */
   const lastMsg = messages.length > 0 ? messages[messages.length - 1] : null;
   const isMenuIntroActive = lastMsg?.role === "model" && (lastMsg as Message).isMenuIntro;
-  /** Mismo shell en local y en embed (Wix): mismo ancho máx. En embed, minHeight para que el iframe reciba altura suficiente y no se corte. */
+  /** Mismo shell en local y en embed: altura acotada para que el área de mensajes haga scroll (no se quede pegado). */
   const shellStyle: CSSProperties =
     currentEje === null
-      ? {
-          ...S.shell,
-          flex: "0 0 auto",
-          minHeight: 420,
-          maxHeight: isEmbed ? "none" : "calc(100dvh - 48px)",
-          ...(isEmbed ? { minHeight: "min(600px, 82dvh)" } : {}),
-          display: "flex",
-          flexDirection: "column",
-          overflow: "hidden",
-        }
-      : { ...S.shell, ...(isEmbed ? { minHeight: "min(600px, 82dvh)" } : {}) };
+      ? { ...S.shell, flex: "0 0 auto", minHeight: 420, maxHeight: "calc(100dvh - 48px)", display: "flex", flexDirection: "column", overflow: "hidden" }
+      : S.shell;
 
   const pageStyle: CSSProperties = {
     ...S.page,
-    /* Con onda sin elegir: shell arriba (flex-start) para que el header se vea siempre, no centrado. */
     ...(currentEje === null ? { justifyContent: "flex-start", alignItems: "center" } : {}),
   };
 
-  /** En embed: dejar que el wrapper crezca con el contenido y no cortar (height: auto, overflow: visible). */
-  const embedWrap: CSSProperties | undefined = isEmbed
-    ? { ...pageStyle, height: "auto", minHeight: "100dvh", overflow: "visible" }
-    : undefined;
+  /** En embed: mismo layout que local (altura fija) para que el scroll funcione dentro del área de mensajes. */
+  const embedWrap: CSSProperties | undefined = isEmbed ? pageStyle : undefined;
   /** Marco neumórfico en embed: mismo aspecto que el div que envuelve el iframe en localhost/HTML (debossed, #d2d6dc). */
   const embedFrameStyle: CSSProperties | undefined = isEmbed
     ? {
@@ -1013,16 +1000,12 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
               </div>
             )}
 
-          {/* Preguntas de seguimiento: solo si el modelo devolvió sugerencias relacionadas con lo que preguntó el usuario. Si el último mensaje es la intro del ítem (3 preguntas), no mostramos píldoras genéricas (Singapur, UNESCO, etc.) porque no tienen que ver con lo que la persona eligió. */}
+          {/* Preguntas de seguimiento: SOLO si el modelo devolvió [ONDA_SUGERENCIAS] (contextuales). No mostrar nunca píldoras genéricas (Congreso, diputados, Singapur, etc.) porque cambian de tema; regla: solo el usuario cambia de tema. */}
           {!loading && currentEje !== null && !isMenuIntroActive && (() => {
             const last = messages[messages.length - 1];
             const hasUserMessage = messages.some((m) => m.role === "user");
-            return hasUserMessage && last?.role === "model" && last?.content?.trim();
-          })() && (() => {
-            const last = messages[messages.length - 1];
-            const toShow = (last?.role === "model" && last?.suggestions?.length)
-              ? last.suggestions.slice(0, 4)
-              : PILDORAS_INTUICION[currentEje].slice(0, 2);
+            if (!hasUserMessage || last?.role !== "model" || !last?.content?.trim()) return null;
+            const toShow = (last?.role === "model" && last?.suggestions?.length) ? last.suggestions.slice(0, 4) : [];
             return toShow.length > 0 ? (
               <div className="bubble-in" style={{ ...S.row(false), flexWrap: "wrap", gap: 10, marginTop: 6 }}>
                 {toShow.map((texto) => (

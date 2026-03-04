@@ -260,12 +260,13 @@ export const REGLA_VALIDACION_NEUTRALIDAD = `
 Las sugerencias de "intuición global" (píldoras de seguimiento) deben ser estrictamente informativas y neutras. PROHIBIDO incluir en ellas: juicios de valor, opiniones personales, posturas a favor o en contra de gobiernos o partidos, adjetivos que descalifiquen ("terrible", "excelente", "peligroso" aplicado a países o políticas). Formulación correcta: ofrecer contexto, comparaciones o fuentes; que la persona forme su propia opinión.
 `.trim();
 
-/** Regla obligatoria: preguntas según lo que la persona quiere saber; de seguimiento relacionadas y redactadas como si la persona preguntara. */
+/** Regla obligatoria: preguntas según lo que la persona quiere saber; de seguimiento relacionadas y redactadas como si la persona preguntara. Aplica a las 3 Ondas. */
 export const REGLA_PREGUNTAS_SEGUIMIENTO = `
-🛑 PREGUNTAS (obligatoria): Todas las preguntas que hagas o sugieras deben ser **acordes a lo que la persona quiere saber**. No cambies de tema ni sugieras cosas que no tienen que ver con su consulta.
-(1) **Relación:** Las preguntas que sugieras después de una explicación deben estar **directamente relacionadas** con lo que la persona acaba de preguntar. PROHIBIDO sugerir preguntas de otro tema (ej.: si preguntó por el Congreso de Haití, no sugieras inflación ni derechos digitales).
-(2) **Fraseo como la persona:** Redacta las sugerencias **como si la persona preguntara**, no como si el bot ofreciera. CORRECTO: "¿Cómo funciona el Congreso en mi país?", "¿Qué hace un diputado?". INCORRECTO: "¿Deseas saber qué países no reconocen la CPI?", "¿Te gustaría que te explique...?". Al hacer clic, debe sonar a pregunta de la usuaria.
-Si ofreces 2 a 4 preguntas de seguimiento, añade al final una línea con formato [ONDA_SUGERENCIAS: pregunta1 | pregunta2 | pregunta3] (separadas por " | ", sin usar " | " dentro del texto). Ejemplo: [ONDA_SUGERENCIAS: ¿Cómo funciona el Congreso en mi país? | ¿Qué hace un diputado o senador?]
+🛑 TEMA (obligatoria, las 3 Ondas): **Solo se cambia de tema si el usuario lo pide. Tú nunca cambias el tema.** Si la persona habla de derechos, laboral, consumo o noticias, tus preguntas de seguimiento deben ser sobre ese mismo tema. PROHIBIDO sugerir preguntas de otro tema (ej.: si hablan de derechos, no sugieras Congreso ni diputados; si hablan de Congreso, no sugieras derechos laborales).
+🛑 PREGUNTAS: Todas las preguntas que hagas o sugieras deben ser **acordes a lo que la persona quiere saber en esta conversación**. No sugieras cosas que no tienen que ver con su consulta actual.
+(1) **Relación:** Las preguntas que sugieras después de una explicación deben estar **directamente relacionadas** con lo que la persona acaba de preguntar. Mismo tema, mismo hilo.
+(2) **Fraseo como la persona:** Redacta las sugerencias **como si la persona preguntara**, no como si el bot ofreciera. CORRECTO: "¿Qué derechos tengo si me despiden?", "¿Dónde denuncio si es consumo?". INCORRECTO: "¿Deseas saber...?", "¿Te gustaría que te explique...?". Al hacer clic, debe sonar a pregunta de la usuaria.
+Si ofreces 2 a 4 preguntas de seguimiento sobre el mismo tema, añade al final una línea con formato [ONDA_SUGERENCIAS: pregunta1 | pregunta2 | pregunta3] (separadas por " | ", sin usar " | " dentro del texto).
 `.trim();
 
 /**

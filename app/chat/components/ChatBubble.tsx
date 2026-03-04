@@ -58,12 +58,17 @@ function hasMarkdownLinks(text: string): boolean {
   return LINK_REGEX.test(text);
 }
 
-/** Parsea el contenido de intro de menú (formato "1. Pregunta\n\n2. Pregunta\n\n3. Pregunta") para extraer las 3 preguntas como botones. */
+/** Parsea el contenido de intro de menú (formato "1. Pregunta\n\n2. Pregunta\n\n3. Pregunta") para extraer las 3 preguntas como botones. Acepta \n, \r\n y bloques por número. */
 function parseMenuIntroQuestions(content: string): [string, string, string] | null {
   if (!content?.trim()) return null;
-  const blocks = content.split(/\n\n+/).map((b) => b.trim()).filter(Boolean);
-  if (blocks.length < 3) return null;
+  const normalized = content.replace(/\r\n/g, "\n").trim();
   const stripNum = (s: string) => s.replace(/^\d+\.\s*/, "").trim();
+  let blocks = normalized.split(/\n\s*\n+/).map((b) => b.trim()).filter(Boolean);
+  if (blocks.length < 3) {
+    const byNumber = normalized.match(/\d+\.\s*[^\n]+(?=\n|$)/g);
+    if (byNumber && byNumber.length >= 3) blocks = byNumber.slice(0, 3).map((b) => b.trim());
+  }
+  if (blocks.length < 3) return null;
   const q1 = stripNum(blocks[0]);
   const q2 = stripNum(blocks[1]);
   const q3 = stripNum(blocks[2]);
@@ -246,8 +251,8 @@ export function ChatBubble({ message, color, compact, onPlayTTS, onStopTTS, isTT
   };
 
   const menuIntroQuestions =
-    message.isMenuIntro && onMenuIntroChipClick
-      ? (message.menuOptionId && MENU_QUESTIONS[message.menuOptionId]) ?? parseMenuIntroQuestions(message.content ?? "")
+    message.role === "model" && onMenuIntroChipClick
+      ? (message.isMenuIntro && message.menuOptionId && MENU_QUESTIONS[message.menuOptionId]) ?? parseMenuIntroQuestions(message.content ?? "")
       : null;
   const showAsMenuIntroButtons = !!menuIntroQuestions;
 
@@ -270,8 +275,18 @@ export function ChatBubble({ message, color, compact, onPlayTTS, onStopTTS, isTT
               <button
                 key={label}
                 type="button"
+                role="button"
+                aria-label={label}
                 onClick={() => onMenuIntroChipClick!(label)}
-                style={S.pildoraIntuicion}
+                style={{
+                  ...S.pildoraIntuicion,
+                  width: "100%",
+                  justifyContent: "flex-start",
+                  textAlign: "left",
+                  background: t.isDark ? "rgba(255,255,255,0.12)" : "#fff",
+                  border: `2px solid ${t.glass.border}`,
+                  boxShadow: t.shadow.neuRaised,
+                }}
                 {...S.lift.pildora}
               >
                 {label}
