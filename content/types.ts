@@ -26,6 +26,8 @@ export interface Message {
   guideId?: string;
   /** true si es respuesta generada por la API (stream); false/undefined en bienvenida e intros de menú. Usado para mostrar TTS solo en respuestas generadas. */
   isGenerated?: boolean;
+  /** true si es el mensaje con las 3 preguntas del ítem de menú; en ese caso no se muestran los chips de sugerencias genéricas abajo. */
+  isMenuIntro?: boolean;
   /** Preguntas de seguimiento relacionadas con la respuesta (2–4), redactadas como la usuaria preguntaría. Si existen, se muestran como chips en lugar de las genéricas. */
   suggestions?: string[];
 }

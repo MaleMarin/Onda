@@ -297,7 +297,7 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
     const botText = formatMenuIntro(optionId) ?? intro;
     if (isSubmenu) {
       setShowIASubmenu(true);
-      setMessages((m) => [...m, newMessage("model", botText)]);
+      setMessages((m) => [...m, newMessage("model", botText, { isMenuIntro: true })]);
       return;
     }
     setShowMenu(false);
@@ -305,7 +305,7 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
     setMessages((m) => [
       ...m,
       newMessage("user", label),
-      newMessage("model", botText),
+      newMessage("model", botText, { isMenuIntro: true }),
     ]);
   }
 
@@ -732,6 +732,9 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
     lastUserMessage &&
     (hasUrl(lastUserMessage.content) || lastUserMessage.content.includes("Entender una noticia") || lastUserMessage.content.includes("noticia o un texto"))
   );
+  /** Último mensaje son las 3 preguntas del ítem: placeholder vacío y mostrar "O escríbeme en qué puedo ayudarte". */
+  const lastMsg = messages.length > 0 ? messages[messages.length - 1] : null;
+  const isMenuIntroActive = lastMsg?.role === "model" && (lastMsg as Message).isMenuIntro;
   /** Mismo shell en local y en embed (Wix): mismo ancho máx, mismo comportamiento. */
   const shellStyle: CSSProperties =
     currentEje === null
@@ -1117,21 +1120,22 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
           </div>
         )}
 
-        {/* Suggestion chips */}
+        {/* Suggestion chips: no se muestran cuando el último mensaje son las 3 preguntas del ítem (isMenuIntro); solo "Ver menú". */}
         {currentEje !== null && !showMenu && !showIASubmenu && (
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 6, padding: "0 4px", alignItems: "center" }}>
-            {EJE_SUGGESTIONS[currentEje].map((suggestion) => (
-              <button
-                key={suggestion}
-                type="button"
-                data-onda-chip={suggestion}
-                onClick={() => useSuggestion(suggestion)}
-                disabled={loading}
-                style={chipBase}
-              >
-                {suggestion}
-              </button>
-            ))}
+            {!isMenuIntroActive &&
+              EJE_SUGGESTIONS[currentEje].map((suggestion) => (
+                <button
+                  key={suggestion}
+                  type="button"
+                  data-onda-chip={suggestion}
+                  onClick={() => useSuggestion(suggestion)}
+                  disabled={loading}
+                  style={chipBase}
+                >
+                  {suggestion}
+                </button>
+              ))}
             <button
               type="button"
               data-onda-action="show-menu"
@@ -1307,6 +1311,12 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
             </div>
           )}
 
+          {isMenuIntroActive && (
+            <p style={{ margin: "0 0 8px", fontSize: "0.9375rem", color: t.c.muted }}>
+              O escríbeme en qué puedo ayudarte
+            </p>
+          )}
+
           {/* Input row */}
           <form
             onSubmit={(e) => { e.preventDefault(); handleSend(e); }}
@@ -1339,13 +1349,15 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
                 }
               }}
               placeholder={
-                linkHelp
-                  ? ONDA_MICROCOPY.linkHelpPlaceholder
-                  : currentEje
-                    ? showMenu
-                      ? ONDA_MICROCOPY.placeholderGeneric
-                      : ""
-                    : ONDA_MICROCOPY.placeholderGeneric
+                isMenuIntroActive
+                  ? ""
+                  : linkHelp
+                    ? ONDA_MICROCOPY.linkHelpPlaceholder
+                    : currentEje
+                      ? showMenu
+                        ? ONDA_MICROCOPY.placeholderGeneric
+                        : ""
+                      : ONDA_MICROCOPY.placeholderGeneric
               }
               disabled={loading}
               style={inpStyle}
