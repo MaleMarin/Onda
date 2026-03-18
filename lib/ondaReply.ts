@@ -1,6 +1,6 @@
 import OpenAI from "openai";
 import { EjeOnda } from "../content/types";
-import { EJE_PROMPTS, FILTRO_AUDITORIA_Y_CONSTITUCION, FRASES_BLINDAJE_POR_EJE, BLINDAJE_WHATSAPP_POR_EJE, INSTRUCCION_WHATSAPP, PROTOCOLO_CERO_ALUCINACION, CAPA_CONTEXTO_GLOBAL, MANDATO_NO_ALUCINACION, REGLA_VALIDACION_RIGOR_FUENTES, REGLA_VALIDACION_NEUTRALIDAD, REGLA_PREGUNTAS_SEGUIMIENTO, INTUICION_GLOBAL_GRAFEO, INTUICION_POR_EJE, FUENTES_ONDA_PARA_RESPUESTA, FUENTES_ONDA_EJES_LATAM_AMI, REGLAS_FUENTES_Y_VERIFICACION, REGLAS_EJES_LATAM_AMI } from "../content/shared";
+import { EJE_PROMPTS, FILTRO_AUDITORIA_Y_CONSTITUCION, FRASES_BLINDAJE_POR_EJE, BLINDAJE_WHATSAPP_POR_EJE, INSTRUCCION_WHATSAPP, PROTOCOLO_CERO_ALUCINACION, CAPA_CONTEXTO_GLOBAL, MANDATO_NO_ALUCINACION, REGLA_VALIDACION_RIGOR_FUENTES, REGLA_VALIDACION_NEUTRALIDAD, REGLA_PREGUNTAS_SEGUIMIENTO, INTUICION_GLOBAL_GRAFEO, INTUICION_POR_EJE, FUENTES_ONDA_PARA_RESPUESTA, FUENTES_ONDA_EJES_LATAM_AMI, PRINCIPIO_CONOCIMIENTO_TOTAL, REGLAS_FUENTES_Y_VERIFICACION, REGLAS_EJES_LATAM_AMI } from "../content/shared";
 import {
   RAW_A_MANO_FULL,
   RAW_CIVITA_FULL,
@@ -35,6 +35,8 @@ Eres Onda, el Asistente de IA del proyecto Precisar (www.precisar.net). Tu misi�
 🛠️ CAPACIDADES: Analizar noticias, mensajes, cadenas (texto, audio, imágenes, links). Explicar en simple. Enseñar uso de IA y prompts. Activar kits de emergencia cuando corresponda. Sugerir desconexión digital sin moralizar. Fomentar pensamiento crítico.
 
 📚 FUENTES DE INFORMACIÓN: Tienes dos pilares. (1) Tu conocimiento propio (el mismo tipo de conocimiento que usa ChatGPT/OpenAI): úsalo para explicar conceptos, personas, organizaciones, contexto general y definiciones. (2) La base de 50 nodos de máxima autoridad (Open Access): úsala para citar datos concretos, estadísticas y verificación. Combina ambos: responde con tu conocimiento y, cuando des cifras o referencias verificables, prioriza los 50 nodos. Para protocolos de seguridad (phishing, deepfakes, acoso) prioriza definiciones claras. Si un dato concreto no lo tienes, dilo y ofrece fuentes; para el resto, responde con naturalidad.
+
+${PRINCIPIO_CONOCIMIENTO_TOTAL}
 
 ${REGLAS_FUENTES_Y_VERIFICACION}
 
