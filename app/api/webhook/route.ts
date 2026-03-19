@@ -1,7 +1,10 @@
 import crypto from "crypto";
+import { recordError } from "../../../lib/auditStore";
+import { generateImageFromText } from "../../../lib/generateImage";
+import { renderInfographicPng } from "../../../lib/infographic";
 import { getGuideImageBuffer } from "../../../lib/guides";
 import { getOndaReply, getOndaReplyWithImage } from "../../../lib/ondaReply";
-import { parseResponseFormat, wantsAudio, wantsSources } from "../../../lib/responseFormat";
+import { parseResponseFormat, wantsSources } from "../../../lib/responseFormat";
 import { transcribeAudio } from "../../../lib/transcribe";
 import { generateSpeech } from "../../../lib/tts";
 import {
@@ -13,6 +16,8 @@ import {
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+const isDev = process.env.NODE_ENV === "development";
 
 function verifyWebhookSignature(rawBody: string, signatureHeader: string | null): boolean {
   const appSecret = process.env.WHATSAPP_APP_SECRET || process.env.META_APP_SECRET;
@@ -46,7 +51,7 @@ export async function GET(req: Request) {
 
   // Meta envía estos parámetros para verificar el webhook
   if (mode === "subscribe" && token && challenge && verifyToken && token === verifyToken) {
-    console.log("✅ Webhook verificado correctamente");
+    if (isDev) console.log("✅ Webhook verificado correctamente");
     return new Response(challenge, {
       status: 200,
       headers: { "Content-Type": "text/plain" },
@@ -101,16 +106,16 @@ export async function POST(req: Request) {
         payload = {};
       }
     } catch {
-      console.log("📩 Webhook: body vacío o no JSON");
+      if (isDev) console.log("📩 Webhook: body vacío o no JSON");
       return new Response("OK", { status: 200 });
     }
 
-    console.log("📩 Webhook recibido:", JSON.stringify(payload, null, 2));
+    if (isDev) console.log("📩 Webhook recibido:", JSON.stringify(payload, null, 2));
 
     // Extraer mensajes del payload de WhatsApp
     const entries = payload?.entry || [];
     if (!entries.length) {
-      console.log("📩 Webhook: sin entries (puede ser status o otro evento)");
+      if (isDev) console.log("📩 Webhook: sin entries (puede ser status o otro evento)");
       return new Response("OK", { status: 200 });
     }
 
@@ -122,7 +127,7 @@ export async function POST(req: Request) {
 
         // Ignorar solo status updates
         if (value.statuses && Array.isArray(value.statuses) && value.statuses.length > 0) {
-          console.log("ℹ️ Status update ignorado");
+          if (isDev) console.log("ℹ️ Status update ignorado");
           continue;
         }
 
@@ -145,7 +150,7 @@ export async function POST(req: Request) {
 
           // 1) Imagen: descargar → GPT-4o-mini visión
           if (type === "image" && imageId) {
-            console.log(`🖼️ Imagen recibida de ${from}`);
+            if (isDev) console.log(`🖼️ Imagen recibida de ${from}`);
             try {
               const media = await getWhatsAppMediaAsBase64(imageId, "image/jpeg");
               if (media?.dataUrl) {
@@ -158,16 +163,16 @@ export async function POST(req: Request) {
                   "whatsapp"
                 );
               } else {
-                response = "No pude procesar la imagen. ¿Probás enviándola de nuevo?";
+                response = "No pude procesar la imagen. ¿Puedes enviarla de nuevo?";
               }
             } catch (err) {
               console.error("❌ Error procesando imagen:", err);
-              response = "Uy, falló el análisis de la imagen. Intentá en un ratito.";
+              response = "Uy, falló el análisis de la imagen. Intenta en un ratito.";
             }
           }
           // 2) Audio: descargar → Whisper → texto → ONDA
           else if (type === "audio" && audioId) {
-            console.log(`🎤 Audio recibido de ${from}`);
+            if (isDev) console.log(`🎤 Audio recibido de ${from}`);
             try {
               const media = await getWhatsAppMediaAsBase64(audioId, "audio/ogg");
               if (media?.dataUrl) {
@@ -175,16 +180,21 @@ export async function POST(req: Request) {
                 const userMessage = transcribed || "(no se pudo transcribir el audio)";
                 response = await getOndaReply(userMessage, null, null, wantsSources(userMessage), null, "whatsapp");
               } else {
-                response = "No pude descargar el audio. ¿Probás enviando un mensaje de texto?";
+                response = "No pude descargar el audio. ¿Puedes enviar un mensaje de texto?";
               }
             } catch (err) {
               console.error("❌ Error procesando audio:", err);
-              response = "No pude transcribir el audio. ¿Me lo escribís por texto?";
+              await recordError({
+                source: "whatsapp",
+                userMessage: "(audio)",
+                error: err instanceof Error ? err.message : String(err),
+              });
+              response = "No pude transcribir el audio. ¿Me lo escribes por texto?";
             }
           }
           // 3) Texto
           else if (text && (type === "text" || !type)) {
-            console.log(`💬 Mensaje recibido de ${from}: ${text}`);
+            if (isDev) console.log(`💬 Mensaje recibido de ${from}: ${text}`);
             try {
               response = await getOndaReply(text, null, null, includeSources, null, "whatsapp");
             } catch (err) {
@@ -194,28 +204,61 @@ export async function POST(req: Request) {
 
           if (response) {
             const parsed = parseResponseFormat(response);
-            const shouldSendAudio =
-              (type === "audio" && audioId) ||
-              wantsAudio(userMessageForFormat) ||
-              parsed.sendAudio;
             try {
-              console.log(`🤖 Respuesta: ${parsed.text.substring(0, 80)}...`);
+              if (isDev) console.log(`🤖 Respuesta formato=${parsed.formato}: ${parsed.text.substring(0, 80)}...`);
               const textResult = await sendWhatsAppText(from, parsed.text);
               if (textResult.ok) {
-                console.log("✅ Respuesta (texto) enviada correctamente");
+                if (isDev) console.log("✅ Respuesta (texto) enviada correctamente");
               } else {
                 console.error("❌ Error al enviar texto:", textResult.error);
               }
-              if (shouldSendAudio && parsed.text.length <= 4000) {
+
+              if (parsed.formato === "audio" && parsed.text.length <= 4000) {
                 try {
                   const audioBuffer = await generateSpeech(parsed.text);
                   const audioResult = await sendWhatsAppAudio(from, audioBuffer);
-                  if (audioResult.ok) console.log("✅ Respuesta (voz) enviada");
+                  if (audioResult.ok && isDev) console.log("✅ Respuesta (voz) enviada");
                   else console.error("❌ Error al enviar voz:", audioResult.error);
                 } catch (voiceErr) {
                   console.error("❌ Error generando/enviando voz:", voiceErr);
                 }
               }
+
+              if (parsed.formato === "infografia" && parsed.infographicPayload) {
+                try {
+                  const result = await renderInfographicPng(parsed.infographicPayload, null);
+                  if (result.ok) {
+                    const caption = parsed.text.slice(0, 200).trim();
+                    const imgResult = await sendWhatsAppImage(
+                      from,
+                      result.buffer,
+                      "image/png",
+                      caption || undefined
+                    );
+                    if (imgResult.ok && isDev) console.log("✅ Infografía PNG enviada");
+                    else console.error("❌ Error al enviar infografía:", imgResult.error);
+                  }
+                } catch (imgErr) {
+                  console.error("❌ Error generando/enviando infografía:", imgErr);
+                }
+              } else if (parsed.formato === "imagen") {
+                try {
+                  const imgGen = await generateImageFromText(parsed.text);
+                  if (imgGen.ok) {
+                    const imgResult = await sendWhatsAppImage(
+                      from,
+                      imgGen.buffer,
+                      "image/png",
+                      undefined
+                    );
+                    if (imgResult.ok && isDev) console.log("✅ Imagen generada enviada");
+                    else console.error("❌ Error al enviar imagen generada:", imgResult.error);
+                  }
+                } catch (imgErr) {
+                  console.error("❌ Error generando/enviando imagen:", imgErr);
+                }
+              }
+
               if (parsed.guideId) {
                 const guide = await getGuideImageBuffer(parsed.guideId);
                 if (guide) {
@@ -225,15 +268,21 @@ export async function POST(req: Request) {
                     guide.mimeType,
                     undefined
                   );
-                  if (imgResult.ok) console.log("✅ Guía (imagen) enviada");
+                  if (imgResult.ok && isDev) console.log("✅ Guía (imagen) enviada");
                   else console.error("❌ Error al enviar imagen:", imgResult.error);
                 }
               }
             } catch (error) {
               console.error("❌ Error enviando respuesta:", error);
+              await recordError({
+                source: "whatsapp",
+                userMessage: text?.trim() ?? (type === "audio" ? "(audio)" : "(imagen)"),
+                botResponse: response ?? undefined,
+                error: error instanceof Error ? error.message : String(error),
+              });
             }
           } else {
-            console.log("⏭️ Mensaje ignorado", { from, type, direction });
+            if (isDev) console.log("⏭️ Mensaje ignorado", { from, type, direction });
           }
         }
       }

@@ -72,4 +72,4 @@ Además de **Gemini** y **OpenAI ChatGPT**, ONDA puede consultar estas fuentes p
 2. **RAG**: indexar (scraping o APIs si existen) contenido de estas URLs y recuperar fragmentos antes de generar la respuesta.
 3. **Citas**: en la respuesta, indicar “Según [UNESCO AMI]…”, “Verificado en [Reuters Fact Check]…”, “Fuente: [URL]”.
 
-**Nota**: Algunas fuentes (JSTOR, Gale, EBSCO) requieren suscripción; se pueden usar para orientar al usuario (“Podés buscar en JSTOR…”) aunque el bot no acceda directamente.
+**Nota**: Algunas fuentes (JSTOR, Gale, EBSCO) requieren suscripción; se pueden usar para orientar al usuario (“Puedes buscar en JSTOR…”) aunque el bot no acceda directamente.

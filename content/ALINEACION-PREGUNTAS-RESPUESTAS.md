@@ -6,7 +6,7 @@ Este documento verifica que cada posibilidad de pregunta (chips, placeholders, b
 
 - **RAW** (ondaRaw.ts) describe un bot con **menús por Onda**: 10 botones en A Mano, menú + submenú en Civita, 8 botones en Profes. Cada opción tiene intro y guion de respuesta.
 - **Chat web**: no implementa esos botones; hay **un mensaje de bienvenida por Onda** (WELCOME_*) que ya está alineado con el texto de RAW, **chips de sugerencia** y **texto libre**. El modelo recibe todo el RAW en el system prompt, así que responde correctamente a lo que el usuario escriba o elija en los chips.
-- **Contenido 100%**: Las bienvenidas (shared.ts) reflejan el contenido y tono de RAW. Cada Onda deja claro qué se puede preguntar (línea “Podés pedirme…” / “Podés preguntar…”). Los chips cubren los flujos principales. El resto se puede preguntar por texto y el modelo responde según RAW.
+- **Contenido 100%**: Las bienvenidas (shared.ts) reflejan el contenido y tono de RAW. Cada Onda deja claro qué se puede preguntar (línea “Puedes pedirme…” / “Puedes preguntar…”). Los chips cubren los flujos principales. El resto se puede preguntar por texto y el modelo responde según RAW.
 
 ## Fuente de respuestas
 

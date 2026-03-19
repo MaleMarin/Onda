@@ -24,7 +24,7 @@ Ideas para que ONDA sea **fácil de usar**, **profundo**, **creativo**, con **ú
 | **Memoria de sesión (y opcional larga)** | En la sesión: el modelo ya tiene historial. Opcional: "¿Guardar esta conversación?" → persistir por 24h o 7 días con un token anónimo para retomar. | Respuestas coherentes y seguimiento. |
 | **País y perfil liviano (Civita)** | En Civita, preguntar "¿En qué país estás?" una vez y guardar; adaptar ejemplos (leyes, instituciones) a ese país. | Respuestas más relevantes. |
 | **Citar fuentes** | Cuando el modelo use datos o protocolos, que cite "según [nombre de la guía ONDA]" o "fuente: Precisar". Botón "Ver fuente" que abre un link o un pequeño modal. | Confianza y trazabilidad. |
-| **Seguimiento proactivo** | Tras una respuesta sobre estafa/phishing: "¿Querés que te avisemos si sale una guía actualizada?" (con opt-in por notificación o email). | Profundidad en el tiempo. |
+| **Seguimiento proactivo** | Tras una respuesta sobre estafa/phishing: "¿Quieres que te avisemos si sale una guía actualizada?" (con opt-in por notificación o email). | Profundidad en el tiempo. |
 | **RAG / base de conocimiento** | Conectar una base (Precisar, guías, FAQ) vía embeddings + búsqueda; el modelo prioriza ese contenido. | Respuestas alineadas 100% con tu verdad. |
 | **Resumen de conversación** | Al final de hilos largos: "Resumen: hablamos de X, Y, Z. ¿Guardamos esto?" (texto descargable o enviado por email). | Útil para quien vuelve después. |
 
@@ -37,7 +37,7 @@ Ideas para que ONDA sea **fácil de usar**, **profundo**, **creativo**, con **ú
 | **Saludos y despedidas contextuales** | Ya hay saludos por hora/día; sumar frases por Onda ("Hoy en Onda Civita podemos mirar una noticia con lupa") o por festivo/campaña. | Sensación de que el bot "está al tanto". |
 | **Micro-animaciones y feedback** | Pequeñas animaciones al enviar (check), al recibir (onda suave), al cambiar de Onda (transición). Ya hay algo; reforzar sin exceso. | Sensación de fluidez. |
 | **Respuestas en formatos ricos** | Listas, pasos numerados, "3 señales de alerta" con negritas; el modelo ya puede; asegurar que el front (Markdown o componentes) lo muestre bien. | Contenido más escaneable. |
-| **"Desafío del día" (opcional)** | En A Mano: "Hoy probá: mirá un titular y preguntate si es noticia o opinión" con link a enviar esa noticia al chat. | Engagement suave, no invasivo. |
+| **"Desafío del día" (opcional)** | En A Mano: "Hoy prueba: mira un titular y pregúntate si es noticia o opinión" con link a enviar esa noticia al chat. | Engagement suave, no invasivo. |
 | **Tono consistente pero variado** | Mismo tono ONDA (cercano, sin tecnicismos) con variedad de aperturas/cierres para no sonar repetitivo. | Creatividad sin perder identidad. |
 | **Compartir** | Botón "Compartir esta respuesta" → genera un link o imagen (card) para WhatsApp/Twitter. | Viralidad y utilidad social. |
 

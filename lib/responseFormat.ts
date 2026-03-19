@@ -48,7 +48,7 @@ export function wantsSources(userMessage: string): boolean {
   return terms.some((term) => t.includes(term));
 }
 
-/** Detecta si el usuario pide explícitamente imagen o infografía */
+/** Detecta si el usuario pide explícitamente imagen, infografía o diagrama */
 export function wantsImage(userMessage: string): boolean {
   const t = (userMessage || "").toLowerCase().trim();
   const terms = [
@@ -60,12 +60,16 @@ export function wantsImage(userMessage: string): boolean {
     "infografica",
     "en gráfico",
     "gráfico",
+    "diagrama",
+    "hazme un diagrama",
+    "hazme una infografía",
     "mandame una imagen",
     "mándame una imagen",
     "como imagen",
     "con imagen",
     "con una guía",
     "una guía visual",
+    "resumen visual",
   ];
   return terms.some((term) => t.includes(term));
 }
@@ -82,34 +86,150 @@ export const GUIDE_IDS = [
 ];
 const GUIDE_IDS_SET = new Set(GUIDE_IDS);
 
-const FORMATO_AUDIO_REGEX = /\[ONDA_FORMATO:audio\]/gi;
+/** Marcador estándar: [ONDA_FORMATO:texto|audio|infografia|imagen] */
+const FORMATO_REGEX = /\[ONDA_FORMATO:\s*(texto|audio|infografia|imagen)\s*\]/gi;
 const GUIA_REGEX = /\[ONDA_GUIA:([a-z0-9_-]+)\]/gi;
 /** [ONDA_SUGERENCIAS: pregunta1 | pregunta2 | pregunta3] → preguntas relacionadas, fraseo como usuario */
 const SUGERENCIAS_REGEX = /\[ONDA_SUGERENCIAS:\s*([^\]]+)\]/gi;
 
+export type FormatoSalida = "texto" | "audio" | "infografia" | "imagen";
+
+/** Payload para renderizar infografía PNG: título, bullets, por qué importa, qué hacer, fuentes opcionales */
+export interface InfographicPayload {
+  title: string;
+  summaryBullets: string[];
+  whyMatters: string[];
+  nextSteps: string[];
+  sources?: string[];
+}
+
 export interface ParsedResponse {
-  /** Texto limpio (sin marcadores) para mostrar y para TTS */
   text: string;
-  /** Si debemos enviar además la respuesta en audio */
+  formato: FormatoSalida;
   sendAudio: boolean;
-  /** Si el modelo indicó una guía, el id (solo si está en GUIDE_IDS) */
   guideId: string | null;
-  /** 2–4 preguntas de seguimiento relacionadas, redactadas como la usuaria preguntaría */
   suggestions: string[];
+  /** Cuando formato===infografia: payload para renderizar la infografía */
+  infographicPayload?: InfographicPayload;
+}
+
+const BULLET_REGEX = /^[\s]*[-*•]\s+/;
+const NUMBERED_REGEX = /^[\s]*\d+[.)]\s+/;
+
+function isBulletLine(line: string): boolean {
+  const t = line.trim();
+  return BULLET_REGEX.test(t) || NUMBERED_REGEX.test(t);
+}
+
+function stripBullet(line: string): string {
+  return line.replace(BULLET_REGEX, "").replace(NUMBERED_REGEX, "").trim();
+}
+
+const MAX_WORDS_BULLET = 12;
+
+function trimToMaxWords(s: string, maxWords: number): string {
+  const parts = s.trim().split(/\s+/);
+  if (parts.length <= maxWords) return s.trim();
+  return parts.slice(0, maxWords).join(" ") + (s.trim().endsWith("…") ? "" : "…");
+}
+
+function sourceToShortLabel(raw: string): string {
+  const t = raw.trim();
+  const urlMatch = t.match(/https?:\/\/([^/]+)/i);
+  if (urlMatch) {
+    const domain = urlMatch[1].replace(/^www\./, "");
+    const short = domain.split(".").slice(-2, -1)[0] ?? domain;
+    return short.charAt(0).toUpperCase() + short.slice(1);
+  }
+  return t.slice(0, 40);
 }
 
 /**
- * Parsea la respuesta del modelo: quita marcadores [ONDA_FORMATO:audio] y [ONDA_GUIA:xxx]
- * y devuelve texto limpio + flags para enviar audio o imagen.
+ * Extrae del texto del modelo un payload estructurado para la infografía.
+ * Heurística: título (primera línea), bullets (líneas con - * • o 1. 2.), secciones "por qué importa" / "qué hacer".
+ */
+export function extractInfographicPayload(text: string): InfographicPayload {
+  const raw = (text || "").trim();
+  if (!raw) {
+    return {
+      title: "Infografía ONDA",
+      summaryBullets: [],
+      whyMatters: [],
+      nextSteps: [],
+    };
+  }
+
+  const lines = raw.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  const bullets: string[] = [];
+  let title = "";
+  const whyMatters: string[] = [];
+  const nextSteps: string[] = [];
+  const sources: string[] = [];
+
+  let i = 0;
+  if (lines.length > 0 && !isBulletLine(lines[0])) {
+    title = lines[0].slice(0, 120);
+    i = 1;
+  }
+  while (i < lines.length && bullets.length < 5) {
+    const line = lines[i];
+    if (isBulletLine(line)) {
+      bullets.push(trimToMaxWords(stripBullet(line), MAX_WORDS_BULLET));
+    } else if (/^(por qué importa|porque importa|qué importa|por qué es importante)/i.test(line)) {
+      i++;
+      for (let j = 0; j < 3 && i + j < lines.length; j++) {
+        if (isBulletLine(lines[i + j])) whyMatters.push(trimToMaxWords(stripBullet(lines[i + j]), MAX_WORDS_BULLET));
+      }
+      i += 3;
+      continue;
+    } else if (/^(qué hacer|cómo verificar|pasos|siguiente|qué hacer ahora)/i.test(line)) {
+      i++;
+      for (let j = 0; j < 4 && i + j < lines.length; j++) {
+        if (isBulletLine(lines[i + j])) nextSteps.push(trimToMaxWords(stripBullet(lines[i + j]), MAX_WORDS_BULLET));
+      }
+      i += 4;
+      continue;
+    } else if (/^(fuentes|referencias|📚)/i.test(line)) {
+      i++;
+      for (let j = 0; j < 5 && i + j < lines.length && sources.length < 3; j++) {
+        const ln = lines[i + j].trim();
+        if (ln && (/\d+\./.test(ln) || /[-*•]/.test(ln) || /https?:\/\//i.test(ln))) {
+          sources.push(sourceToShortLabel(ln.replace(/^\d+[.)]\s*/, "").replace(/^[-*•]\s*/, "")));
+        }
+      }
+      i += 5;
+      break;
+    }
+    i++;
+  }
+
+  if (!title && bullets.length > 0) title = bullets.shift()?.slice(0, 120) ?? "Infografía ONDA";
+  if (!title) title = raw.slice(0, 80).split("\n")[0] || "Infografía ONDA";
+  if (whyMatters.length === 0 && bullets.length > 1) {
+    whyMatters.push(bullets[bullets.length - 1] ?? "Resumen del contenido.");
+  }
+  if (nextSteps.length === 0) {
+    nextSteps.push("Revisar fuentes.", "Compartir con criterio.", "Seguir explorando.");
+  }
+
+  return { title, summaryBullets: bullets.slice(0, 5), whyMatters: whyMatters.slice(0, 2), nextSteps: nextSteps.slice(0, 3), sources: sources.length ? sources.slice(0, 3) : undefined };
+}
+
+/**
+ * Parsea la respuesta del modelo: quita marcadores [ONDA_FORMATO:...], [ONDA_GUIA:xxx], [ONDA_SUGERENCIAS: ...]
+ * y devuelve texto limpio + formato + flags para audio/guía.
  */
 export function parseResponseFormat(reply: string): ParsedResponse {
   let text = reply || "";
-  let sendAudio = false;
+  let formato: FormatoSalida = "texto";
   let guideId: string | null = null;
   let suggestions: string[] = [];
 
-  text = text.replace(FORMATO_AUDIO_REGEX, () => {
-    sendAudio = true;
+  text = text.replace(FORMATO_REGEX, (_, value: string) => {
+    const v = (value || "").toLowerCase().trim();
+    if (v === "audio" || v === "infografia" || v === "imagen" || v === "texto") {
+      formato = v as FormatoSalida;
+    }
     return "";
   });
   text = text.replace(GUIA_REGEX, (_, id: string) => {
@@ -126,5 +246,8 @@ export function parseResponseFormat(reply: string): ParsedResponse {
   });
 
   text = text.replace(/\n{3,}/g, "\n\n").trim();
-  return { text, sendAudio, guideId, suggestions };
+  const f = formato as FormatoSalida;
+  const sendAudio = f === "audio";
+  const infographicPayload = f === "infografia" ? extractInfographicPayload(text) : undefined;
+  return { text, formato: f, sendAudio, guideId, suggestions, infographicPayload };
 }

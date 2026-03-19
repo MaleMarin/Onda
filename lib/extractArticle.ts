@@ -69,7 +69,7 @@ export async function extractArticle(urlParam: string): Promise<ExtractResult> {
       redirect: "follow",
     });
 
-    // SIEMPRE leer HTML: aunque res.ok sea false (403, 404, paywall) podemos rescatar <title> y og:description.
+    // NUNCA early return por !res.ok: aunque sea 403/404/paywall, leer cuerpo y parsear meta (título, og:description).
     const html = await res.text();
     const meta = pickMeta(html);
     const rawText = stripHtml(html);

@@ -293,7 +293,7 @@ export function ondaStyles(t: OndaTheme) {
       border: "none",
       color: "#fff",
       fontSize: "1.0625rem",
-      fontWeight: 700,
+      fontWeight: 600,
       letterSpacing: ".04em",
       cursor: "pointer",
       touchAction: "manipulation",

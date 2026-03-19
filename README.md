@@ -10,10 +10,10 @@ Para usar la interfaz de chat en local:
 npm run dev
 ```
 
-Luego abrí en el navegador: **http://localhost:2999**
+Luego abrí en el navegador: **http://localhost:3020/chat**
 
-- Por defecto el servidor usa el puerto **2999** (para evitar conflicto con otros procesos en 3000/3001).
-- Si ves "address already in use", cerrá otras terminales donde corra Next o probá: `npm run dev:3010` y entrá a **http://localhost:3010**.
+- El comando `npm run dev` levanta **siempre** el Chat Web (Next.js) en el puerto **3020**.
+- Si ves "address already in use", cerrá otras terminales donde corra Next o probá: `npm run dev:fresh` o `npm run dev:3010` y entrá a **http://localhost:3010**.
 
 ## 🚀 Configuración Rápida
 
@@ -73,12 +73,20 @@ npm install
 
 | Comando | Uso |
 |--------|-----|
-| `npm run chat` | Interfaz de chat (Next.js) en **http://localhost:3000** |
-| `npm run dev` | Backend Express (webhook, etc.). No sirve la UI del chat |
+| `npm run dev` | **Chat Web** (Next.js) en **http://localhost:3020**. Abrí **http://localhost:3020/chat** |
+| `npm run backend` | **Backend Express** (webhook, TTS, etc.) en **http://localhost:3000** (o el puerto definido en `PORT`) |
 
-El webhook estará en: http://localhost:3000/api/webhook (con `npm run chat`).
+**Puertos:**
 
-**Nota**: Para desarrollo local del webhook de WhatsApp, necesitarás ngrok o similar para exponer tu localhost a Meta.
+- **Web (Next.js):** http://localhost:3020/chat  
+- **Backend (Express):** http://localhost:3000 (por defecto; configurable con variable de entorno `PORT`)
+
+**Correr ambos:** En una terminal ejecutá `npm run backend` y en otra `npm run dev`. Así tenés el chat en el navegador y el backend/API disponibles.
+
+- Con **solo** `npm run dev` (Next.js), el webhook de la app está en: **http://localhost:3020/api/webhook**.
+- El backend Express (`npm run backend`) corre en el puerto 3000 por defecto.
+
+**Nota:** Para desarrollo local del webhook de WhatsApp, necesitarás ngrok o similar para exponer tu localhost a Meta.
 
 ## 📝 Logs
 

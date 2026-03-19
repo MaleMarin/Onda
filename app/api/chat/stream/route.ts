@@ -1,8 +1,20 @@
-import { getOndaReplyStream, getOndaReplyWithImage, type ArticleContext } from "../../../../lib/ondaReply";
-import { wantsSources } from "../../../../lib/responseFormat";
+import { getOndaReplyStream, getOndaReplyWithImage, generateTemaFromExchange, type ArticleContext } from "../../../../lib/ondaReply";
+import { searchPrivateDocs } from "../../../../lib/firebaseRag";
+import { getRagContext } from "../../../../lib/rag";
+import { parseResponseFormat, wantsSources } from "../../../../lib/responseFormat";
+import { searchWeb } from "../../../../lib/searchWeb";
 import { transcribeAudio } from "../../../../lib/transcribe";
 import { extractArticle } from "../../../../lib/extractArticle";
+import { generateImageFromText } from "../../../../lib/generateImage";
+import { renderInfographicPng } from "../../../../lib/infographic";
 import { EjeOnda } from "../../../../content/types";
+
+/** Tiempo máximo de ejecución del handler (Vercel: 60 en Hobby, hasta 300 en Pro). */
+export const maxDuration = 60;
+
+/** Las evidencias de búsqueda (RAG + Tavily) se construyen aquí; si Tavily falla o tarda >8s, arrancamos con RAG/PDFs. La velocidad es credibilidad. */
+const TAVILY_TIMEOUT_MS = 8_000;
+const RAG_TIMEOUT_MS = 8_000;
 
 const URL_REGEX = /\b(https?:\/\/[^\s)\]}>"']+)/i;
 function extractFirstUrl(text: string): string | null {
@@ -40,8 +52,8 @@ function* chunkText(text: string, size = 40): Generator<string> {
 }
 
 /**
- * POST con mismo body que /api/chat. Acepta message, image, audio, eje, history.
- * Con imagen usa GPT-4o-mini (visión, sin streaming); solo texto usa GPT-4o-mini en streaming real.
+ * Único endpoint de chat (estándar Vercel AI SDK / streaming). No existe /api/chat duplicado.
+ * POST: message, image, audio, eje, history. Con imagen: visión sin stream; solo texto: stream real.
  */
 export async function POST(req: Request) {
   try {
@@ -88,8 +100,8 @@ export async function POST(req: Request) {
         const msg = err instanceof Error ? err.message : String(err);
         console.error("[chat/stream] transcribe", err);
         const userMessage = msg.includes("muy corto")
-          ? "El audio es muy corto. Grabá al menos un par de segundos y probá de nuevo."
-          : "No pude transcribir el audio. Probá con otro formato o envíalo por texto.";
+          ? "El audio es muy corto. Graba al menos un par de segundos y vuelve a intentar."
+          : "No pude transcribir el audio. Puedes probar con otro formato o enviarlo por texto.";
         return Response.json(
           { error: userMessage },
           { status: 400 }
@@ -135,20 +147,94 @@ export async function POST(req: Request) {
     }
 
     const encoder = new TextEncoder();
+    const query = message ?? "";
+
+    /** Tavily: max 8s. Si falla o se excede, usamos "" y arrancamos con RAG/PDFs (paralelismo real con fallback). */
+    const webContextPromise = image
+      ? Promise.resolve("")
+      : Promise.race([
+          searchWeb(query),
+          new Promise<string>((_, rej) => setTimeout(() => rej(new Error("tavily_timeout")), TAVILY_TIMEOUT_MS)),
+        ]).catch(() => "");
+
+    /** RAG + docs privados (OEI/Precisar) en paralelo; max 8s para no retrasar el inicio del stream. */
+    const ragAndPrivatePromise = image
+      ? Promise.resolve({ rag: "", privateDocs: "" })
+      : Promise.all([getRagContext(query), searchPrivateDocs(query)]).then(([rag, privateDocs]) => ({ rag: rag ?? "", privateDocs: privateDocs ?? "" }));
+
+    const ragAndPrivateWithTimeout = image
+      ? ragAndPrivatePromise
+      : Promise.race([
+          ragAndPrivatePromise,
+          new Promise<{ rag: string; privateDocs: string }>((resolve) =>
+            setTimeout(() => resolve({ rag: "", privateDocs: "" }), RAG_TIMEOUT_MS)
+          ),
+        ]);
+
+    /** Contexto completo: web (o "" si Tavily falló/8s) + RAG + docs. Si Tavily tarda, el bot empieza a escribir con PDFs. */
+    const extraContextPromise = image
+      ? Promise.resolve(undefined)
+      : (async () => {
+          const [webContext, { rag, privateDocs }] = await Promise.all([webContextPromise, ragAndPrivateWithTimeout]);
+          const combined = [webContext, rag, privateDocs].filter(Boolean).join("\n\n");
+          return combined || undefined;
+        })();
+
     const stream = new ReadableStream({
       async start(controller) {
+        let partialSoFar = "";
         try {
           const includeSources = wantsSources(message);
+          let extraContext: string | undefined;
+          try {
+            extraContext = await extraContextPromise;
+          } catch (contextErr) {
+            console.warn("[chat/stream] context fetch failed, continuing without:", contextErr);
+            extraContext = undefined;
+          }
           if (image) {
             const fullReply = await getOndaReplyWithImage(
               message || "¿Qué ves en esta imagen?",
               image,
               eje,
               history.length > 0 ? history : null,
-              includeSources
+              includeSources,
+              undefined,
+              extraContext || undefined
             );
             for (const chunk of chunkText(fullReply)) {
               controller.enqueue(encoder.encode(JSON.stringify({ text: chunk }) + "\n"));
+            }
+            const parsedImg = parseResponseFormat(fullReply);
+            if (parsedImg.formato === "infografia" && parsedImg.infographicPayload) {
+              controller.enqueue(encoder.encode(JSON.stringify({ text: "\n\n_Generando infografía…_" }) + "\n"));
+              try {
+                const result = await renderInfographicPng(parsedImg.infographicPayload, eje);
+                if (result.ok) {
+                  controller.enqueue(
+                    encoder.encode(JSON.stringify({ infographic: { mime: "image/png", dataUrl: result.dataUrl, alt: "Infografía ONDA" } }) + "\n")
+                  );
+                }
+              } catch (imgErr) {
+                console.warn("[chat/stream] infographic generation failed:", imgErr);
+              }
+            } else if (parsedImg.formato === "imagen") {
+              controller.enqueue(encoder.encode(JSON.stringify({ text: "\n\n_Generando imagen…_" }) + "\n"));
+              try {
+                const imgGen = await generateImageFromText(parsedImg.text);
+                if (imgGen.ok) {
+                  const dataUrl = `data:${imgGen.mimeType};base64,${imgGen.buffer.toString("base64")}`;
+                  controller.enqueue(encoder.encode(JSON.stringify({ image: dataUrl }) + "\n"));
+                }
+              } catch (imgErr) {
+                console.warn("[chat/stream] image generation failed:", imgErr);
+              }
+            }
+            try {
+              const tema = await generateTemaFromExchange(message || "¿Qué ves en esta imagen?", fullReply);
+              if (tema) controller.enqueue(encoder.encode(JSON.stringify({ tema }) + "\n"));
+            } catch {
+              // ignore
             }
           } else {
             for await (const chunk of getOndaReplyStream(
@@ -156,22 +242,64 @@ export async function POST(req: Request) {
               eje,
               history.length > 0 ? history : null,
               includeSources,
-              articleContext
+              articleContext,
+              extraContext ?? null
             )) {
+              partialSoFar += chunk;
               controller.enqueue(encoder.encode(JSON.stringify({ text: chunk }) + "\n"));
+            }
+            const parsed = parseResponseFormat(partialSoFar);
+            if (parsed.formato === "infografia" && parsed.infographicPayload) {
+              controller.enqueue(encoder.encode(JSON.stringify({ text: "\n\n_Generando infografía…_" }) + "\n"));
+              try {
+                const result = await renderInfographicPng(parsed.infographicPayload, eje);
+                if (result.ok) {
+                  controller.enqueue(
+                    encoder.encode(JSON.stringify({ infographic: { mime: "image/png", dataUrl: result.dataUrl, alt: "Infografía ONDA" } }) + "\n")
+                  );
+                }
+              } catch (imgErr) {
+                console.warn("[chat/stream] infographic generation failed:", imgErr);
+              }
+            } else if (parsed.formato === "imagen") {
+              controller.enqueue(encoder.encode(JSON.stringify({ text: "\n\n_Generando imagen…_" }) + "\n"));
+              try {
+                const imgGen = await generateImageFromText(parsed.text);
+                if (imgGen.ok) {
+                  const dataUrl = `data:${imgGen.mimeType};base64,${imgGen.buffer.toString("base64")}`;
+                  controller.enqueue(encoder.encode(JSON.stringify({ image: dataUrl }) + "\n"));
+                }
+              } catch (imgErr) {
+                console.warn("[chat/stream] image generation failed:", imgErr);
+              }
+            }
+            try {
+              const tema = await generateTemaFromExchange(query, partialSoFar);
+              if (tema) controller.enqueue(encoder.encode(JSON.stringify({ tema }) + "\n"));
+            } catch {
+              // ignore
             }
           }
           controller.enqueue(encoder.encode(JSON.stringify({ done: true }) + "\n"));
         } catch (err) {
           console.error("[chat/stream]", err);
           const isImageRequest = !!image;
-          const message =
-            isImageRequest
-              ? "No pude analizar la imagen. Probá con otra más liviana o contame por texto qué ves."
-              : "Uy, se cortó la conexión. ¿Probamos de nuevo?";
-          controller.enqueue(
-            encoder.encode(JSON.stringify({ error: message }) + "\n")
-          );
+          if (partialSoFar.trim().length > 0) {
+            controller.enqueue(
+              encoder.encode(JSON.stringify({ text: partialSoFar.trim() }) + "\n")
+            );
+            controller.enqueue(
+              encoder.encode(JSON.stringify({ text: "\n\n_La conexión se interrumpió; aquí va lo que pude generar. Puedes preguntar de nuevo para seguir._" }) + "\n")
+            );
+          } else {
+            const fallbackMsg =
+              isImageRequest
+                ? "No pude analizar la imagen. Puedes probar con otra más liviana o contarme por texto qué ves."
+                : "Uy, se cortó la conexión. ¿Probamos de nuevo?";
+            controller.enqueue(
+              encoder.encode(JSON.stringify({ error: fallbackMsg }) + "\n")
+            );
+          }
         } finally {
           controller.close();
         }
@@ -188,7 +316,7 @@ export async function POST(req: Request) {
   } catch (e) {
     console.error("[chat/stream]", e);
     return Response.json(
-      { error: "No pude conectar. Revisa OPENAI_API_KEY." },
+      { error: "Algo falló en el servidor. Intenta de nuevo en un momento." },
       { status: 500 }
     );
   }

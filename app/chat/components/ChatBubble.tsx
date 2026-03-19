@@ -48,6 +48,10 @@ interface ChatBubbleProps {
   fillHeight?: boolean;
   /** Cuando el mensaje es intro de menú (3 preguntas), clic en un botón: envía ese texto o abre el input (frase libre). */
   onMenuIntroChipClick?: (text: string) => void;
+  /** Llamado al votar 👍/👎 en respuestas generadas (solo si está definido). */
+  onFeedback?: (messageId: string, vote: "up" | "down") => void;
+  /** true = saludo o error: oculta Escuchar, Compartir, Copiar/Descargar y Feedback. Elimina ruido visual de raíz. */
+  hideActions?: boolean;
 }
 
 const LINK_REGEX = /\[([^\]]*)\]\((https?:\/\/[^)\s]+)\)/g;
@@ -56,6 +60,17 @@ const LINK_REGEX = /\[([^\]]*)\]\((https?:\/\/[^)\s]+)\)/g;
 function hasMarkdownLinks(text: string): boolean {
   LINK_REGEX.lastIndex = 0;
   return LINK_REGEX.test(text);
+}
+
+/** Mensajes sin evidencias útiles: no mostrar botón Compartir (no aporta valor). */
+function isNoUsefulEvidenceMessage(content: string): boolean {
+  const t = (content || "").trim();
+  if (!t) return true;
+  return (
+    /no tengo información en tiempo real/i.test(t) ||
+    /no he hallado evidencias verificables en mis registros oficiales/i.test(t) ||
+    /no tengo acceso (a|en) tiempo real/i.test(t)
+  );
 }
 
 /** Parsea el contenido de intro de menú (formato "1. Pregunta\n\n2. Pregunta\n\n3. Pregunta") para extraer las 3 preguntas como botones. Acepta \n, \r\n y bloques por número. */
@@ -113,15 +128,19 @@ function formatContent(text: string): React.ReactNode[] {
   return out;
 }
 
-export function ChatBubble({ message, color, compact, onPlayTTS, onStopTTS, isTTSPlaying, theme: t, fillHeight, onMenuIntroChipClick }: ChatBubbleProps) {
+export function ChatBubble({ message, color, compact, onPlayTTS, onStopTTS, isTTSPlaying, theme: t, fillHeight, onMenuIntroChipClick, onFeedback, hideActions }: ChatBubbleProps) {
   const S = ondaStyles(t);
   const [copied, setCopied] = useState(false);
+  const [feedbackSent, setFeedbackSent] = useState<"up" | "down" | null>(null);
   const isUser = message.role === "user";
   const isEmpty = message.role === "model" && message.content === "";
   const text = isEmpty ? ONDA_MICROCOPY.typing : message.content;
   const showCopyDownload = message.role === "model" && message.content && hasTable(message.content);
   const showFuenteVerificada = message.role === "model" && message.content && hasMarkdownLinks(message.content);
-  const showCompartir = message.role === "model" && message.content && !isEmpty;
+  /** Escuchar, Compartir, Copiar/Descargar y Feedback: solo en respuestas generadas y cuando hideActions es false (saludo/error = sin acciones). */
+  const showActionButtons = !hideActions && message.role === "model" && message.content && !isEmpty && message.isGenerated === true && !message.isMenuIntro;
+  const showEscuchar = showActionButtons && !!onPlayTTS;
+  const showCompartir = message.role === "model" && message.isGenerated === true && message.content !== "";
 
   const handleCopy = useCallback(async () => {
     if (!message.content) return;
@@ -160,7 +179,7 @@ export function ChatBubble({ message, color, compact, onPlayTTS, onStopTTS, isTT
     maxWidth: "92%",
     padding,
     borderRadius: t.r.lg,
-    lineHeight: 1.55,
+    lineHeight: 1.6,
     fontSize,
     whiteSpace: "pre-wrap",
     wordBreak: "break-word",
@@ -296,26 +315,30 @@ export function ChatBubble({ message, color, compact, onPlayTTS, onStopTTS, isTT
         ) : (
           <div className="prose-onda">{formatContent(text)}</div>
         )}
-        {onPlayTTS && message.content && !showAsMenuIntroButtons && (
-          <button
-            type="button"
-            onClick={() => (isTTSPlaying && onStopTTS ? onStopTTS() : onPlayTTS(message.content))}
-            style={{ ...ttsStyle, opacity: isTTSPlaying ? 0.9 : 1, cursor: "pointer" }}
-          >
-            {isTTSPlaying ? "⏹ Parar audio" : "🔊 Escuchar"}
-          </button>
+        {message.isGenerated && !message.isMenuIntro && !hideActions && (
+          <>
+            {onPlayTTS && message.content && (
+              <button
+                type="button"
+                onClick={() => (isTTSPlaying && onStopTTS ? onStopTTS() : onPlayTTS!(message.content))}
+                style={{ ...ttsStyle, opacity: isTTSPlaying ? 0.9 : 1, cursor: "pointer" }}
+              >
+                {isTTSPlaying ? "⏹ Parar audio" : "🔊 Escuchar"}
+              </button>
+            )}
+            {showCompartir && (
+              <button type="button" onClick={handleCopy} style={{ ...ttsStyle, marginTop: 6 }}>
+                {copied ? ONDA_MICROCOPY.compartirCopiado : ONDA_MICROCOPY.compartir}
+              </button>
+            )}
+          </>
         )}
         {showFuenteVerificada && !showAsMenuIntroButtons && (
           <span style={{ marginTop: 6, fontSize: "0.8125rem", color: t.c.muted, display: "inline-block" }}>
             ✓ {ONDA_MICROCOPY.fuenteVerificada}
           </span>
         )}
-        {showCompartir && !showAsMenuIntroButtons && (
-          <button type="button" onClick={handleCopy} style={{ ...ttsStyle, marginTop: 6 }}>
-            {copied ? ONDA_MICROCOPY.compartirCopiado : ONDA_MICROCOPY.compartir}
-          </button>
-        )}
-        {showCopyDownload && !showAsMenuIntroButtons && (
+        {showCopyDownload && showActionButtons && (
           <div style={copyDownloadWrap}>
             <span style={copyDownloadHint}>Puedes copiar o descargar la tabla:</span>
             <button type="button" onClick={handleCopy} style={copyDownloadBtn}>
@@ -323,6 +346,37 @@ export function ChatBubble({ message, color, compact, onPlayTTS, onStopTTS, isTT
             </button>
             <button type="button" onClick={handleDownload} style={copyDownloadBtn}>
               Descargar
+            </button>
+          </div>
+        )}
+        {onFeedback && message.role === "model" && message.isGenerated && message.content?.trim() && !showAsMenuIntroButtons && !isEmpty && (
+          <div style={{ marginTop: 10, paddingTop: 8, borderTop: `1px solid ${t.c.border}`, display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontSize: "0.875rem", color: t.c.muted }}>¿Te sirvió?</span>
+            <button
+              type="button"
+              aria-label="Sí, me sirvió"
+              disabled={feedbackSent !== null}
+              onClick={() => { setFeedbackSent("up"); onFeedback(message.id, "up"); }}
+              style={{
+                ...copyDownloadBtn,
+                padding: "4px 10px",
+                opacity: feedbackSent === "up" ? 1 : feedbackSent === "down" ? 0.5 : 1,
+              }}
+            >
+              👍
+            </button>
+            <button
+              type="button"
+              aria-label="No me sirvió"
+              disabled={feedbackSent !== null}
+              onClick={() => { setFeedbackSent("down"); onFeedback(message.id, "down"); }}
+              style={{
+                ...copyDownloadBtn,
+                padding: "4px 10px",
+                opacity: feedbackSent === "down" ? 1 : feedbackSent === "up" ? 0.5 : 1,
+              }}
+            >
+              👎
             </button>
           </div>
         )}

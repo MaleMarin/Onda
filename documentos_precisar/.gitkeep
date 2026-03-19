@@ -1,0 +1,3 @@
+# Carpeta para PDFs e informes de Precisar.
+# El script scripts/ingestToFirestore.ts lee desde aquí y sube chunks a Firestore (embeddings_onda).
+# Añade tus PDFs aquí y ejecuta: npm run ingest

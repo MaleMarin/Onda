@@ -7,8 +7,11 @@
 
 import { useState, useRef, useEffect, useLayoutEffect, useMemo, useCallback, type CSSProperties } from "react";
 import {
-  MAIN_WELCOME,
+  getMainWelcome,
   getShortWelcome,
+  getGreetingNewDay,
+  getWelcomeWithPreferredEje,
+  getWelcomeWithTema,
   EJE_CONFIGS,
   EJE_MENU_OPTIONS,
   IA_SUBMENU_OPTIONS,
@@ -74,12 +77,178 @@ function compressImage(dataUrl: string): Promise<string> {
 
 const STORAGE_KEY_VISITED = "onda_visited";
 const STORAGE_KEY_RESTORE = "onda_chat_restore";
+const STORAGE_KEY_PREFERRED = "onda_preferida";
+const STORAGE_KEY_ULTIMO_TEMA = "onda_ultimo_tema";
 const RESTORE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 días
+/** Si la última actividad fue hace más de 12 h o en otro día, se considera "nuevo día" y se muestra saludo contextual. */
+const SAME_SESSION_MS = 12 * 60 * 60 * 1000;
+
+function isSameCalendarDay(ts1: number, ts2: number): boolean {
+  return new Date(ts1).toDateString() === new Date(ts2).toDateString();
+}
+
+function isWithinSameSession(savedAt: number): boolean {
+  return isSameCalendarDay(savedAt, Date.now()) && Date.now() - savedAt < SAME_SESSION_MS;
+}
+
+function getPreferredEjeFromStorage(): EjeOnda | null {
+  if (typeof window === "undefined") return null;
+  const v = localStorage.getItem(STORAGE_KEY_PREFERRED);
+  if (v === EjeOnda.A_MANO || v === EjeOnda.CIVITA || v === EjeOnda.PROFES) return v as EjeOnda;
+  return null;
+}
+
+/** Ordena mensajes por timestamp para que el historial no tenga saltos temporales. */
+function sortMessagesByTimestamp(messages: Message[]): Message[] {
+  return [...messages].sort((a, b) => (a.timestamp ?? 0) - (b.timestamp ?? 0));
+}
+
+export type UserCheckResult = {
+  initialMessage: string;
+  shouldRestore: boolean;
+  restoredMessages: Message[] | null;
+  restoredEje: EjeOnda | null;
+  /** Última Onda guardada en localStorage (para resaltar botón y bienvenida personalizada). */
+  preferredEje: EjeOnda | null;
+};
+
+/**
+ * Jerarquía de saludos (useUserCheck):
+ * 1. Tema guardado (onda_ultimo_tema) → "¿Seguimos trabajando en [tema] o buscamos nuevas evidencias hoy?"
+ * 2. Onda preferida (onda_preferida) → "¿Quieres continuar ahí o exploramos una nueva hoy?"
+ * 3. Nuevo día → "¡Hola de nuevo hoy! Qué bueno verte este [Día]. ¿Qué onda activamos hoy?"
+ * 4. Usuario nuevo → bienvenida larga con las 3 Ondas.
+ * Regla 12 h: si última actividad > 12 h, se borra onda_chat_restore pero se MANTIENEN onda_preferida y onda_ultimo_tema para el saludo.
+ */
+export function useUserCheck(): UserCheckResult | null {
+  const [result, setResult] = useState<UserCheckResult | null>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const visited = localStorage.getItem(STORAGE_KEY_VISITED) === "1";
+    const raw = localStorage.getItem(STORAGE_KEY_RESTORE);
+
+    // Usuario nuevo: bienvenida extendida explicando las 3 Ondas
+    if (!visited) {
+      localStorage.setItem(STORAGE_KEY_VISITED, "1");
+      setResult({
+        initialMessage: getMainWelcome(),
+        shouldRestore: false,
+        restoredMessages: null,
+        restoredEje: null,
+        preferredEje: null,
+      });
+      return;
+    }
+
+    // Usuario conocido: revisar si hay restore válido
+    if (raw) {
+      try {
+        const r = JSON.parse(raw) as {
+          messages?: Message[];
+          currentEje?: EjeOnda | null;
+          savedAt?: number;
+        };
+        if (
+          r.savedAt != null &&
+          Date.now() - r.savedAt < RESTORE_MAX_AGE_MS &&
+          Array.isArray(r.messages) &&
+          r.messages.length > 0
+        ) {
+          if (isWithinSameSession(r.savedAt)) {
+            // Misma sesión: restaurar y no mostrar mensaje nuevo (scroll al final)
+            const sorted = sortMessagesByTimestamp(r.messages);
+            const inferred = inferEjeFromMessagesStatic(sorted);
+            const restoredEje = inferred ?? r.currentEje ?? null;
+            setResult({
+              initialMessage: "",
+              shouldRestore: true,
+              restoredMessages: sorted,
+              restoredEje,
+              preferredEje: null,
+            });
+            return;
+          }
+          // Regla de las 12 h: borrar solo onda_chat_restore; MANTENER onda_preferida y onda_ultimo_tema para el saludo
+          localStorage.removeItem(STORAGE_KEY_RESTORE);
+          const temaNewDay = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEY_ULTIMO_TEMA)?.trim() : null;
+          const preferredNewDay = getPreferredEjeFromStorage();
+          const initialNewDay = temaNewDay
+            ? getWelcomeWithTema(temaNewDay)
+            : preferredNewDay
+              ? getWelcomeWithPreferredEje(preferredNewDay)
+              : getGreetingNewDay(r.currentEje ?? null);
+          setResult({
+            initialMessage: initialNewDay,
+            shouldRestore: false,
+            restoredMessages: null,
+            restoredEje: null,
+            preferredEje: preferredNewDay,
+          });
+          return;
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    // Conocido, sin restore (o expirado): jerarquía 1º tema → 2º preferida → 3º saludo nuevo día
+    const tema = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEY_ULTIMO_TEMA)?.trim() : null;
+    const preferred = getPreferredEjeFromStorage();
+    const initial = tema ? getWelcomeWithTema(tema) : preferred ? getWelcomeWithPreferredEje(preferred) : getGreetingNewDay(null);
+    setResult({
+      initialMessage: initial,
+      shouldRestore: false,
+      restoredMessages: null,
+      restoredEje: null,
+      preferredEje: preferred,
+    });
+  }, []);
+
+  return result;
+}
+
+/** Versión estática de inferEjeFromMessages para usar dentro del hook (sin depender del estado del componente). */
+function inferEjeFromMessagesStatic(messages: Message[]): EjeOnda | null {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    if (messages[i].role !== "user") continue;
+    const label = messages[i].content;
+    for (const eje of ORDERED_EJES) {
+      if (EJE_MENU_OPTIONS[eje].some((o) => o.label === label)) return eje;
+      if (eje === EjeOnda.A_MANO && IA_SUBMENU_OPTIONS.some((o) => o.label === label)) return eje;
+    }
+    break;
+  }
+  return null;
+}
+
+/** Session/conversation id anónimo para métricas (persiste en la pestaña). */
+function getOrCreateSessionId(): string {
+  if (typeof window === "undefined") return "";
+  const key = "onda_session_id";
+  let id = sessionStorage.getItem(key);
+  if (!id) {
+    id = crypto.randomUUID();
+    sessionStorage.setItem(key, id);
+  }
+  return id;
+}
 
 /** Métricas de uso anónimas (fire-and-forget). */
-function trackUsage(event: "eje_select" | "message_sent" | "session_start", eje?: EjeOnda | null) {
+function trackUsage(
+  event: "eje_select" | "message_sent" | "session_start",
+  eje?: EjeOnda | null,
+  extra?: { responseTimeMs?: number }
+) {
   if (typeof window === "undefined") return;
-  const payload = JSON.stringify({ event, eje: eje ?? undefined });
+  const sessionId = getOrCreateSessionId();
+  const payload = JSON.stringify({
+    event,
+    eje: eje ?? undefined,
+    sessionId,
+    responseTimeMs: extra?.responseTimeMs,
+  });
   fetch("/api/usage", { method: "POST", headers: { "Content-Type": "application/json" }, body: payload, keepalive: true }).catch(() => {});
 }
 
@@ -89,56 +258,39 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
   const t = useOndaTheme(true);
   const S = useMemo(() => ondaStyles(t), [t]);
 
-  const [messages, setMessages] = useState<Message[]>([
-    newMessage("model", MAIN_WELCOME),
+  const userCheckResult = useUserCheck();
+  const hasAppliedUserCheckRef = useRef(false);
+
+  const [messages, setMessages] = useState<Message[]>(() => [
+    newMessage("model", getMainWelcome()),
   ]);
   const [currentEje, setCurrentEje] = useState<EjeOnda | null>(initialEje);
+  const [preferredEjeForDisplay, setPreferredEjeForDisplay] = useState<EjeOnda | null>(null);
 
   const [embed, setEmbed] = useState(false);
   useEffect(() => {
     setEmbed(new URLSearchParams(window.location.search).get("embed") === "1");
   }, []);
 
+  /** Aplica el resultado de useUserCheck una sola vez (Nuevo / Conocido misma sesión / Conocido nuevo día). */
+  useEffect(() => {
+    if (userCheckResult == null || hasAppliedUserCheckRef.current) return;
+    hasAppliedUserCheckRef.current = true;
+    setPreferredEjeForDisplay(userCheckResult.preferredEje ?? null);
+    if (userCheckResult.shouldRestore && userCheckResult.restoredMessages && userCheckResult.restoredMessages.length > 0) {
+      setMessages(userCheckResult.restoredMessages);
+      setCurrentEje(userCheckResult.restoredEje ?? null);
+    } else {
+      setMessages([newMessage("model", userCheckResult.initialMessage)]);
+      setCurrentEje(null);
+    }
+    trackUsage("session_start", userCheckResult.restoredEje ?? null);
+  }, [userCheckResult]);
+
   /** Inferir Onda desde el último mensaje de usuario (ej. ítem de menú) para que pestaña y chips coincidan con la conversación. */
   function inferEjeFromMessages(messages: Message[]): EjeOnda | null {
-    for (let i = messages.length - 1; i >= 0; i--) {
-      if (messages[i].role !== "user") continue;
-      const label = messages[i].content;
-      for (const eje of ORDERED_EJES) {
-        if (EJE_MENU_OPTIONS[eje].some((o) => o.label === label)) return eje;
-        if (eje === EjeOnda.A_MANO && IA_SUBMENU_OPTIONS.some((o) => o.label === label)) return eje;
-      }
-      break;
-    }
-    return null;
+    return inferEjeFromMessagesStatic(messages);
   }
-
-  /** Bienvenida ágil + retomar: si ya conoce Onda, ir directo a las tres Ondas; si hay estado guardado, restaurar. */
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const raw = localStorage.getItem(STORAGE_KEY_RESTORE);
-    if (raw) {
-      try {
-        const r = JSON.parse(raw) as { messages?: Message[]; currentEje?: EjeOnda | null; savedAt?: number };
-        if (r.savedAt && Date.now() - r.savedAt < RESTORE_MAX_AGE_MS && Array.isArray(r.messages) && r.messages.length > 0) {
-          setMessages(r.messages);
-          const inferred = inferEjeFromMessages(r.messages);
-          setCurrentEje(inferred ?? r.currentEje ?? null);
-          trackUsage("session_start");
-          return;
-        }
-      } catch {
-        // ignore
-      }
-    }
-    const visited = localStorage.getItem(STORAGE_KEY_VISITED) === "1";
-    if (visited) {
-      setMessages([newMessage("model", getShortWelcome())]);
-      trackUsage("session_start");
-    } else {
-      localStorage.setItem(STORAGE_KEY_VISITED, "1");
-    }
-  }, []);
 
   /** Persistir conversación para retomar sin login (últimos 30 mensajes). */
   useEffect(() => {
@@ -158,13 +310,16 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
     return () => clearTimeout(id);
   }, [messages, currentEje]);
 
-  /** Al cargar: si la URL tiene ?eje=, usar esa Onda (por enlace o recarga). Luego limpiar la URL. */
+  /** Al cargar: si la URL tiene ?eje=, usar esa Onda (por enlace o recarga). Registrar eje en métricas y limpiar la URL. */
   useEffect(() => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
     const ejeParam = params.get("eje");
     if (ejeParam === EjeOnda.A_MANO || ejeParam === EjeOnda.CIVITA || ejeParam === EjeOnda.PROFES) {
-      setCurrentEje(ejeParam as EjeOnda);
+      const eje = ejeParam as EjeOnda;
+      localStorage.setItem(STORAGE_KEY_PREFERRED, eje);
+      setCurrentEje(eje);
+      trackUsage("eje_select", eje);
       params.delete("eje");
       const newSearch = params.toString();
       const path = window.location.pathname;
@@ -203,14 +358,19 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
     return ttsAudioContextRef.current;
   }
 
-  /** Bajar al final: respuestas siempre ABAJO (orden cronológico: usuario → bot), como WhatsApp. */
+  /** Bajar al final: respuestas siempre ABAJO (orden cronológico: usuario → bot), como WhatsApp. Defensa: try/catch para evitar que un error de scroll fuerce full reload en Fast Refresh. */
   const scrollToBottom = useCallback(() => {
-    const scrollEl = messagesInnerRef.current;
-    if (scrollEl) {
-      const max = scrollEl.scrollHeight - scrollEl.clientHeight;
-      scrollEl.scrollTop = max > 0 ? max : scrollEl.scrollHeight;
+    try {
+      const scrollEl = messagesInnerRef.current;
+      if (scrollEl && typeof scrollEl.scrollHeight === "number") {
+        const max = scrollEl.scrollHeight - scrollEl.clientHeight;
+        scrollEl.scrollTop = max > 0 ? max : scrollEl.scrollHeight;
+      }
+      const last = lastBubbleRef.current;
+      if (last && typeof last.scrollIntoView === "function") last.scrollIntoView({ block: "end", behavior: "auto", inline: "nearest" });
+    } catch {
+      // Evita que errores de scroll (p. ej. durante Fast Refresh) disparen full reload
     }
-    lastBubbleRef.current?.scrollIntoView({ block: "end", behavior: "auto", inline: "nearest" });
   }, []);
 
   useLayoutEffect(() => {
@@ -234,7 +394,13 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
   useEffect(() => {
     const scrollEl = messagesInnerRef.current;
     if (!scrollEl) return;
-    const ro = new ResizeObserver(scrollToBottom);
+    const ro = new ResizeObserver(() => {
+      try {
+        scrollToBottom();
+      } catch {
+        // Evita que errores en scroll durante resize disparen full reload
+      }
+    });
     ro.observe(scrollEl);
     return () => ro.disconnect();
   }, [scrollToBottom]);
@@ -258,6 +424,11 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
 
   function confirmEjeSwitch(eje: EjeOnda): void {
     trackUsage("eje_select", eje);
+    if (typeof window !== "undefined") {
+      const prevEje = getPreferredEjeFromStorage();
+      if (prevEje != null && prevEje !== eje) localStorage.removeItem(STORAGE_KEY_ULTIMO_TEMA);
+      localStorage.setItem(STORAGE_KEY_PREFERRED, eje);
+    }
     setCurrentEje(eje);
     if (switchHintRef.current) clearTimeout(switchHintRef.current);
     setJustSwitchedEje(eje);
@@ -276,7 +447,7 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
 
   /** Reiniciar el bot: conversación nueva, elegir Onda de nuevo. Siempre disponible (no se deshabilita con loading). */
   function goToInicio(): void {
-    setMessages([newMessage("model", getShortWelcome())]);
+    setMessages([newMessage("model", getMainWelcome())]);
     setCurrentEje(null);
     setShowMenu(true);
     setShowIASubmenu(false);
@@ -321,7 +492,7 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
       if (audioOverride) setAttachmentAudio(audioOverride);
       return;
     }
-    trackUsage("message_sent", currentEje);
+    const sendStartMs = Date.now();
 
     setInput("");
     const imageToSend = attachmentImage;
@@ -396,6 +567,7 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
                     msg.id === placeholderMsg.id ? { ...msg, content: msg.content + obj.text } : msg
                   )
                 );
+                setTimeout(() => scrollToBottom(), 0);
               }
               if (obj.error) {
                 receivedAnyText = true;
@@ -406,6 +578,9 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
                   )
                 );
                 break;
+              }
+              if (typeof obj.tema === "string" && obj.tema.trim() && typeof window !== "undefined") {
+                localStorage.setItem(STORAGE_KEY_ULTIMO_TEMA, obj.tema.trim());
               }
             } catch {
               // ignore malformed line
@@ -427,6 +602,7 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
               : msg
           )
         );
+        trackUsage("message_sent", currentEje, { responseTimeMs: Date.now() - sendStartMs });
       } else if (!receivedAnyText) {
         setMessages((m) =>
           m.map((msg) =>
@@ -469,11 +645,56 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
     sendChipText(text);
   }
 
+  /** Borrar conversación: limpia localStorage y reinicia el chat (privacidad). */
+  function handleClearConversation() {
+    if (typeof window === "undefined") return;
+    localStorage.removeItem(STORAGE_KEY_RESTORE);
+    setMessages([newMessage("model", getMainWelcome())]);
+    setCurrentEje(null);
+    setShowMenu(false);
+    setShowIASubmenu(false);
+    setShowPickOndaNotice(false);
+  }
+
+  /** Feedback 👍/👎: registra voto y, si es 👎, registra fallo para auditoría. */
+  function handleFeedback(messageId: string, vote: "up" | "down") {
+    const conversationId = getOrCreateSessionId();
+    fetch("/api/feedback", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ messageId, vote, conversationId }),
+      keepalive: true,
+    }).catch(() => {});
+    if (vote === "down") {
+      const idx = messages.findIndex((m) => m.id === messageId);
+      const botMsg = idx >= 0 ? messages[idx] : null;
+      let userMessage = "";
+      if (idx > 0) {
+        for (let i = idx - 1; i >= 0; i--) {
+          if (messages[i].role === "user") {
+            userMessage = messages[i].content ?? "";
+            break;
+          }
+        }
+      }
+      fetch("/api/errors", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          source: "chat",
+          userMessage: userMessage || undefined,
+          botResponse: botMsg?.content ?? undefined,
+        }),
+        keepalive: true,
+      }).catch(() => {});
+    }
+  }
+
   /** Enviar un mensaje de texto directo (p. ej. chip de pregunta relacionada) sin pasar por el input. */
   function sendChipText(text: string) {
     const t = text.trim();
     if (!t || loading || currentEje === null) return;
-    trackUsage("message_sent", currentEje);
+    const sendStartMs = Date.now();
     const history = messages.map((m) => ({ role: m.role, content: m.content }));
     const userMsg = newMessage("user", t);
     const placeholderMsg = newMessage("model", "", { isGenerated: true });
@@ -524,6 +745,7 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
                       msg.id === placeholderMsg.id ? { ...msg, content: msg.content + obj.text } : msg
                     )
                   );
+                  setTimeout(() => scrollToBottom(), 0);
                 }
                 if (obj.error) {
                   receivedAnyText = true;
@@ -534,6 +756,9 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
                     )
                   );
                   break;
+                }
+                if (typeof obj.tema === "string" && obj.tema.trim() && typeof window !== "undefined") {
+                  localStorage.setItem(STORAGE_KEY_ULTIMO_TEMA, obj.tema.trim());
                 }
               } catch {
                 // ignore
@@ -546,10 +771,11 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
           setMessages((m) =>
             m.map((msg) =>
               msg.id === placeholderMsg.id
-                ? { ...msg, content: parsed.text, guideId: parsed.guideId ?? undefined }
+                ? { ...msg, content: parsed.text, guideId: parsed.guideId ?? undefined, suggestions: parsed.suggestions?.length ? parsed.suggestions : undefined }
                 : msg
             )
           );
+          trackUsage("message_sent", currentEje, { responseTimeMs: Date.now() - sendStartMs });
         } else if (!receivedAnyText) {
           setMessages((m) =>
             m.map((msg) =>
@@ -791,7 +1017,7 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
     flexDirection: "column",
   };
 
-  /** Contenedor de mensajes: flujo estricto hacia abajo (arriba = viejo, abajo = nuevo), como WhatsApp. */
+  /** Contenedor de mensajes: flujo estricto hacia abajo (arriba = viejo, abajo = nuevo). paddingBottom para que el menú de abajo no tape el último mensaje. */
   const msgsInner: CSSProperties = {
     flex: 1,
     minHeight: 0,
@@ -803,7 +1029,7 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
     justifyContent: "flex-start",
     alignContent: "flex-start",
     gap: compact ? 6 : 8,
-    padding: currentEje === null ? "8px 14px 0 14px" : "8px 14px 0 14px",
+    padding: currentEje === null ? "8px 14px 32px 14px" : "8px 14px 32px 14px",
   };
 
   const disabledCursor = loading ? "not-allowed" : "pointer";
@@ -901,6 +1127,16 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
     flexShrink: 0,
   };
 
+  /** Micrófono del composer: prominente y distinto del botón Escuchar (que está en las burbujas). Para grabar tu pregunta, no para escuchar al bot. */
+  const micBtnStyle: CSSProperties = {
+    ...iconStyle,
+    ...(compact ? {} : { width: 48, height: 48, fontSize: "1.25rem" }),
+    background: t.isDark ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.95)",
+    border: `2px solid ${ejeColor || t.c.orange}`,
+    boxShadow: `0 4px 14px ${(ejeColor || t.c.orange)}40`,
+    flexShrink: 0,
+  };
+
   const stopStyle: CSSProperties = {
     ...iconStyle,
     width: "auto",
@@ -910,6 +1146,30 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
     color: "#fff",
     fontWeight: 600,
     fontSize: "0.875rem",
+  };
+
+  /** Saludo o mensaje de error: hideActions elimina Escuchar/Compartir/Feedback (limpieza forense de UI). */
+  const isWelcomeOrError = (m: Message): boolean => {
+    if (m.role !== "model") return false;
+    if (!m.isGenerated) return true;
+    const c = (m.content ?? "").trim();
+    if (
+      c.includes("Con qué Onda") ||
+      c.includes("¿Qué onda") ||
+      c.includes("elija una") ||
+      c.includes("Buenos días") ||
+      c.includes("Buenas tardes") ||
+      c.includes("Buenas noches") ||
+      c.includes("Te doy la bienvenida a Onda")
+    )
+      return true;
+    return [
+      ONDA_MICROCOPY.errorGeneric,
+      ONDA_MICROCOPY.errorImage,
+      ONDA_MICROCOPY.errorConnection,
+      ONDA_MICROCOPY.errorTimeout,
+      ONDA_MICROCOPY.errorServer,
+    ].some((e) => c.includes(e));
   };
 
   const hasContent = !!(input.trim() || attachmentImage || attachmentAudio);
@@ -935,21 +1195,37 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
 
   const content = (
     <div className="onda-shell" style={shellStyle}>
-      {/* Header: logo y nombre (como Onda local, sin segundo círculo). */}
-      <div style={{ ...headerStyle, flexShrink: 0 }}>
+      {/* Header: logo, nombre y botón borrar conversación (privacidad). */}
+      <div style={{ ...headerStyle, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={S.titleWrap}>
           <img src="/logo-onda.png" alt="ONDA" width={28} height={28} style={{ display: "block", objectFit: "contain" }} />
-          <div style={{ fontWeight: 700, fontSize: compact ? "1.0625rem" : "1.25rem", letterSpacing: ".04em", color: t.c.ink }}>
+          <div style={{ fontWeight: 600, fontSize: compact ? "1.0625rem" : "1.25rem", letterSpacing: ".04em", color: t.c.ink }}>
             ONDA
           </div>
         </div>
+        <button
+          type="button"
+          onClick={handleClearConversation}
+          style={{
+            fontSize: "0.8125rem",
+            color: t.c.muted,
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            padding: "6px 10px",
+            borderRadius: t.r.sm,
+          }}
+          title="Elimina el historial de esta conversación de tu dispositivo"
+        >
+          Borrar esta conversación
+        </button>
       </div>
 
       {/* Chat body */}
       <div style={chatBody}>
         {/* Messages */}
         <div className="onda-messages" style={msgsArea}>
-          <div ref={messagesInnerRef} className="onda-messages-inner" style={msgsInner}>
+          <div id="onda-messages-container" ref={messagesInnerRef} className="onda-messages-inner" style={msgsInner}>
           {currentEje === null ? (
             <>
               {messages.length > 0 && (
@@ -962,11 +1238,9 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
                     message={messages[0]}
                     color={ejeColor}
                     compact={compact}
-                    onPlayTTS={messages[0].content?.trim() ? playTTS : undefined}
-                    onStopTTS={stopTTS}
-                    isTTSPlaying={ttsPlaying}
                     theme={t}
                     onMenuIntroChipClick={handleMenuIntroChipClick}
+                    hideActions={isWelcomeOrError(messages[0])}
                   />
                 </div>
               )}
@@ -989,6 +1263,8 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
                 isTTSPlaying={ttsPlaying}
                 theme={t}
                 onMenuIntroChipClick={handleMenuIntroChipClick}
+                onFeedback={handleFeedback}
+                hideActions={isWelcomeOrError(msg)}
               />
             </div>
           ))}
@@ -1166,13 +1442,14 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
                 {ORDERED_EJES.map((eje, idx) => {
                   const config = EJE_CONFIGS[eje];
                   const href = `?eje=${eje}`;
+                  const isPreferred = eje === preferredEjeForDisplay;
                   return (
                     <a
                       key={eje}
                       href={href}
                       data-onda-picker-composer
                       data-onda-eje={eje}
-                      aria-label={`Elegir ${config.name}`}
+                      aria-label={isPreferred ? `Continuar en ${config.name}` : `Elegir ${config.name}`}
                       role="button"
                       tabIndex={0}
                       onClick={(e) => {
@@ -1188,11 +1465,13 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
                       style={{
                         padding: "12px 16px",
                         borderRadius: 22,
-                        border: "none",
+                        border: isPreferred ? "2px solid rgba(255,255,255,0.95)" : "none",
+                        outline: isPreferred ? `2px solid ${neuPickerColorMap[eje]}` : "none",
+                        outlineOffset: 2,
                         background: neuPickerColorMap[eje],
                         color: "#fff",
                         fontSize: "1.0625rem",
-                        fontWeight: 700,
+                        fontWeight: 600,
                         cursor: "pointer",
                         touchAction: "manipulation",
                         boxShadow: t.shadow.neuRaisedColoredSolid(neuPickerColorMap[eje]),
@@ -1206,7 +1485,22 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
                         textDecoration: "none",
                       }}
                     >
-                      <span className="onda-picker-btn-inner">{config.name}</span>
+                      <span style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                        <span className="onda-picker-btn-inner">{config.name}</span>
+                        {isPreferred && (
+                          <span
+                            style={{
+                              fontSize: "0.75rem",
+                              fontWeight: 600,
+                              background: "rgba(255,255,255,0.25)",
+                              padding: "2px 8px",
+                              borderRadius: 10,
+                            }}
+                          >
+                            Continuar
+                          </span>
+                        )}
+                      </span>
                       <span className="onda-picker-btn-inner" style={{ fontSize: "0.875rem", fontWeight: 400, color: "rgba(255,255,255,0.92)" }}>
                         {config.description}
                       </span>
@@ -1355,7 +1649,7 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
                 ⏹ Detener
               </button>
             ) : (
-              <button type="button" onClick={startRecording} disabled={loading} style={iconStyle} title="Preguntar en voz">
+              <button type="button" onClick={startRecording} disabled={loading} style={micBtnStyle} title="Grabar tu pregunta en voz" aria-label="Grabar pregunta en voz (no es para escuchar al bot)">
                 🎤
               </button>
             )}
