@@ -1240,7 +1240,7 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
                     compact={compact}
                     theme={t}
                     onMenuIntroChipClick={handleMenuIntroChipClick}
-                    hideActions={isWelcomeOrError(messages[0])}
+                    hideActions={true}
                   />
                 </div>
               )}

@@ -55,6 +55,12 @@ Lista para comprobar que los cambios pedidos están desplegados y funcionando.
 2. **Caché:** Haz una recarga forzada (Ctrl+Shift+R o Cmd+Shift+R) o abre el chat en ventana privada para evitar caché viejo.
 3. **Local vs producción:** Si pruebas en local (`npm run dev`), estás viendo el código actual del repo. Si pruebas la URL de Vercel, estás viendo el último deploy; si los botones siguen en el saludo ahí, el deploy puede no incluir los últimos cambios o hay que esperar a que termine el build.
 
+### Si en Vercel (onda2026.vercel.app) no se ven los cambios
+
+- **Comprobar en Vercel Dashboard:** El proyecto que sirve `onda2026.vercel.app` debe estar conectado al **mismo repo y rama** que donde haces push (ej. `MaleMarin/Onda` → `main`). Si el sitio de Precisar está conectado a otro repo (ej. `precisar/ondabot`) o a otra rama, los pushes a este repo no actualizarán ese sitio.
+- **Solución:** En Vercel → Project Settings → Git: confirmar "Connected Git Repository" y la rama de producción. Si usan otro repo, hay que hacer push (o merge) allí, o re-conectar el proyecto a este repo/rama.
+- **Código a prueba de fallos:** En este repo, cuando estás en la pantalla de elegir Onda (`currentEje === null`) el primer mensaje lleva siempre `hideActions={true}`, así que los botones no se muestran aunque el mensaje tenga `isGenerated` o cambie el texto del saludo.
+
 ---
 
 ## Resumen de archivos tocados (para este fix de botones)
