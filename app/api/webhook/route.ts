@@ -14,6 +14,7 @@ import {
 } from "../../../lib/whatsapp";
 import { checkRateLimit } from "../../../lib/rateLimiter";
 import { verifyWebhookSignature } from "../../../lib/verifyWebhookSignature";
+import { checkUserMessage } from "../../../lib/promptSafety";
 import {
   AUDIO_VALIDATION_TOO_LONG,
   bufferFromDataUrl,
@@ -214,6 +215,14 @@ export async function POST(req: Request) {
                     await sendWhatsAppText(from, WA_IMAGE_VALIDATION_REPLY);
                     continue;
                   }
+                  const caption = (text || "").trim();
+                  if (caption) {
+                    const imgSafe = checkUserMessage(caption);
+                    if (!imgSafe.safe && imgSafe.response) {
+                      await sendWhatsAppText(from, imgSafe.response);
+                      continue;
+                    }
+                  }
                   response = await getOndaReplyWithImage(
                     text?.trim() || "¿Qué ves en esta imagen? Responde según ONDA.",
                     media.dataUrl,
@@ -252,6 +261,11 @@ export async function POST(req: Request) {
                   }
                   const transcribed = await transcribeAudio(media.dataUrl);
                   const userMessage = transcribed || "(no se pudo transcribir el audio)";
+                  const audioSafe = checkUserMessage(userMessage);
+                  if (!audioSafe.safe && audioSafe.response) {
+                    await sendWhatsAppText(from, audioSafe.response);
+                    continue;
+                  }
                   response = await getOndaReply(userMessage, null, null, wantsSources(userMessage), null, "whatsapp");
                 }
               } else {
@@ -271,6 +285,11 @@ export async function POST(req: Request) {
           else if (text && (type === "text" || !type)) {
             if (isDev) console.log(`💬 Mensaje recibido de ${from}: ${text}`);
             try {
+              const textSafe = checkUserMessage(text.trim());
+              if (!textSafe.safe && textSafe.response) {
+                await sendWhatsAppText(from, textSafe.response);
+                continue;
+              }
               response = await getOndaReply(text, null, null, includeSources, null, "whatsapp");
             } catch (err) {
               console.error("❌ Error procesando mensaje:", err);

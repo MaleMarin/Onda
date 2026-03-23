@@ -9,6 +9,7 @@ import { generateImageFromText } from "../../../../lib/generateImage";
 import { renderInfographicPng } from "../../../../lib/infographic";
 import { EjeOnda } from "../../../../content/types";
 import { checkRateLimit } from "../../../../lib/rateLimiter";
+import { checkUserMessage } from "../../../../lib/promptSafety";
 import {
   AUDIO_VALIDATION_TOO_LARGE,
   AUDIO_VALIDATION_TOO_LONG,
@@ -233,6 +234,24 @@ export async function POST(req: Request) {
       const iv = await validateImage(imgBuf);
       if (!iv.valid) {
         return Response.json({ error: iv.error ?? "Imagen no válida." }, { status: 400 });
+      }
+    }
+
+    const safetyMsg = checkUserMessage(message);
+    if (!safetyMsg.safe) {
+      return Response.json(
+        { error: safetyMsg.response ?? "No pude procesar ese mensaje." },
+        { status: 400 }
+      );
+    }
+    for (const h of history) {
+      if (h.role !== "user") continue;
+      const hs = checkUserMessage(h.content);
+      if (!hs.safe) {
+        return Response.json(
+          { error: hs.response ?? "No pude procesar ese mensaje." },
+          { status: 400 }
+        );
       }
     }
 
