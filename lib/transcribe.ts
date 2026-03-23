@@ -5,6 +5,7 @@ import path from "path";
 import { randomUUID } from "crypto";
 import { execFile } from "child_process";
 import { promisify } from "util";
+import { isAudioValidationErrorMessage, validateAudio } from "./validateMedia";
 
 const execFileAsync = promisify(execFile);
 
@@ -119,6 +120,11 @@ export async function transcribeAudio(audioInput: AudioInput): Promise<string> {
   try {
     fs.writeFileSync(inputPath, buffer);
 
+    const audioVal = await validateAudio(buffer, inputPath);
+    if (!audioVal.valid) {
+      throw new Error(audioVal.error ?? "Audio inválido");
+    }
+
     const mustConvert = needsFfmpegConversion(mime, ext);
 
     if (mustConvert) {
@@ -157,6 +163,7 @@ export async function transcribeAudio(audioInput: AudioInput): Promise<string> {
     if (err instanceof Error) {
       const known = Object.values(TRANSCRIBE_ERROR) as string[];
       if (known.includes(err.message)) throw err;
+      if (isAudioValidationErrorMessage(err.message)) throw err;
     }
     console.error("[transcribe] unexpected", err);
     throw new Error(TRANSCRIBE_ERROR.WHISPER_FAILED);

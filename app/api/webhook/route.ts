@@ -14,6 +14,12 @@ import {
 } from "../../../lib/whatsapp";
 import { checkRateLimit } from "../../../lib/rateLimiter";
 import { verifyWebhookSignature } from "../../../lib/verifyWebhookSignature";
+import {
+  AUDIO_VALIDATION_TOO_LONG,
+  bufferFromDataUrl,
+  validateAudio,
+  validateImage,
+} from "../../../lib/validateMedia";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -23,6 +29,12 @@ const isDev = process.env.NODE_ENV === "development";
 const MISSING_WEBHOOK_SECRET_MSG =
   "CONFIGURACIÓN FALTANTE: WHATSAPP_WEBHOOK_SECRET no está definida.\n" +
   "El webhook de WhatsApp no puede operar sin esta variable.";
+
+const WA_IMAGE_VALIDATION_REPLY =
+  "No pude leer esa imagen. ¿Podés enviarla en JPG, PNG o WebP de menos de 5MB?";
+
+const WA_AUDIO_TOO_LONG_REPLY =
+  "Ese audio es demasiado largo para que lo procese. El máximo es 2 minutos, ¿podés recortarlo?";
 
 function extractWhatsAppSenderFromPayload(payload: unknown): string {
   try {
@@ -193,14 +205,24 @@ export async function POST(req: Request) {
             try {
               const media = await getWhatsAppMediaAsBase64(imageId, "image/jpeg");
               if (media?.dataUrl) {
-                response = await getOndaReplyWithImage(
-                  text?.trim() || "¿Qué ves en esta imagen? Responde según ONDA.",
-                  media.dataUrl,
-                  null,
-                  null,
-                  includeSources,
-                  "whatsapp"
-                );
+                const imgBuf = bufferFromDataUrl(media.dataUrl);
+                if (!imgBuf) {
+                  response = "No pude procesar la imagen. ¿Puedes enviarla de nuevo?";
+                } else {
+                  const iv = await validateImage(imgBuf);
+                  if (!iv.valid) {
+                    await sendWhatsAppText(from, WA_IMAGE_VALIDATION_REPLY);
+                    continue;
+                  }
+                  response = await getOndaReplyWithImage(
+                    text?.trim() || "¿Qué ves en esta imagen? Responde según ONDA.",
+                    media.dataUrl,
+                    null,
+                    null,
+                    includeSources,
+                    "whatsapp"
+                  );
+                }
               } else {
                 response = "No pude procesar la imagen. ¿Puedes enviarla de nuevo?";
               }
@@ -215,9 +237,23 @@ export async function POST(req: Request) {
             try {
               const media = await getWhatsAppMediaAsBase64(audioId, "audio/ogg");
               if (media?.dataUrl) {
-                const transcribed = await transcribeAudio(media.dataUrl);
-                const userMessage = transcribed || "(no se pudo transcribir el audio)";
-                response = await getOndaReply(userMessage, null, null, wantsSources(userMessage), null, "whatsapp");
+                const audioBuf = bufferFromDataUrl(media.dataUrl);
+                if (!audioBuf) {
+                  response = "No pude descargar el audio. ¿Puedes enviar un mensaje de texto?";
+                } else {
+                  const av = await validateAudio(audioBuf);
+                  if (!av.valid) {
+                    const reply =
+                      av.error === AUDIO_VALIDATION_TOO_LONG
+                        ? WA_AUDIO_TOO_LONG_REPLY
+                        : av.error ?? "No pude procesar ese audio.";
+                    await sendWhatsAppText(from, reply);
+                    continue;
+                  }
+                  const transcribed = await transcribeAudio(media.dataUrl);
+                  const userMessage = transcribed || "(no se pudo transcribir el audio)";
+                  response = await getOndaReply(userMessage, null, null, wantsSources(userMessage), null, "whatsapp");
+                }
               } else {
                 response = "No pude descargar el audio. ¿Puedes enviar un mensaje de texto?";
               }

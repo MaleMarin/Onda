@@ -9,6 +9,12 @@ import { generateImageFromText } from "../../../../lib/generateImage";
 import { renderInfographicPng } from "../../../../lib/infographic";
 import { EjeOnda } from "../../../../content/types";
 import { checkRateLimit } from "../../../../lib/rateLimiter";
+import {
+  AUDIO_VALIDATION_TOO_LARGE,
+  AUDIO_VALIDATION_TOO_LONG,
+  bufferFromDataUrl,
+  validateImage,
+} from "../../../../lib/validateMedia";
 
 /** Tiempo máximo de ejecución del handler (Vercel: 60 en Hobby, hasta 300 en Pro). */
 export const maxDuration = 60;
@@ -203,6 +209,12 @@ export async function POST(req: Request) {
           case TRANSCRIBE_ERROR.WHISPER_FAILED:
             userMessage = "No pude leer el audio. Intenta enviarlo de nuevo.";
             break;
+          case AUDIO_VALIDATION_TOO_LARGE:
+            userMessage = AUDIO_VALIDATION_TOO_LARGE;
+            break;
+          case AUDIO_VALIDATION_TOO_LONG:
+            userMessage = AUDIO_VALIDATION_TOO_LONG;
+            break;
           default:
             userMessage =
               msg.includes("muy corto") || msg.includes("corto") || msg.includes("vacío")
@@ -210,6 +222,17 @@ export async function POST(req: Request) {
                 : "No pude leer el audio. Intenta enviarlo de nuevo.";
         }
         return Response.json({ error: userMessage }, { status: 400 });
+      }
+    }
+
+    if (image) {
+      const imgBuf = bufferFromDataUrl(image);
+      if (!imgBuf) {
+        return Response.json({ error: "Formato de imagen inválido." }, { status: 400 });
+      }
+      const iv = await validateImage(imgBuf);
+      if (!iv.valid) {
+        return Response.json({ error: iv.error ?? "Imagen no válida." }, { status: 400 });
       }
     }
 
