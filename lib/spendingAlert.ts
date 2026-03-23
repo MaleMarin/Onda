@@ -6,7 +6,20 @@
 import { kv } from "@vercel/kv";
 
 const SPENDING_KEY_PREFIX = "spending:daily:";
+const SPENDING_BY_EJE_PREFIX = "spending:byeje:";
+const SPENDING_BY_CANAL_PREFIX = "spending:bycanal:";
 const TTL_SECONDS = 48 * 60 * 60; // 48 h
+
+const EJES_ONDA = ["A_MANO", "CIVITA", "PROFES"] as const;
+const CANALES_SPEND = ["web", "whatsapp"] as const;
+
+function keyByEje(day: string, eje: string): string {
+  return `${SPENDING_BY_EJE_PREFIX}${day}:${eje}`;
+}
+
+function keyByCanal(day: string, canal: string): string {
+  return `${SPENDING_BY_CANAL_PREFIX}${day}:${canal}`;
+}
 
 export interface SpendingStatus {
   todayUSD: number;
@@ -105,18 +118,53 @@ async function addToTodayTotalUsd(day: string, deltaUsd: number): Promise<number
   }
 }
 
+async function addToKeyedUsd(key: string, deltaUsd: number): Promise<void> {
+  if (!isKvConfigured()) return;
+  try {
+    const raw = await kv.get(key);
+    const prev = parseFloat(String(raw ?? "0"));
+    const base = Number.isFinite(prev) ? prev : 0;
+    const next = roundUsd(base + deltaUsd);
+    await kv.set(key, String(next), { ex: TTL_SECONDS });
+  } catch (e) {
+    console.warn("[spendingAlert] addToKeyedUsd error:", e);
+  }
+}
+
+async function readKeyedUsd(key: string): Promise<number> {
+  if (!isKvConfigured()) return 0;
+  try {
+    const raw = await kv.get(key);
+    if (raw == null) return 0;
+    const n = parseFloat(String(raw));
+    return Number.isFinite(n) ? roundUsd(n) : 0;
+  } catch {
+    return 0;
+  }
+}
+
 /**
  * Suma el costo estimado al total del día (UTC) en KV y devuelve estado vs umbrales.
  */
 export async function recordSpending(
   model: string,
   inputTokens: number,
-  outputTokens: number
+  outputTokens: number,
+  context?: {
+    eje?: string;
+    canal?: string;
+    intent?: string;
+  }
 ): Promise<SpendingStatus> {
   const delta = estimateCostUSD(model, inputTokens, outputTokens);
   const day = spendingDayKeyUtc();
   const todayUSD = roundUsd(await addToTodayTotalUsd(day, delta));
   const { alert: alertThreshold, critical: criticalThreshold } = thresholds();
+
+  const eje = context?.eje?.trim();
+  if (eje) await addToKeyedUsd(keyByEje(day, eje), delta);
+  const canal = context?.canal?.trim();
+  if (canal) await addToKeyedUsd(keyByCanal(day, canal), delta);
 
   return {
     todayUSD,
@@ -162,6 +210,8 @@ export type SpendingSummaryResponse = {
   criticalThreshold: number;
   percentOfAlert: number;
   status: "ok" | "warning" | "critical";
+  byOnda: Record<string, number>;
+  byCanal: Record<string, number>;
 };
 
 /**
@@ -179,6 +229,15 @@ export async function getSpendingSummary(): Promise<SpendingSummaryResponse> {
   if (todayUSD >= criticalThreshold) status = "critical";
   else if (todayUSD >= alertThreshold) status = "warning";
 
+  const byOnda: Record<string, number> = {};
+  for (const e of EJES_ONDA) {
+    byOnda[e] = await readKeyedUsd(keyByEje(today, e));
+  }
+  const byCanal: Record<string, number> = {};
+  for (const c of CANALES_SPEND) {
+    byCanal[c] = await readKeyedUsd(keyByCanal(today, c));
+  }
+
   return {
     today,
     todayUSD,
@@ -186,5 +245,7 @@ export async function getSpendingSummary(): Promise<SpendingSummaryResponse> {
     criticalThreshold,
     percentOfAlert,
     status,
+    byOnda,
+    byCanal,
   };
 }

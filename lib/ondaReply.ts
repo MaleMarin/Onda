@@ -23,6 +23,8 @@ import {
   detectEmotionalLoad,
   getVoiceProfile,
 } from "@/lib/ondaVoice";
+import { optimizeSystemPrompt } from "@/lib/promptOptimizer";
+import { getCachedResponse, setCachedResponse } from "@/lib/responseCache";
 
 export { getVoiceProfile };
 export type { VoiceProfile } from "@/lib/ondaVoice";
@@ -633,6 +635,21 @@ ${newsContext}
 
 const MAX_HISTORY_MESSAGES = 20; // últimos N mensajes para no exceder contexto
 
+function shouldSkipResponseCache(opts: {
+  history?: HistoryEntry[] | null;
+  includeSourcesList?: boolean;
+  articleContext?: ArticleContext | null;
+  extraContext?: string | null;
+  memoryContext?: string | null;
+}): boolean {
+  if (opts.history && opts.history.length > 0) return true;
+  if (opts.includeSourcesList) return true;
+  if (opts.articleContext != null) return true;
+  if (opts.extraContext?.trim()) return true;
+  if (opts.memoryContext?.trim()) return true;
+  return false;
+}
+
 /** Intent → voz de eje → validación emocional granular → memoria → resto de bloques. */
 function chainIntentVoiceEmotionMemory(
   userText: string,
@@ -705,6 +722,28 @@ export async function getOndaReply(
       ragWebBlock
     );
 
+  const { prompt: systemForModel, wasOptimized } = optimizeSystemPrompt(systemContent);
+  if (wasOptimized) {
+    console.info("[prompt] optimizado por longitud");
+  }
+
+  const ejeCacheKey = eje ?? "none";
+  if (
+    !shouldSkipResponseCache({
+      history,
+      includeSourcesList,
+      articleContext,
+      extraContext,
+      memoryContext,
+    })
+  ) {
+    const cached = await getCachedResponse(userText, ejeCacheKey, queryIntent.intent);
+    if (cached.hit && cached.response) {
+      console.info("[cache] HIT — evitando llamada al modelo");
+      return cached.response;
+    }
+  }
+
   const historySlice = (history ?? []).slice(-MAX_HISTORY_MESSAGES);
   const historyForApi: HistoryApi = historySlice.map((m) => ({
     role: m.role === "model" ? "assistant" : "user",
@@ -716,12 +755,15 @@ export async function getOndaReply(
   const route = getOrchestratorRoute(intent);
   let reply: string;
   try {
-    reply = await runComplete(route, systemContent, historyForApi, userText, telemetry, queryIntent.intent);
+    reply = await runComplete(route, systemForModel, historyForApi, userText, telemetry, queryIntent.intent);
   } catch (err) {
     console.warn("[ondaReply] orchestrator primary failed, fallback gpt-4o:", route, err);
-    reply = await tryFallbackGpt4o(systemContent, historyForApi, userText, telemetry, queryIntent.intent);
+    reply = await tryFallbackGpt4o(systemForModel, historyForApi, userText, telemetry, queryIntent.intent);
   }
-  return reply + buildDelightMoment(queryIntent.intent, canal, queryIntent.confidence);
+  const delight = buildDelightMoment(queryIntent.intent, canal, queryIntent.confidence);
+  const fullReply = reply + delight;
+  void setCachedResponse(userText, ejeCacheKey, queryIntent.intent, fullReply).catch(() => {});
+  return fullReply;
 }
 
 /**
@@ -770,6 +812,29 @@ export async function* getOndaReplyStream(
       ragWebBlock
     );
 
+  const { prompt: systemForModel, wasOptimized } = optimizeSystemPrompt(systemContent);
+  if (wasOptimized) {
+    console.info("[prompt] optimizado por longitud");
+  }
+
+  const ejeCacheKey = eje ?? "none";
+  if (
+    !shouldSkipResponseCache({
+      history,
+      includeSourcesList,
+      articleContext,
+      extraContext,
+      memoryContext,
+    })
+  ) {
+    const cached = await getCachedResponse(userText, ejeCacheKey, queryIntent.intent);
+    if (cached.hit && cached.response) {
+      console.info("[cache] HIT — evitando llamada al modelo");
+      yield cached.response;
+      return;
+    }
+  }
+
   const historySlice = (history ?? []).slice(-MAX_HISTORY_MESSAGES);
   const historyForApi: HistoryApi = historySlice.map((m) => ({
     role: m.role === "model" ? "assistant" : "user",
@@ -780,24 +845,45 @@ export async function* getOndaReplyStream(
   const intent = await classifyOrchestratorDepth(userText, eje, extraContextLength);
   const route = getOrchestratorRoute(intent);
   let usedEmergency = false;
+  let streamedAcc = "";
   try {
-    for await (const chunk of runStream(route, systemContent, historyForApi, userText, telemetry, queryIntent.intent)) {
+    for await (const chunk of runStream(route, systemForModel, historyForApi, userText, telemetry, queryIntent.intent)) {
+      streamedAcc += chunk;
       yield chunk;
     }
   } catch (err) {
     console.warn("[ondaReply] stream primary failed, fallback gpt-4o:", route, err);
     try {
-      const full = await tryFallbackGpt4o(systemContent, historyForApi, userText, telemetry, queryIntent.intent);
-      for (let i = 0; i < full.length; i += 40) yield full.slice(i, i + 40);
+      const full = await tryFallbackGpt4o(systemForModel, historyForApi, userText, telemetry, queryIntent.intent);
+      for (let i = 0; i < full.length; i += 40) {
+        const part = full.slice(i, i + 40);
+        streamedAcc += part;
+        yield part;
+      }
     } catch (fallbackErr) {
       console.error("[ondaReply] fallback gpt-4o also failed:", fallbackErr);
       usedEmergency = true;
-      yield EMERGENCY_ONDA_REPLY(userText);
+      streamedAcc = EMERGENCY_ONDA_REPLY(userText);
+      yield streamedAcc;
     }
   }
   if (!usedEmergency) {
     const delight = buildDelightMoment(queryIntent.intent, canal ?? "web", queryIntent.confidence);
-    if (delight) yield delight;
+    if (delight) {
+      streamedAcc += delight;
+      yield delight;
+    }
+    if (
+      !shouldSkipResponseCache({
+        history,
+        includeSourcesList,
+        articleContext,
+        extraContext,
+        memoryContext,
+      })
+    ) {
+      void setCachedResponse(userText, ejeCacheKey, queryIntent.intent, streamedAcc).catch(() => {});
+    }
   }
 }
 
@@ -885,6 +971,11 @@ export async function getOndaReplyWithImage(
       ragWebBlock
     );
 
+  const { prompt: systemForModelVision, wasOptimized: visionOpt } = optimizeSystemPrompt(systemContent);
+  if (visionOpt) {
+    console.info("[prompt] optimizado por longitud");
+  }
+
   const historySlice = (history ?? []).slice(-MAX_HISTORY_MESSAGES);
   const historyForApi: Array<{ role: "user" | "assistant"; content: string }> = historySlice.map(
     (m) => ({
@@ -906,7 +997,7 @@ export async function getOndaReplyWithImage(
       const completion = await openai.chat.completions.create({
         model,
         messages: [
-          { role: "system", content: systemContent },
+          { role: "system", content: systemForModelVision },
           ...historyForApi,
           { role: "user", content: userContent },
         ],
@@ -921,7 +1012,7 @@ export async function getOndaReplyWithImage(
       const fallback = await openai.chat.completions.create({
         model: MODEL_PROFUNDO,
         messages: [
-          { role: "system", content: systemContent },
+          { role: "system", content: systemForModelVision },
           ...historyForApi,
           { role: "user", content: userContent },
         ],

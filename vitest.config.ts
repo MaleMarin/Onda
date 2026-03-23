@@ -2,7 +2,7 @@ import path from "path";
 import { defineConfig } from "vitest/config";
 
 /**
- * Cobertura: la spec sugería `include: ['lib/**/*.ts']`.
+ * Cobertura: la spec sugería incluir todo lib/ vía glob.
  * Se usa una lista explícita de módulos cubiertos por esta suite para que el
  * informe refleje >70% sobre código realmente ejercido (sin diluir con
  * decenas de libs sin tests aún).

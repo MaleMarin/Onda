@@ -7,7 +7,7 @@ const MISSING_ADMIN_SECRET =
   "CONFIGURACIÓN FALTANTE: ADMIN_SECRET no está definida. Este endpoint no puede operar sin esta variable.";
 
 /**
- * GET: gasto estimado del día (UTC) y estado vs umbrales.
+ * GET: gasto estimado del día (UTC), estado vs umbrales, desglose por Onda y canal.
  * Authorization: Bearer <ADMIN_SECRET>
  */
 export async function GET(req: Request) {
