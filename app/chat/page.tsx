@@ -23,6 +23,7 @@ import { EjeOnda, type Message } from "@/content/types";
 import { parseResponseFormat } from "@/lib/responseFormat";
 import { useOndaTheme } from "@/lib/useOndaTheme";
 import { ondaStyles } from "@/lib/ondaStyles";
+import { AccessibilityControls } from "./components/AccessibilityControls";
 import { ChatBubble } from "./components/ChatBubble";
 import { EjeSelector } from "./components/EjeSelector";
 
@@ -333,6 +334,9 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
   const [audioTooShortHint, setAudioTooShortHint] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const [loading, setLoading] = useState(false);
+  /** Anuncio único al terminar el stream (lectores de pantalla; no un chunk por token). */
+  const [streamDoneAnnouncement, setStreamDoneAnnouncement] = useState("");
+  const prevLoadingForA11yRef = useRef(false);
   const [showPickOndaNotice, setShowPickOndaNotice] = useState(false);
   const [highlightOndaButtons, setHighlightOndaButtons] = useState(false);
   const [showEnviarTooltip, setShowEnviarTooltip] = useState(false);
@@ -406,6 +410,17 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
     ro.observe(scrollEl);
     return () => ro.disconnect();
   }, [scrollToBottom]);
+
+  useEffect(() => {
+    const wasLoading = prevLoadingForA11yRef.current;
+    prevLoadingForA11yRef.current = loading;
+    if (!wasLoading || loading) return;
+    const last = messages[messages.length - 1];
+    if (last?.role !== "model") return;
+    setStreamDoneAnnouncement("Onda terminó de responder");
+    const id = window.setTimeout(() => setStreamDoneAnnouncement(""), 2500);
+    return () => clearTimeout(id);
+  }, [loading, messages]);
 
   /** En embed: notificar al padre (Wix) la altura real para que el iframe no corte el bot. Mínimo viewport para que se vea completo. */
   useEffect(() => {
@@ -1234,38 +1249,63 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
   /* ── render ── */
 
   const content = (
+    <main
+      id="onda-chat-main"
+      aria-label="Conversación con Onda"
+      style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, width: "100%" }}
+    >
     <div className="onda-shell" style={shellStyle}>
       {/* Header: logo, nombre y botón borrar conversación (privacidad). */}
-      <div style={{ ...headerStyle, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      <div
+        style={{
+          ...headerStyle,
+          flexShrink: 0,
+          display: "flex",
+          alignItems: "flex-start",
+          justifyContent: "space-between",
+          gap: 12,
+          flexWrap: "wrap",
+        }}
+      >
         <div style={S.titleWrap}>
           <img src="/logo-onda.png" alt="ONDA" width={28} height={28} style={{ display: "block", objectFit: "contain" }} />
           <div style={{ fontWeight: 600, fontSize: compact ? "1.0625rem" : "1.25rem", letterSpacing: ".04em", color: t.c.ink }}>
             ONDA
           </div>
         </div>
-        <button
-          type="button"
-          onClick={handleClearConversation}
-          style={{
-            fontSize: "0.8125rem",
-            color: t.c.muted,
-            background: "none",
-            border: "none",
-            cursor: "pointer",
-            padding: "6px 10px",
-            borderRadius: t.r.sm,
-          }}
-          title="Elimina el historial de esta conversación de tu dispositivo"
-        >
-          Borrar esta conversación
-        </button>
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 10, flexWrap: "wrap", marginLeft: "auto" }}>
+          <AccessibilityControls theme={t} compact={compact} />
+          <button
+            type="button"
+            onClick={handleClearConversation}
+            style={{
+              fontSize: "0.8125rem",
+              color: t.c.muted,
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              padding: "6px 10px",
+              borderRadius: t.r.sm,
+            }}
+            title="Elimina el historial de esta conversación de tu dispositivo"
+          >
+            Borrar esta conversación
+          </button>
+        </div>
       </div>
 
       {/* Chat body */}
       <div style={chatBody}>
         {/* Messages */}
         <div className="onda-messages" style={msgsArea}>
-          <div id="onda-messages-container" ref={messagesInnerRef} className="onda-messages-inner" style={msgsInner}>
+          <div
+            id="onda-messages-container"
+            ref={messagesInnerRef}
+            className="onda-messages-inner"
+            style={msgsInner}
+            role="region"
+            aria-label="Mensajes del chat"
+          >
           {currentEje === null ? (
             <>
               {messages.length > 0 && (
@@ -1309,15 +1349,35 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
             </div>
           ))}
 
-          {/* Loading: "Escribiendo..." siempre abajo para que se vea debajo del mensaje de bienvenida */}
+          {/* Loading: texto visible + estado para lectores de pantalla (un solo anuncio al inicio, no por chunk). */}
           {loading &&
             !(messages.length > 0 && messages[messages.length - 1].role === "model" && messages[messages.length - 1].content === "") && (
               <div ref={lastBubbleRef} className="bubble-in" style={S.row(false)}>
-                <div style={{ ...S.bubble(false), fontStyle: "italic", color: t.c.ink, opacity: 0.85, animation: "pulse 1.4s ease-in-out infinite" }}>
-                  {ONDA_MICROCOPY.typing}
+                <div
+                  role="status"
+                  aria-live="polite"
+                  aria-busy="true"
+                  style={{
+                    ...S.bubble(false),
+                    fontStyle: "italic",
+                    color: t.c.ink,
+                    opacity: 0.9,
+                    animation: "pulse 1.4s ease-in-out infinite",
+                  }}
+                >
+                  <span className="sr-only">Onda está preparando su respuesta</span>
+                  <span aria-hidden="true" style={{ animation: "inherit" }}>
+                    {ONDA_MICROCOPY.typing}
+                  </span>
                 </div>
               </div>
             )}
+
+          {streamDoneAnnouncement ? (
+            <div role="status" aria-live="polite" className="sr-only">
+              {streamDoneAnnouncement}
+            </div>
+          ) : null}
 
           {/* Preguntas de seguimiento: SOLO si el modelo devolvió [ONDA_SUGERENCIAS] (contextuales). No mostrar nunca píldoras genéricas (Congreso, diputados, Singapur, etc.) porque cambian de tema; regla: solo el usuario cambia de tema. */}
           {!loading && currentEje !== null && !isMenuIntroActive && (() => {
@@ -1489,7 +1549,10 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
                       href={href}
                       data-onda-picker-composer
                       data-onda-eje={eje}
-                      aria-label={isPreferred ? `Continuar en ${config.name}` : `Elegir ${config.name}`}
+                      aria-label={
+                        (isPreferred ? `Continuar en ${config.name}` : `Elegir ${config.name}`) +
+                        `. ${config.description}`
+                      }
                       role="button"
                       tabIndex={0}
                       onClick={(e) => {
@@ -1675,6 +1738,7 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
 
           {/* Input row */}
           <form
+            aria-label="Escribe y envía tu mensaje a Onda"
             onSubmit={(e) => { e.preventDefault(); handleSend(e); }}
             onPaste={handlePaste}
             style={{ display: "flex", gap: 10, alignItems: "center" }}
@@ -1697,6 +1761,11 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
             <input
               ref={inputRef}
               type="text"
+              aria-label={
+                currentEje
+                  ? `Escribe tu mensaje para ${EJE_CONFIGS[currentEje].name}`
+                  : "Escribe tu mensaje (elige una Onda arriba para enviar)"
+              }
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => {
@@ -1765,6 +1834,7 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
         </div>
       </div>
     </div>
+    </main>
   );
 
   if (isEmbed) {
