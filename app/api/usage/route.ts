@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { recordUsage, getMetrics, type UsageEvent } from "../../../lib/auditStore";
+import { recordSpending, sendSpendingAlert } from "../../../lib/spendingAlert";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -24,6 +25,32 @@ export async function POST(req: Request) {
     const responseTimeMs = typeof body?.responseTimeMs === "number" && body.responseTimeMs >= 0 ? body.responseTimeMs : undefined;
 
     await recordUsage({ event, eje, sessionId, responseTimeMs });
+
+    const model = typeof body?.model === "string" ? body.model : undefined;
+    const hasPrompt =
+      (typeof body?.inputTokens === "number" && body.inputTokens > 0) ||
+      (typeof body?.promptTokens === "number" && body.promptTokens > 0);
+    if (model && hasPrompt) {
+      const inputTokens =
+        typeof body.inputTokens === "number" ? body.inputTokens : (body.promptTokens as number) ?? 0;
+      const outputTokens =
+        typeof body.outputTokens === "number"
+          ? body.outputTokens
+          : typeof body.completionTokens === "number"
+            ? body.completionTokens
+            : 0;
+
+      void recordSpending(model, inputTokens, outputTokens)
+        .then(async (status) => {
+          if (status.criticalTriggered) {
+            await sendSpendingAlert("critical", status);
+          } else if (status.alertTriggered) {
+            await sendSpendingAlert("warning", status);
+          }
+        })
+        .catch((err) => console.warn("spending alert error:", err));
+    }
+
     return new NextResponse(null, { status: 204 });
   } catch {
     return NextResponse.json({ error: "Error" }, { status: 500 });
