@@ -30,6 +30,7 @@ import {
   bufferFromDataUrl,
   validateImage,
 } from "../../../../lib/validateMedia";
+import { generateRequestId } from "../../../../lib/telemetry";
 
 /** Tiempo máximo de ejecución del handler (Vercel: 60 en Hobby, hasta 300 en Pro). */
 export const maxDuration = 60;
@@ -319,6 +320,10 @@ export async function POST(req: Request) {
 
     const encoder = new TextEncoder();
     const query = message ?? "";
+    const requestId = generateRequestId("web");
+    const intentResultForLog = classifyIntent(query || " ");
+    console.info(`[${requestId}] chat/stream START intent=${intentResultForLog.intent}`);
+    const telemetryCtx = { requestId, canal: "web" as const };
 
     type StreamContextBundle = {
       extraContext: string | undefined;
@@ -381,6 +386,7 @@ export async function POST(req: Request) {
       async start(controller) {
         let partialSoFar = "";
         let assistantTextForMemory = "";
+        let streamOk = true;
         try {
           const includeSources = wantsSources(message);
           let extraContext: string | undefined;
@@ -413,7 +419,8 @@ export async function POST(req: Request) {
               includeSources,
               undefined,
               extraContext || undefined,
-              memoryBlock || undefined
+              memoryBlock || undefined,
+              telemetryCtx
             );
             assistantTextForMemory = parseResponseFormat(fullReply).text.trim();
             for (const chunk of chunkText(fullReply)) {
@@ -459,7 +466,8 @@ export async function POST(req: Request) {
               articleContext,
               extraContext ?? null,
               undefined,
-              memoryBlock || undefined
+              memoryBlock || undefined,
+              telemetryCtx
             )) {
               partialSoFar += chunk;
               controller.enqueue(encoder.encode(JSON.stringify({ text: chunk }) + "\n"));
@@ -499,8 +507,9 @@ export async function POST(req: Request) {
           }
           controller.enqueue(encoder.encode(JSON.stringify({ done: true }) + "\n"));
         } catch (err) {
+          streamOk = false;
           const errMsg = err instanceof Error ? err.message : String(err);
-          console.error("[chat/stream] error en stream:", errMsg, err);
+          console.error(`[${requestId}] [chat/stream] error en stream:`, errMsg, err);
           const isImageRequest = !!image;
           if (partialSoFar.trim().length > 0) {
             if (!assistantTextForMemory) {
@@ -522,6 +531,7 @@ export async function POST(req: Request) {
             );
           }
         } finally {
+          console.info(`[${requestId}] chat/stream END ${streamOk ? "OK" : "ERROR"}`);
           if (sessionId !== "anonymous" && assistantTextForMemory) {
             const userLine =
               message.trim() ||

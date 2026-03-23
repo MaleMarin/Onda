@@ -45,6 +45,7 @@ import {
   WA_OPT_IN_ACK,
   WA_OPT_OUT_ACK,
 } from "../../../lib/waCompliance";
+import { generateRequestId } from "../../../lib/telemetry";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -219,6 +220,15 @@ export async function POST(req: Request) {
           const isOutbound = direction === "outbound";
           if (!from || isOutbound) continue;
 
+          const requestId = generateRequestId("wa");
+          const probeForIntent =
+            (typeof text === "string" && text.trim()) ||
+            (type === "audio" ? "(audio)" : type === "image" ? "(imagen)" : "") ||
+            " ";
+          const waLogIntent = classifyIntent(probeForIntent).intent;
+          console.info(`[${requestId}] webhook mensaje from=${from} intent=${waLogIntent}`);
+          const telemetryWa = { requestId, canal: "wa" as const };
+
           const textBody = typeof text === "string" ? text.trim() : "";
 
           if (from !== "unknown") {
@@ -300,7 +310,8 @@ export async function POST(req: Request) {
                       includeSources,
                       "whatsapp",
                       undefined,
-                      memoryBlock || undefined
+                      memoryBlock || undefined,
+                      telemetryWa
                     );
                   }
                 } else {
@@ -346,7 +357,8 @@ export async function POST(req: Request) {
                       null,
                       "whatsapp",
                       undefined,
-                      memoryBlock || undefined
+                      memoryBlock || undefined,
+                      telemetryWa
                     );
                   }
                 } else {
@@ -380,7 +392,8 @@ export async function POST(req: Request) {
                   null,
                   "whatsapp",
                   undefined,
-                  memoryBlock || undefined
+                  memoryBlock || undefined,
+                  telemetryWa
                 );
               } catch (err) {
                 console.error("❌ Error procesando mensaje:", err);
