@@ -784,3 +784,16 @@ export const ONDA_MICROCOPY = {
   compartirCopiado: "Copiado",
   fuenteVerificada: "Fuente verificada por Onda",
 } as const;
+
+/** Mensajes de límite (tono Onda, español neutro) para rutas y fallbacks controlados. */
+export const ONDA_LIMIT_MESSAGES = {
+  out_of_scope: `Eso va más allá de mi especialidad en información y medios digitales. Pero si me cuentas qué quieres entender en el fondo, puedo ayudarte a encontrar quién sabe de eso o cómo buscar información confiable al respecto.`,
+
+  no_verified_sources: `No encontré evidencias verificables en mis registros oficiales sobre esto. Lo que puedo hacer es ayudarte a evaluar las fuentes que tienes o buscar referencias confiables juntos.`,
+
+  technical_error: `Tuve un problema técnico procesando tu consulta. ¿Puedes reformularla o intentarlo en un momento? Estoy aquí.`,
+
+  content_not_processable: `No pude procesar ese contenido de forma segura. ¿Me lo cuentas con tus palabras? Así puedo ayudarte mejor.`,
+
+  too_complex: `Esta consulta tiene muchas capas y no quiero darte una respuesta a medias. ¿Por dónde quieres empezar? Podemos ir de a una parte.`,
+} as const;

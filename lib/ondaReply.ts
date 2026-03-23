@@ -10,6 +10,16 @@ import {
 } from "../content/raw/ondaRaw";
 import { sanitizeExternalContent } from "./promptSafety";
 import { classifyIntent, buildIntentContextBlock } from "@/lib/intentClassifier";
+import {
+  buildDelightMoment,
+  buildEmotionalValidation,
+  buildVoiceBlock,
+  detectEmotionalLoad,
+  getVoiceProfile,
+} from "@/lib/ondaVoice";
+
+export { getVoiceProfile };
+export type { VoiceProfile } from "@/lib/ondaVoice";
 
 const MAX_TOKENS_RESPUESTA = 4000;
 const MODEL_DEFAULT = "gpt-4o-mini";
@@ -544,6 +554,27 @@ ${newsContext}
 
 const MAX_HISTORY_MESSAGES = 20; // últimos N mensajes para no exceder contexto
 
+/** Intent → voz de eje → validación emocional granular → memoria → resto de bloques. */
+function chainIntentVoiceEmotionMemory(
+  userText: string,
+  eje: EjeOnda | null | undefined,
+  intentBlock: string,
+  memoryBlock: string,
+  whatsappBlock: string,
+  sourcesBlock: string,
+  noticiaBlock: string,
+  ragWebBlock: string
+): string {
+  const profile = getVoiceProfile(eje);
+  const voiceBlock = buildVoiceBlock(eje);
+  const load = detectEmotionalLoad(userText);
+  const emotionalBlock =
+    load !== "none"
+      ? `\n\nPRIMER PÁRRAFO OBLIGATORIO (no omitir):\n${buildEmotionalValidation(load, profile.eje)}`
+      : "";
+  return intentBlock + voiceBlock + emotionalBlock + memoryBlock + whatsappBlock + sourcesBlock + noticiaBlock + ragWebBlock;
+}
+
 /**
  * Obtiene la respuesta de ONDA para un mensaje de usuario (lógica central reutilizable).
  * Si se pasa eje, el modelo prioriza ese contexto. Si se pasa history, el modelo ve la conversación anterior.
@@ -583,12 +614,16 @@ export async function getOndaReply(
   const systemContent =
     systemPromptFusionadoForCanal(canal) +
     ejeContext +
-    intentContextBlock +
-    memoryBlock +
-    whatsappBlock +
-    sourcesBlock +
-    noticiaBlock +
-    ragWebBlock;
+    chainIntentVoiceEmotionMemory(
+      userText,
+      eje,
+      intentContextBlock,
+      memoryBlock,
+      whatsappBlock,
+      sourcesBlock,
+      noticiaBlock,
+      ragWebBlock
+    );
 
   const historySlice = (history ?? []).slice(-MAX_HISTORY_MESSAGES);
   const historyForApi: HistoryApi = historySlice.map((m) => ({
@@ -599,12 +634,14 @@ export async function getOndaReply(
   const extraContextLength = (extraContext ?? "").length;
   const intent = await classifyOrchestratorDepth(userText, eje, extraContextLength);
   const route = getOrchestratorRoute(intent);
+  let reply: string;
   try {
-    return await runComplete(route, systemContent, historyForApi, userText);
+    reply = await runComplete(route, systemContent, historyForApi, userText);
   } catch (err) {
     console.warn("[ondaReply] orchestrator primary failed, fallback gpt-4o:", route, err);
-    return tryFallbackGpt4o(systemContent, historyForApi, userText);
+    reply = await tryFallbackGpt4o(systemContent, historyForApi, userText);
   }
+  return reply + buildDelightMoment(queryIntent.intent, canal, queryIntent.confidence);
 }
 
 /**
@@ -641,11 +678,16 @@ export async function* getOndaReplyStream(
   const systemContent =
     systemPromptFusionadoForCanal(canal) +
     ejeContext +
-    intentContextBlock +
-    memoryBlock +
-    sourcesBlock +
-    noticiaBlock +
-    ragWebBlock;
+    chainIntentVoiceEmotionMemory(
+      userText,
+      eje,
+      intentContextBlock,
+      memoryBlock,
+      "",
+      sourcesBlock,
+      noticiaBlock,
+      ragWebBlock
+    );
 
   const historySlice = (history ?? []).slice(-MAX_HISTORY_MESSAGES);
   const historyForApi: HistoryApi = historySlice.map((m) => ({
@@ -656,6 +698,7 @@ export async function* getOndaReplyStream(
   const extraContextLength = (extraContext ?? "").length;
   const intent = await classifyOrchestratorDepth(userText, eje, extraContextLength);
   const route = getOrchestratorRoute(intent);
+  let usedEmergency = false;
   try {
     for await (const chunk of runStream(route, systemContent, historyForApi, userText)) {
       yield chunk;
@@ -667,8 +710,13 @@ export async function* getOndaReplyStream(
       for (let i = 0; i < full.length; i += 40) yield full.slice(i, i + 40);
     } catch (fallbackErr) {
       console.error("[ondaReply] fallback gpt-4o also failed:", fallbackErr);
+      usedEmergency = true;
       yield EMERGENCY_ONDA_REPLY(userText);
     }
+  }
+  if (!usedEmergency) {
+    const delight = buildDelightMoment(queryIntent.intent, canal ?? "web", queryIntent.confidence);
+    if (delight) yield delight;
   }
 }
 
@@ -740,14 +788,20 @@ export async function getOndaReplyWithImage(
     extraContext && extraContext.trim()
       ? `\n\n--- CONTEXTO_DE_ACTUALIDAD (búsqueda web + RAG) ---\nEl sistema ya ejecutó búsqueda en fuentes fiables. Si usas cualquier dato de este bloque: (1) Marca cada afirmación con un número correlativo [1], [2], [3]... (2) Al final de la respuesta incluye la sección ### 📚 Fuentes de Autoridad listando cada número con Nombre: "Título" (URL). PROHIBIDO decir "no tengo información en tiempo real".\n\n${sanitizeExternalContent(extraContext.trim())}\n`
       : "";
+  const noticiaBlockImg = "";
   const systemContent =
     systemPromptFusionadoForCanal(canal) +
     ejeContext +
-    intentContextBlockImg +
-    memoryBlockImg +
-    whatsappBlock +
-    sourcesBlock +
-    ragWebBlock;
+    chainIntentVoiceEmotionMemory(
+      userText,
+      eje,
+      intentContextBlockImg,
+      memoryBlockImg,
+      whatsappBlock,
+      sourcesBlock,
+      noticiaBlockImg,
+      ragWebBlock
+    );
 
   const historySlice = (history ?? []).slice(-MAX_HISTORY_MESSAGES);
   const historyForApi: Array<{ role: "user" | "assistant"; content: string }> = historySlice.map(
@@ -763,6 +817,7 @@ export async function getOndaReplyWithImage(
   }
   userContent.push({ type: "text", text: userText || "¿Qué ves en esta imagen? Responde según ONDA." });
 
+  const delight = buildDelightMoment(queryIntentImg.intent, canal, queryIntentImg.confidence);
   try {
     const completion = await openai.chat.completions.create({
       model,
@@ -773,10 +828,9 @@ export async function getOndaReplyWithImage(
       ],
       max_tokens: MAX_TOKENS_RESPUESTA,
     });
-    return (
-      completion.choices[0].message.content ||
-      "Ups, no tengo una respuesta en este momento."
-    );
+    const raw =
+      completion.choices[0].message.content || "Ups, no tengo una respuesta en este momento.";
+    return raw + delight;
   } catch (openaiErr) {
     console.warn("[ondaReply] vision primary failed, fallback gpt-4o:", openaiErr);
     const fallback = await openai.chat.completions.create({
@@ -788,9 +842,8 @@ export async function getOndaReplyWithImage(
       ],
       max_tokens: MAX_TOKENS_RESPUESTA,
     });
-    return (
-      fallback.choices[0].message.content ||
-      "Ups, no tengo una respuesta en este momento."
-    );
+    const raw =
+      fallback.choices[0].message.content || "Ups, no tengo una respuesta en este momento.";
+    return raw + delight;
   }
 }
