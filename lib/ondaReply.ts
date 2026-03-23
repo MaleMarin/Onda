@@ -25,6 +25,13 @@ import {
 } from "@/lib/ondaVoice";
 import { optimizeSystemPrompt } from "@/lib/promptOptimizer";
 import { getCachedResponse, setCachedResponse } from "@/lib/responseCache";
+import {
+  beginProviderCall,
+  recordFailure,
+  recordSuccess,
+  withCircuitBreaker,
+  CircuitOpenError,
+} from "@/lib/circuitBreaker";
 
 export { getVoiceProfile };
 export type { VoiceProfile } from "@/lib/ondaVoice";
@@ -96,18 +103,9 @@ function getGoogleApiKey(): string | undefined {
   );
 }
 
-/**
- * Último recurso si fallan el stream principal y GPT-4o (sin llamadas extra a APIs).
- * Evita mostrar “se cortó la conexión” sin contenido útil.
- */
-function EMERGENCY_ONDA_REPLY(userText: string): string {
-  const t = (userText || "").trim();
-  const short = t.length > 200 ? `${t.slice(0, 200)}…` : t;
-  const ack = short
-    ? `Leí tu mensaje. `
-    : "";
-  return `${ack}Ahora mismo no pude generar la respuesta completa por un tema técnico momentáneo. **Probá de nuevo en unos segundos** con la misma pregunta o reformulá en una frase corta.\n\nSoy Onda (Precisar): puedo ayudarte con noticias, mensajes, uso responsable de la IA y educación mediática. ¿Qué querés revisar?`;
-}
+/** Cuando todos los proveedores fallan o los circuitos están abiertos. */
+const EMERGENCY_RESPONSE =
+  "En este momento estoy teniendo dificultades técnicas para procesar tu consulta. Por favor, intenta de nuevo en unos minutos. Si el problema persiste, puedes contactar a Precisar en precisar.net";
 
 /** Fallback síncrono cuando falla el clasificador por IA (regex/keywords). */
 function classifyIntentFallback(
@@ -181,6 +179,17 @@ export function getOrchestratorRoute(
 }
 
 /**
+ * Orden de intento con circuit breaker: mini → (Gemini o Claude según intent) → GPT-4o.
+ */
+function buildFallbackRouteOrder(intent: "deep" | "simple" | "docs"): OrchestratorRoute[] {
+  const routes: OrchestratorRoute[] = ["gpt-mini"];
+  if (intent === "docs" && getGoogleApiKey()) routes.push("gemini");
+  else if (intent === "deep" && process.env.ANTHROPIC_API_KEY?.trim()) routes.push("claude");
+  routes.push("gpt-4o");
+  return routes;
+}
+
+/**
  * Fallback universal: GPT-4o para no dejar al usuario sin respuesta.
  */
 async function tryFallbackGpt4o(
@@ -195,20 +204,22 @@ async function tryFallbackGpt4o(
     MODEL_PROFUNDO,
     intentLabel ?? "unknown",
     async () => {
-      const openai = getOpenAI();
-      const completion = await openai.chat.completions.create({
-        model: MODEL_PROFUNDO,
-        messages: [
-          { role: "system", content: systemContent },
-          ...historyForApi,
-          { role: "user", content: userText },
-        ],
-        max_tokens: MAX_TOKENS_RESPUESTA,
+      return withCircuitBreaker("openai-gpt4o", async () => {
+        const openai = getOpenAI();
+        const completion = await openai.chat.completions.create({
+          model: MODEL_PROFUNDO,
+          messages: [
+            { role: "system", content: systemContent },
+            ...historyForApi,
+            { role: "user", content: userText },
+          ],
+          max_tokens: MAX_TOKENS_RESPUESTA,
+        });
+        return (
+          completion.choices[0].message.content ||
+          "Ups, no tengo una respuesta en este momento."
+        );
       });
-      return (
-        completion.choices[0].message.content ||
-        "Ups, no tengo una respuesta en este momento."
-      );
     }
   );
 }
@@ -232,53 +243,59 @@ async function runComplete(
     return tryFallbackGpt4o(systemContent, historyForApi, userText, telemetry, intent);
   if (route === "gpt-mini") {
     return withModelTelemetry(telemetry, MODEL_DEFAULT, intent, async () => {
-      const openai = getOpenAI();
-      const completion = await openai.chat.completions.create({
-        model: MODEL_DEFAULT,
-        messages: [
-          { role: "system", content: systemContent },
-          ...historyForApi,
-          { role: "user", content: userText },
-        ],
-        max_tokens: MAX_TOKENS_RESPUESTA,
+      return withCircuitBreaker("openai-mini", async () => {
+        const openai = getOpenAI();
+        const completion = await openai.chat.completions.create({
+          model: MODEL_DEFAULT,
+          messages: [
+            { role: "system", content: systemContent },
+            ...historyForApi,
+            { role: "user", content: userText },
+          ],
+          max_tokens: MAX_TOKENS_RESPUESTA,
+        });
+        return completion.choices[0].message.content ?? "Ups, no tengo una respuesta en este momento.";
       });
-      return completion.choices[0].message.content ?? "Ups, no tengo una respuesta en este momento.";
     });
   }
   if (route === "claude") {
     return withModelTelemetry(telemetry, MODEL_CLAUDE, intent, async () => {
-      const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
-      const messages = [...historyForApi.map((m) => ({ role: m.role, content: m.content })), { role: "user" as const, content: userText }];
-      const res = await anthropic.messages.create({
-        model: MODEL_CLAUDE,
-        max_tokens: MAX_TOKENS_RESPUESTA,
-        system: systemContent,
-        messages,
+      return withCircuitBreaker("anthropic", async () => {
+        const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
+        const messages = [...historyForApi.map((m) => ({ role: m.role, content: m.content })), { role: "user" as const, content: userText }];
+        const res = await anthropic.messages.create({
+          model: MODEL_CLAUDE,
+          max_tokens: MAX_TOKENS_RESPUESTA,
+          system: systemContent,
+          messages,
+        });
+        const text = res.content?.find((b: { type: string }) => b.type === "text");
+        const out = text && "text" in text ? (text as { text: string }).text : null;
+        return out ?? "Ups, no tengo una respuesta en este momento.";
       });
-      const text = res.content?.find((b: { type: string }) => b.type === "text");
-      const out = text && "text" in text ? (text as { text: string }).text : null;
-      return out ?? "Ups, no tengo una respuesta en este momento.";
     });
   }
   if (route === "gemini") {
     return withModelTelemetry(telemetry, MODEL_GEMINI, intent, async () => {
-      const apiKey = getGoogleApiKey();
-      if (!apiKey) throw new Error("GOOGLE_GENERATIVE_AI_API_KEY required for Gemini route.");
-      const ai = new GoogleGenAI({ apiKey });
-      const contents = historyForApi
-        .filter((m) => m.role === "user" || m.role === "assistant")
-        .flatMap((m) => [{ role: m.role === "user" ? "user" : "model", parts: [{ text: m.content }] }]);
-      contents.push({ role: "user", parts: [{ text: userText }] });
-      const res = await ai.models.generateContent({
-        model: MODEL_GEMINI,
-        contents: contents as unknown as { role: string; parts: { text: string }[] }[],
-        config: {
-          systemInstruction: systemContent,
-          maxOutputTokens: MAX_TOKENS_RESPUESTA,
-        },
+      return withCircuitBreaker("gemini", async () => {
+        const apiKey = getGoogleApiKey();
+        if (!apiKey) throw new Error("GOOGLE_GENERATIVE_AI_API_KEY required for Gemini route.");
+        const ai = new GoogleGenAI({ apiKey });
+        const contents = historyForApi
+          .filter((m) => m.role === "user" || m.role === "assistant")
+          .flatMap((m) => [{ role: m.role === "user" ? "user" : "model", parts: [{ text: m.content }] }]);
+        contents.push({ role: "user", parts: [{ text: userText }] });
+        const res = await ai.models.generateContent({
+          model: MODEL_GEMINI,
+          contents: contents as unknown as { role: string; parts: { text: string }[] }[],
+          config: {
+            systemInstruction: systemContent,
+            maxOutputTokens: MAX_TOKENS_RESPUESTA,
+          },
+        });
+        const text = (res as { text?: string }).text;
+        return text ?? "Ups, no tengo una respuesta en este momento.";
       });
-      const text = (res as { text?: string }).text;
-      return text ?? "Ups, no tengo una respuesta en este momento.";
     });
   }
   return tryFallbackGpt4o(systemContent, historyForApi, userText, telemetry, intent);
@@ -325,6 +342,7 @@ async function* runStream(
     const timer = startTimer();
     let errorType: string | undefined;
     try {
+      await beginProviderCall("openai-mini");
       const openai = getOpenAI();
       const stream = await openai.chat.completions.create({
         model: MODEL_DEFAULT,
@@ -340,9 +358,13 @@ async function* runStream(
         const delta = chunk.choices[0]?.delta?.content;
         if (typeof delta === "string" && delta.length > 0) yield delta;
       }
+      await recordSuccess("openai-mini");
     } catch (err) {
       errorType = err instanceof Error ? err.constructor.name : "unknown";
       recordStreamTiming(telemetry, MODEL_DEFAULT, intent, timer, false, errorType);
+      if (!(err instanceof CircuitOpenError)) {
+        await recordFailure("openai-mini").catch(() => {});
+      }
       throw err;
     }
     recordStreamTiming(telemetry, MODEL_DEFAULT, intent, timer, true);
@@ -352,6 +374,7 @@ async function* runStream(
     const timer = startTimer();
     let errorType: string | undefined;
     try {
+      await beginProviderCall("anthropic");
       const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
       const messages = [...historyForApi.map((m) => ({ role: m.role, content: m.content })), { role: "user" as const, content: userText }];
       const stream = await anthropic.messages.create({
@@ -367,9 +390,13 @@ async function* runStream(
           if (typeof text === "string" && text.length > 0) yield text;
         }
       }
+      await recordSuccess("anthropic");
     } catch (err) {
       errorType = err instanceof Error ? err.constructor.name : "unknown";
       recordStreamTiming(telemetry, MODEL_CLAUDE, intent, timer, false, errorType);
+      if (!(err instanceof CircuitOpenError)) {
+        await recordFailure("anthropic").catch(() => {});
+      }
       throw err;
     }
     recordStreamTiming(telemetry, MODEL_CLAUDE, intent, timer, true);
@@ -379,6 +406,7 @@ async function* runStream(
     const timer = startTimer();
     let errorType: string | undefined;
     try {
+      await beginProviderCall("gemini");
       const apiKey = getGoogleApiKey();
       if (!apiKey) throw new Error("GOOGLE_GENERATIVE_AI_API_KEY required for Gemini route.");
       const ai = new GoogleGenAI({ apiKey });
@@ -400,9 +428,13 @@ async function* runStream(
         const part = c.text ?? c.candidates?.[0]?.content?.parts?.[0]?.text;
         if (typeof part === "string" && part.length > 0) yield part;
       }
+      await recordSuccess("gemini");
     } catch (err) {
       errorType = err instanceof Error ? err.constructor.name : "unknown";
       recordStreamTiming(telemetry, MODEL_GEMINI, intent, timer, false, errorType);
+      if (!(err instanceof CircuitOpenError)) {
+        await recordFailure("gemini").catch(() => {});
+      }
       throw err;
     }
     recordStreamTiming(telemetry, MODEL_GEMINI, intent, timer, true);
@@ -752,15 +784,23 @@ export async function getOndaReply(
 
   const extraContextLength = (extraContext ?? "").length;
   const intent = await classifyOrchestratorDepth(userText, eje, extraContextLength);
-  const route = getOrchestratorRoute(intent);
-  let reply: string;
-  try {
-    reply = await runComplete(route, systemForModel, historyForApi, userText, telemetry, queryIntent.intent);
-  } catch (err) {
-    console.warn("[ondaReply] orchestrator primary failed, fallback gpt-4o:", route, err);
-    reply = await tryFallbackGpt4o(systemForModel, historyForApi, userText, telemetry, queryIntent.intent);
+  const routes = buildFallbackRouteOrder(intent);
+  let reply: string | null = null;
+  for (const route of routes) {
+    try {
+      reply = await runComplete(route, systemForModel, historyForApi, userText, telemetry, queryIntent.intent);
+      break;
+    } catch (err) {
+      if (err instanceof CircuitOpenError) {
+        console.warn("[circuit]", err.provider, "abierto o bloqueado; probando siguiente ruta");
+      } else {
+        console.warn("[ondaReply] ruta falló:", route, err);
+      }
+    }
   }
-  const delight = buildDelightMoment(queryIntent.intent, canal, queryIntent.confidence);
+  if (reply === null) reply = EMERGENCY_RESPONSE;
+  const isEmergency = reply === EMERGENCY_RESPONSE;
+  const delight = isEmergency ? "" : buildDelightMoment(queryIntent.intent, canal, queryIntent.confidence);
   const fullReply = reply + delight;
   void setCachedResponse(userText, ejeCacheKey, queryIntent.intent, fullReply).catch(() => {});
   return fullReply;
@@ -843,29 +883,30 @@ export async function* getOndaReplyStream(
 
   const extraContextLength = (extraContext ?? "").length;
   const intent = await classifyOrchestratorDepth(userText, eje, extraContextLength);
-  const route = getOrchestratorRoute(intent);
+  const routes = buildFallbackRouteOrder(intent);
   let usedEmergency = false;
   let streamedAcc = "";
-  try {
-    for await (const chunk of runStream(route, systemForModel, historyForApi, userText, telemetry, queryIntent.intent)) {
-      streamedAcc += chunk;
-      yield chunk;
-    }
-  } catch (err) {
-    console.warn("[ondaReply] stream primary failed, fallback gpt-4o:", route, err);
+  let streamOk = false;
+  routeLoop: for (const route of routes) {
     try {
-      const full = await tryFallbackGpt4o(systemForModel, historyForApi, userText, telemetry, queryIntent.intent);
-      for (let i = 0; i < full.length; i += 40) {
-        const part = full.slice(i, i + 40);
-        streamedAcc += part;
-        yield part;
+      for await (const chunk of runStream(route, systemForModel, historyForApi, userText, telemetry, queryIntent.intent)) {
+        streamedAcc += chunk;
+        yield chunk;
       }
-    } catch (fallbackErr) {
-      console.error("[ondaReply] fallback gpt-4o also failed:", fallbackErr);
-      usedEmergency = true;
-      streamedAcc = EMERGENCY_ONDA_REPLY(userText);
-      yield streamedAcc;
+      streamOk = true;
+      break routeLoop;
+    } catch (err) {
+      if (err instanceof CircuitOpenError) {
+        console.warn("[circuit]", err.provider, "abierto; siguiente ruta (stream)");
+      } else {
+        console.warn("[ondaReply] stream ruta falló:", route, err);
+      }
     }
+  }
+  if (!streamOk) {
+    usedEmergency = true;
+    streamedAcc = EMERGENCY_RESPONSE;
+    yield streamedAcc;
   }
   if (!usedEmergency) {
     const delight = buildDelightMoment(queryIntent.intent, canal ?? "web", queryIntent.confidence);
@@ -992,34 +1033,47 @@ export async function getOndaReplyWithImage(
 
   const delight = buildDelightMoment(queryIntentImg.intent, canal, queryIntentImg.confidence);
   const intentImg = queryIntentImg.intent;
+  const primaryProvider = model === MODEL_PROFUNDO ? "openai-gpt4o" : "openai-mini";
   try {
     const raw = await withModelTelemetry(telemetry, model, intentImg, async () => {
-      const completion = await openai.chat.completions.create({
-        model,
-        messages: [
-          { role: "system", content: systemForModelVision },
-          ...historyForApi,
-          { role: "user", content: userContent },
-        ],
-        max_tokens: MAX_TOKENS_RESPUESTA,
+      return withCircuitBreaker(primaryProvider, async () => {
+        const completion = await openai.chat.completions.create({
+          model,
+          messages: [
+            { role: "system", content: systemForModelVision },
+            ...historyForApi,
+            { role: "user", content: userContent },
+          ],
+          max_tokens: MAX_TOKENS_RESPUESTA,
+        });
+        return completion.choices[0].message.content || "Ups, no tengo una respuesta en este momento.";
       });
-      return completion.choices[0].message.content || "Ups, no tengo una respuesta en este momento.";
     });
     return raw + delight;
   } catch (openaiErr) {
-    console.warn("[ondaReply] vision primary failed, fallback gpt-4o:", openaiErr);
-    const raw = await withModelTelemetry(telemetry, MODEL_PROFUNDO, intentImg, async () => {
-      const fallback = await openai.chat.completions.create({
-        model: MODEL_PROFUNDO,
-        messages: [
-          { role: "system", content: systemForModelVision },
-          ...historyForApi,
-          { role: "user", content: userContent },
-        ],
-        max_tokens: MAX_TOKENS_RESPUESTA,
+    if (openaiErr instanceof CircuitOpenError) {
+      console.warn("[circuit]", openaiErr.provider, "OPEN visión; intento gpt-4o");
+    } else {
+      console.warn("[ondaReply] vision primary failed, fallback gpt-4o:", openaiErr);
+    }
+    try {
+      const raw = await withModelTelemetry(telemetry, MODEL_PROFUNDO, intentImg, async () => {
+        return withCircuitBreaker("openai-gpt4o", async () => {
+          const fallback = await openai.chat.completions.create({
+            model: MODEL_PROFUNDO,
+            messages: [
+              { role: "system", content: systemForModelVision },
+              ...historyForApi,
+              { role: "user", content: userContent },
+            ],
+            max_tokens: MAX_TOKENS_RESPUESTA,
+          });
+          return fallback.choices[0].message.content || "Ups, no tengo una respuesta en este momento.";
+        });
       });
-      return fallback.choices[0].message.content || "Ups, no tengo una respuesta en este momento.";
-    });
-    return raw + delight;
+      return raw + delight;
+    } catch {
+      return EMERGENCY_RESPONSE;
+    }
   }
 }

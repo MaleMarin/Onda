@@ -26,6 +26,7 @@ import { ondaStyles } from "@/lib/ondaStyles";
 import { AccessibilityControls } from "./components/AccessibilityControls";
 import { ChatBubble } from "./components/ChatBubble";
 import { EjeSelector } from "./components/EjeSelector";
+import { OfflineBanner, type HealthBannerStatus } from "./components/OfflineBanner";
 
 function newMessage(role: "user" | "model", content: string, extra?: Partial<Message>): Message {
   return {
@@ -353,6 +354,23 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
   const ttsAudioContextRef = useRef<AudioContext | null>(null);
   const ttsSourceRef = useRef<AudioBufferSourceNode | null>(null);
   const [ttsPlaying, setTtsPlaying] = useState(false);
+  const [healthStatus, setHealthStatus] = useState<HealthBannerStatus>("unknown");
+
+  useEffect(() => {
+    const checkHealth = async () => {
+      try {
+        const res = await fetch("/api/admin/health");
+        const data = (await res.json()) as { status?: HealthBannerStatus };
+        const s = data.status;
+        setHealthStatus(s === "ok" || s === "degraded" || s === "down" ? s : "unknown");
+      } catch {
+        setHealthStatus("unknown");
+      }
+    };
+    void checkHealth();
+    const interval = setInterval(checkHealth, 2 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   /** Desbloquea el audio en Chrome/Mac: debe llamarse de forma síncrona en el gesto del usuario (click). */
   function getTTSAudioContext(): AudioContext | null {
@@ -1296,6 +1314,7 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
 
       {/* Chat body */}
       <div style={chatBody}>
+        <OfflineBanner status={healthStatus} />
         {/* Messages */}
         <div className="onda-messages" style={msgsArea}>
           <div

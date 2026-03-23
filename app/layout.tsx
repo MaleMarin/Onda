@@ -66,6 +66,7 @@ button[data-onda-send]:focus{background:${SEND_ORANGE} !important;color:#fff !im
 .onda-shell header,.onda-shell button,.onda-shell [role="button"],.onda-shell label,.onda-shell .onda-menu-btn,.onda-shell [data-onda-send],.onda-shell [data-onda-action],.onda-shell [data-onda-picker-composer]{font-family:var(--font-onda-heading),Montserrat,sans-serif}
 @keyframes bubbleIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+@keyframes ondaOfflineBannerIn{from{opacity:0}to{opacity:1}}
 @keyframes ondaPickerPulse{0%,100%{box-shadow:0 4px 14px rgba(0,0,0,0.15)}50%{box-shadow:0 0 0 4px rgba(255,180,0,0.75)}}
 .onda-picker-highlight [data-onda-picker-composer]{animation:ondaPickerPulse .85s ease-in-out 3}
 .bubble-in{animation:bubbleIn .28s cubic-bezier(.25,.75,.2,1) both}
