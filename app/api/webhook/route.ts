@@ -12,6 +12,7 @@ import {
   sendWhatsAppImage,
   sendWhatsAppText,
 } from "../../../lib/whatsapp";
+import { checkRateLimit } from "../../../lib/rateLimiter";
 import { verifyWebhookSignature } from "../../../lib/verifyWebhookSignature";
 
 export const runtime = "nodejs";
@@ -22,6 +23,22 @@ const isDev = process.env.NODE_ENV === "development";
 const MISSING_WEBHOOK_SECRET_MSG =
   "CONFIGURACIÓN FALTANTE: WHATSAPP_WEBHOOK_SECRET no está definida.\n" +
   "El webhook de WhatsApp no puede operar sin esta variable.";
+
+function extractWhatsAppSenderFromPayload(payload: unknown): string {
+  try {
+    const from = (
+      payload as {
+        entry?: Array<{
+          changes?: Array<{ value?: { messages?: Array<{ from?: string }> } }>;
+        }>;
+      }
+    )?.entry?.[0]?.changes?.[0]?.value?.messages?.[0]?.from;
+    if (typeof from === "string" && from.trim()) return from.trim();
+  } catch {
+    /* ignore */
+  }
+  return "unknown";
+}
 
 /**
  * Webhook de WhatsApp - Versión limpia y simple
@@ -111,6 +128,24 @@ export async function POST(req: Request) {
     } catch {
       if (isDev) console.log("📩 Webhook: body vacío o no JSON");
       return new Response("OK", { status: 200 });
+    }
+
+    const waSender = extractWhatsAppSenderFromPayload(payload);
+    const waRl = await checkRateLimit(waSender, "wa", 20, 60);
+    if (!waRl.allowed) {
+      return new Response(
+        JSON.stringify({
+          error: "Demasiadas solicitudes. Esperá un momento antes de escribir de nuevo.",
+        }),
+        {
+          status: 429,
+          headers: {
+            "Content-Type": "application/json",
+            "X-RateLimit-Remaining": String(waRl.remaining),
+            "X-RateLimit-Reset": String(waRl.resetInSeconds),
+          },
+        }
+      );
     }
 
     if (isDev) console.log("📩 Webhook recibido:", JSON.stringify(payload, null, 2));

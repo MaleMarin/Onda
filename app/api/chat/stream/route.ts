@@ -8,6 +8,7 @@ import { extractArticle } from "../../../../lib/extractArticle";
 import { generateImageFromText } from "../../../../lib/generateImage";
 import { renderInfographicPng } from "../../../../lib/infographic";
 import { EjeOnda } from "../../../../content/types";
+import { checkRateLimit } from "../../../../lib/rateLimiter";
 
 /** Tiempo máximo de ejecución del handler (Vercel: 60 en Hobby, hasta 300 en Pro). */
 export const maxDuration = 60;
@@ -68,6 +69,18 @@ function* chunkText(text: string, size = 40): Generator<string> {
  */
 export async function POST(req: Request) {
   try {
+    const ip =
+      req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+      req.headers.get("x-real-ip") ??
+      "anonymous";
+    const webRl = await checkRateLimit(ip, "web", 30, 60);
+    if (!webRl.allowed) {
+      return Response.json(
+        { error: "Demasiadas solicitudes. Esperá un momento antes de continuar." },
+        { status: 429 }
+      );
+    }
+
     const body = await req.json();
     let message = typeof body?.message === "string" ? body.message.trim() : "";
     const image =
