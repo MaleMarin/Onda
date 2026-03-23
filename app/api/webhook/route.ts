@@ -21,6 +21,21 @@ import {
   validateAudio,
   validateImage,
 } from "../../../lib/validateMedia";
+import {
+  isFirstContact,
+  isOptInMessage,
+  isOptOutMessage,
+  isOptedOut,
+  isWindowActive,
+  markAsSeen,
+  renewMessageWindow,
+  setOptIn,
+  setOptOut,
+  WA_FIRST_CONTACT_WELCOME,
+  WA_OPTED_OUT_NOTICE,
+  WA_OPT_IN_ACK,
+  WA_OPT_OUT_ACK,
+} from "../../../lib/waCompliance";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -194,6 +209,40 @@ export async function POST(req: Request) {
 
           const isOutbound = direction === "outbound";
           if (!from || isOutbound) continue;
+
+          const textBody = typeof text === "string" ? text.trim() : "";
+
+          if (from !== "unknown") {
+            await renewMessageWindow(from);
+
+            if (textBody && isOptOutMessage(textBody)) {
+              await setOptOut(from);
+              await sendWhatsAppText(from, WA_OPT_OUT_ACK);
+              continue;
+            }
+
+            if (await isOptedOut(from)) {
+              if (textBody && isOptInMessage(textBody)) {
+                await setOptIn(from);
+                await sendWhatsAppText(from, WA_OPT_IN_ACK);
+              } else {
+                await sendWhatsAppText(from, WA_OPTED_OUT_NOTICE);
+                continue;
+              }
+            }
+
+            const windowOk = await isWindowActive(from);
+            if (!windowOk) {
+              console.warn(
+                "[waCompliance] Ventana de 24 h inactiva para este número; fuera de ventana Meta solo permite plantillas aprobadas (envío libre no implementado aquí)."
+              );
+            }
+
+            if (await isFirstContact(from)) {
+              await sendWhatsAppText(from, WA_FIRST_CONTACT_WELCOME);
+              await markAsSeen(from);
+            }
+          }
 
           let response: string | null = null;
 
