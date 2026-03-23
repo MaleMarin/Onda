@@ -9,6 +9,7 @@ import {
   RAW_PROFES_FULL,
 } from "../content/raw/ondaRaw";
 import { sanitizeExternalContent } from "./promptSafety";
+import { classifyIntent, buildIntentContextBlock } from "@/lib/intentClassifier";
 
 const MAX_TOKENS_RESPUESTA = 4000;
 const MODEL_DEFAULT = "gpt-4o-mini";
@@ -115,11 +116,10 @@ Reglas:
 Responde únicamente la palabra, en minúsculas.`;
 
 /**
- * Director de Orquesta — Clasificador de intención por IA (low-latency).
- * Devuelve deep | simple | docs. No depende de tildes ni keywords exactos.
- * Si la llamada falla, usa fallback por reglas.
+ * Director de Orquesta — Clasificador deep/simple/docs por IA (low-latency).
+ * Exportado para decidir búsqueda web en paralelo antes del stream.
  */
-async function classifyIntent(
+export async function classifyOrchestratorDepth(
   query: string,
   eje: EjeOnda | null | undefined,
   extraContextLength: number
@@ -140,7 +140,7 @@ async function classifyIntent(
     const raw = (completion.choices[0]?.message?.content ?? "").trim().toLowerCase().replace(/\s+/g, "");
     if (raw === "deep" || raw === "simple" || raw === "docs") return raw;
   } catch (err) {
-    console.warn("[ondaReply] classifyIntent AI failed, using fallback:", err);
+    console.warn("[ondaReply] classifyOrchestratorDepth AI failed, using fallback:", err);
   }
   return classifyIntentFallback(query, eje, extraContextLength);
 }
@@ -572,12 +572,20 @@ export async function getOndaReply(
       ? `\n\n📚 EL USUARIO PIDIÓ FUENTES. Incluí al final una sección "Fuentes" o "Referencias" usando SOLO las listas oficiales ONDA (nombre + URL):\n\n--- Lista de 50 fuentes (agencias, ciencia, política digital, datos, AMI) ---\n${FUENTES_ONDA_PARA_RESPUESTA}\n\n--- 50 fuentes Gobernanza LatAm, IA Docentes, Convivencia Escolar, AMI ---\n${FUENTES_ONDA_EJES_LATAM_AMI}\n\nSi no pidió fuentes, no incluyas esta sección.\n`
       : "";
   const noticiaBlock = articleContext != null ? NOTICIA_SYSTEM_BLOCK(articleContext) : "";
+  const queryIntent = classifyIntent(userText);
+  const intentContextBlock = buildIntentContextBlock(queryIntent);
   const ragWebBlock =
     extraContext && extraContext.trim()
       ? `\n\n--- CONTEXTO_DE_ACTUALIDAD (búsqueda web + RAG) ---\nEl sistema ya ejecutó búsqueda en fuentes fiables. Si usas cualquier dato de este bloque: (1) Marca cada afirmación con un número correlativo [1], [2], [3]... (2) Al final de la respuesta incluye la sección ### 📚 Fuentes de Autoridad listando cada número con Nombre: "Título" (URL). Si no tienes el dato en tu conocimiento, USA ESTE CONTEXTO. PROHIBIDO decir "no tengo información en tiempo real".\n\n${sanitizeExternalContent(extraContext.trim())}\n`
       : "";
   const systemContent =
-    systemPromptFusionadoForCanal(canal) + ejeContext + whatsappBlock + sourcesBlock + noticiaBlock + ragWebBlock;
+    systemPromptFusionadoForCanal(canal) +
+    ejeContext +
+    intentContextBlock +
+    whatsappBlock +
+    sourcesBlock +
+    noticiaBlock +
+    ragWebBlock;
 
   const historySlice = (history ?? []).slice(-MAX_HISTORY_MESSAGES);
   const historyForApi: HistoryApi = historySlice.map((m) => ({
@@ -586,7 +594,7 @@ export async function getOndaReply(
   }));
 
   const extraContextLength = (extraContext ?? "").length;
-  const intent = await classifyIntent(userText, eje, extraContextLength);
+  const intent = await classifyOrchestratorDepth(userText, eje, extraContextLength);
   const route = getOrchestratorRoute(intent);
   try {
     return await runComplete(route, systemContent, historyForApi, userText);
@@ -619,12 +627,19 @@ export async function* getOndaReplyStream(
       ? `\n\n📚 EL USUARIO PIDIÓ FUENTES. Incluí al final una sección "Fuentes" o "Referencias" usando SOLO las listas oficiales ONDA:\n\n--- Lista de 50 fuentes ---\n${FUENTES_ONDA_PARA_RESPUESTA}\n\n--- 50 fuentes Gobernanza LatAm, IA Docentes, Convivencia, AMI ---\n${FUENTES_ONDA_EJES_LATAM_AMI}\n`
       : "";
   const noticiaBlock = articleContext != null ? NOTICIA_SYSTEM_BLOCK(articleContext) : "";
+  const queryIntent = classifyIntent(userText);
+  const intentContextBlock = buildIntentContextBlock(queryIntent);
   const ragWebBlock =
     extraContext && extraContext.trim()
       ? `\n\n--- CONTEXTO_DE_ACTUALIDAD (búsqueda web + RAG) ---\nEl sistema ya ejecutó búsqueda en fuentes fiables. Si usas cualquier dato de este bloque: (1) Marca cada afirmación con un número correlativo [1], [2], [3]... (2) Al final de la respuesta incluye la sección ### 📚 Fuentes de Autoridad listando cada número con Nombre: "Título" (URL). PROHIBIDO decir "no tengo información en tiempo real".\n\n${sanitizeExternalContent(extraContext.trim())}\n`
       : "";
   const systemContent =
-    systemPromptFusionadoForCanal(canal) + ejeContext + sourcesBlock + noticiaBlock + ragWebBlock;
+    systemPromptFusionadoForCanal(canal) +
+    ejeContext +
+    intentContextBlock +
+    sourcesBlock +
+    noticiaBlock +
+    ragWebBlock;
 
   const historySlice = (history ?? []).slice(-MAX_HISTORY_MESSAGES);
   const historyForApi: HistoryApi = historySlice.map((m) => ({
@@ -633,7 +648,7 @@ export async function* getOndaReplyStream(
   }));
 
   const extraContextLength = (extraContext ?? "").length;
-  const intent = await classifyIntent(userText, eje, extraContextLength);
+  const intent = await classifyOrchestratorDepth(userText, eje, extraContextLength);
   const route = getOrchestratorRoute(intent);
   try {
     for await (const chunk of runStream(route, systemContent, historyForApi, userText)) {
@@ -711,12 +726,19 @@ export async function getOndaReplyWithImage(
     includeSourcesList === true
       ? `\n\n📚 EL USUARIO PIDIÓ FUENTES. Incluí al final una sección "Fuentes" o "Referencias" usando SOLO las listas oficiales ONDA:\n\n--- Lista de 50 fuentes ---\n${FUENTES_ONDA_PARA_RESPUESTA}\n\n--- 50 fuentes Gobernanza LatAm, IA Docentes, Convivencia, AMI ---\n${FUENTES_ONDA_EJES_LATAM_AMI}\n`
       : "";
+  const queryIntentImg = classifyIntent(userText);
+  const intentContextBlockImg = buildIntentContextBlock(queryIntentImg);
   const ragWebBlock =
     extraContext && extraContext.trim()
       ? `\n\n--- CONTEXTO_DE_ACTUALIDAD (búsqueda web + RAG) ---\nEl sistema ya ejecutó búsqueda en fuentes fiables. Si usas cualquier dato de este bloque: (1) Marca cada afirmación con un número correlativo [1], [2], [3]... (2) Al final de la respuesta incluye la sección ### 📚 Fuentes de Autoridad listando cada número con Nombre: "Título" (URL). PROHIBIDO decir "no tengo información en tiempo real".\n\n${sanitizeExternalContent(extraContext.trim())}\n`
       : "";
   const systemContent =
-    systemPromptFusionadoForCanal(canal) + ejeContext + whatsappBlock + sourcesBlock + ragWebBlock;
+    systemPromptFusionadoForCanal(canal) +
+    ejeContext +
+    intentContextBlockImg +
+    whatsappBlock +
+    sourcesBlock +
+    ragWebBlock;
 
   const historySlice = (history ?? []).slice(-MAX_HISTORY_MESSAGES);
   const historyForApi: Array<{ role: "user" | "assistant"; content: string }> = historySlice.map(

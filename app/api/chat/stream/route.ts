@@ -1,4 +1,11 @@
-import { getOndaReplyStream, getOndaReplyWithImage, generateTemaFromExchange, type ArticleContext } from "../../../../lib/ondaReply";
+import { classifyIntent } from "../../../../lib/intentClassifier";
+import {
+  classifyOrchestratorDepth,
+  generateTemaFromExchange,
+  getOndaReplyStream,
+  getOndaReplyWithImage,
+  type ArticleContext,
+} from "../../../../lib/ondaReply";
 import { searchPrivateDocs } from "../../../../lib/firebaseRag";
 import { getRagContext } from "../../../../lib/rag";
 import { parseResponseFormat, wantsSources } from "../../../../lib/responseFormat";
@@ -294,35 +301,61 @@ export async function POST(req: Request) {
     const encoder = new TextEncoder();
     const query = message ?? "";
 
-    /** Tavily: max 8s. Si falla o se excede, usamos "" y arrancamos con RAG/PDFs (paralelismo real con fallback). */
-    const webContextPromise = image
-      ? Promise.resolve("")
-      : Promise.race([
-          searchWeb(query),
-          new Promise<string>((_, rej) => setTimeout(() => rej(new Error("tavily_timeout")), TAVILY_TIMEOUT_MS)),
-        ]).catch(() => "");
+    type StreamContextBundle = {
+      extraContext: string | undefined;
+      rag_used: boolean;
+      web_search_used: boolean;
+    };
 
-    /** RAG + docs privados (OEI/Precisar) en paralelo; max 8s para no retrasar el inicio del stream. */
-    const ragAndPrivatePromise = image
-      ? Promise.resolve({ rag: "", privateDocs: "" })
-      : Promise.all([getRagContext(query), searchPrivateDocs(query)]).then(([rag, privateDocs]) => ({ rag: rag ?? "", privateDocs: privateDocs ?? "" }));
+    /** Búsqueda web solo si el orquestador ve "deep/docs" o el intent conversacional pide RAG (p. ej. fact_check). */
+    const contextBundlePromise: Promise<StreamContextBundle> = image
+      ? Promise.resolve({ extraContext: undefined, rag_used: false, web_search_used: false })
+      : (async (): Promise<StreamContextBundle> => {
+          const intentResult = classifyIntent(query);
+          const orch = await classifyOrchestratorDepth(query, eje, 0);
+          const isDeep = orch === "deep" || orch === "docs";
+          const shouldSearch = isDeep || intentResult.ragNeeded;
 
-    const ragAndPrivateWithTimeout = image
-      ? ragAndPrivatePromise
-      : Promise.race([
-          ragAndPrivatePromise,
-          new Promise<{ rag: string; privateDocs: string }>((resolve) =>
-            setTimeout(() => resolve({ rag: "", privateDocs: "" }), RAG_TIMEOUT_MS)
-          ),
-        ]);
+          const webP = shouldSearch
+            ? Promise.race([
+                searchWeb(query),
+                new Promise<string>((_, rej) =>
+                  setTimeout(() => rej(new Error("tavily_timeout")), TAVILY_TIMEOUT_MS)
+                ),
+              ]).catch(() => "")
+            : Promise.resolve("");
 
-    /** Contexto completo: web (o "" si Tavily falló/8s) + RAG + docs. Si Tavily tarda, el bot empieza a escribir con PDFs. */
-    const extraContextPromise = image
-      ? Promise.resolve(undefined)
-      : (async () => {
-          const [webContext, { rag, privateDocs }] = await Promise.all([webContextPromise, ragAndPrivateWithTimeout]);
-          const combined = [webContext, rag, privateDocs].filter(Boolean).join("\n\n");
-          return combined || undefined;
+          const ragP = Promise.all([getRagContext(query), searchPrivateDocs(query)]).then(([rag, privateDocs]) => ({
+            rag: rag ?? "",
+            privateDocs: privateDocs ?? "",
+          }));
+
+          const ragWithTimeout = Promise.race([
+            ragP,
+            new Promise<{ rag: string; privateDocs: string }>((resolve) =>
+              setTimeout(() => resolve({ rag: "", privateDocs: "" }), RAG_TIMEOUT_MS)
+            ),
+          ]);
+
+          const [webContext, { rag, privateDocs }] = await Promise.all([webP, ragWithTimeout]);
+
+          const rag_used = Boolean(rag?.trim()) || Boolean(privateDocs?.trim());
+          const web_search_used = Boolean(webContext?.trim());
+          const ragEmpty = !rag?.trim() && !privateDocs?.trim();
+
+          const factCheckFootnote =
+            intentResult.intent === "fact_check" && ragEmpty
+              ? `\n\n--- NOTA DEL SISTEMA (RAG interno vacío, verificación) ---\nNo hay fragmentos recuperados de la base documental interna para esta consulta. Al final de tu respuesta, añade una línea breve como nota al pie: indica que la verificación se apoya en búsqueda abierta y conocimiento general, no en documentos internos de Precisar, y sugiere contrastar con fuentes oficiales.\n`
+              : "";
+
+          const base = [webContext, rag, privateDocs].filter(Boolean).join("\n\n");
+          const combined = (base + factCheckFootnote).trim();
+
+          return {
+            extraContext: combined || undefined,
+            rag_used,
+            web_search_used,
+          };
         })();
 
     const stream = new ReadableStream({
@@ -331,12 +364,26 @@ export async function POST(req: Request) {
         try {
           const includeSources = wantsSources(message);
           let extraContext: string | undefined;
+          let bundle: StreamContextBundle = {
+            extraContext: undefined,
+            rag_used: false,
+            web_search_used: false,
+          };
           try {
-            extraContext = await extraContextPromise;
+            bundle = await contextBundlePromise;
+            extraContext = bundle.extraContext;
           } catch (contextErr) {
             console.warn("[chat/stream] context fetch failed, continuing without:", contextErr);
             extraContext = undefined;
           }
+          controller.enqueue(
+            encoder.encode(
+              JSON.stringify({
+                rag_used: bundle.rag_used,
+                web_search_used: bundle.web_search_used,
+              }) + "\n"
+            )
+          );
           if (image) {
             const fullReply = await getOndaReplyWithImage(
               message || "¿Qué ves en esta imagen?",
