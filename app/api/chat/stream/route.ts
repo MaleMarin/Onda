@@ -3,7 +3,7 @@ import { searchPrivateDocs } from "../../../../lib/firebaseRag";
 import { getRagContext } from "../../../../lib/rag";
 import { parseResponseFormat, wantsSources } from "../../../../lib/responseFormat";
 import { searchWeb } from "../../../../lib/searchWeb";
-import { transcribeAudio } from "../../../../lib/transcribe";
+import { transcribeAudio, TRANSCRIBE_ERROR } from "../../../../lib/transcribe";
 import { extractArticle } from "../../../../lib/extractArticle";
 import { generateImageFromText } from "../../../../lib/generateImage";
 import { renderInfographicPng } from "../../../../lib/infographic";
@@ -17,6 +17,17 @@ const TAVILY_TIMEOUT_MS = 8_000;
 const RAG_TIMEOUT_MS = 8_000;
 
 const URL_REGEX = /\b(https?:\/\/[^\s)\]}>"']+)/i;
+/** Para logs dev: extensión coherente con `lib/transcribe` (mime sin codecs). */
+function extFromAudioMime(mime: string): string {
+  const m = mime.toLowerCase();
+  if (m.includes("webm")) return "webm";
+  if (m.includes("ogg")) return "ogg";
+  if (m.includes("wav")) return "wav";
+  if (m.includes("mpeg") || m.includes("mp3")) return "mp3";
+  if (m.includes("mp4") || m.includes("m4a")) return "m4a";
+  return "?";
+}
+
 function extractFirstUrl(text: string): string | null {
   if (!text || typeof text !== "string") return null;
   const m = text.match(URL_REGEX);
@@ -92,26 +103,105 @@ export async function POST(req: Request) {
       );
     }
 
+    const isDev = process.env.NODE_ENV === "development";
+    /** Alineado con `lib/transcribe` (12 KB). */
+    const MIN_AUDIO_BYTES = 12 * 1024;
+
     if (audio) {
+      let audioSizeBytes = 0;
+      let audioMime = "";
+      const isDataUrl = typeof audio === "string" && audio.startsWith("data:");
+      if (isDataUrl) {
+        const commaIdx = audio.indexOf(",");
+        if (commaIdx === -1) {
+          return Response.json(
+            { error: "Formato de audio inválido." },
+            { status: 400 }
+          );
+        }
+        const header = audio.slice(0, commaIdx);
+        audioMime = header.split(";")[0].replace("data:", "").trim();
+        if (!/^audio\//i.test(audioMime)) {
+          return Response.json(
+            { error: "Formato de audio inválido." },
+            { status: 400 }
+          );
+        }
+        const b64 = audio.slice(commaIdx + 1);
+        audioSizeBytes = Buffer.byteLength(b64, "base64");
+      } else if (typeof audio === "string" && audio.length > 100) {
+        try {
+          const buf = Buffer.from(audio, "base64");
+          audioSizeBytes = buf.length;
+          audioMime = "";
+        } catch {
+          return Response.json(
+            { error: "Formato de audio inválido." },
+            { status: 400 }
+          );
+        }
+      } else {
+        return Response.json(
+          { error: "Formato de audio inválido." },
+          { status: 400 }
+        );
+      }
+
+      if (isDev) {
+        console.log(
+          `[audio] mime=${audioMime || "(raw)"}, size=${audioSizeBytes}, ext=${extFromAudioMime(audioMime)}`
+        );
+      }
+
+      if (audioSizeBytes < MIN_AUDIO_BYTES) {
+        return Response.json(
+          {
+            error:
+              "El audio viene vacío o demasiado corto. Graba 2–3 segundos y reintenta.",
+          },
+          { status: 400 }
+        );
+      }
+
       try {
         const transcribed = await transcribeAudio(audio);
         message = message ? `${message}\n\n[Voz transcrita]: ${transcribed}` : transcribed;
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         console.error("[chat/stream] transcribe", err);
-        const userMessage = msg.includes("muy corto")
-          ? "El audio es muy corto. Graba al menos un par de segundos y vuelve a intentar."
-          : "No pude transcribir el audio. Puedes probar con otro formato o enviarlo por texto.";
-        return Response.json(
-          { error: userMessage },
-          { status: 400 }
-        );
+
+        let userMessage: string;
+        switch (msg) {
+          case TRANSCRIBE_ERROR.AUDIO_TOO_SMALL:
+            userMessage =
+              "El audio viene vacío o demasiado corto. Graba 2–3 segundos y reintenta.";
+            break;
+          case TRANSCRIBE_ERROR.FFMPEG_MISSING:
+            console.error(
+              "[chat/stream] ffmpeg-static ausente o inválido — ejecutá: npm i ffmpeg-static"
+            );
+            userMessage =
+              "No puedo convertir este audio (webm). Falta ffmpeg en el servidor.";
+            break;
+          case TRANSCRIBE_ERROR.FFMPEG_CONVERT_FAILED:
+            userMessage =
+              "No pude convertir el audio. Intenta grabar de nuevo o enviar el archivo como .m4a o .mp3.";
+            break;
+          case TRANSCRIBE_ERROR.WHISPER_FAILED:
+            userMessage = "No pude leer el audio. Intenta enviarlo de nuevo.";
+            break;
+          default:
+            userMessage =
+              msg.includes("muy corto") || msg.includes("corto") || msg.includes("vacío")
+                ? "El audio viene vacío o demasiado corto. Graba 2–3 segundos y reintenta."
+                : "No pude leer el audio. Intenta enviarlo de nuevo.";
+        }
+        return Response.json({ error: userMessage }, { status: 400 });
       }
     }
 
     let articleContext: ArticleContext | null = null;
     const firstUrl = getUrlFromMessageOrHistory(message, history);
-    const isDev = process.env.NODE_ENV === "development";
 
     if (firstUrl) {
       if (isDev) console.log("[article] url detected:", firstUrl);
@@ -282,7 +372,8 @@ export async function POST(req: Request) {
           }
           controller.enqueue(encoder.encode(JSON.stringify({ done: true }) + "\n"));
         } catch (err) {
-          console.error("[chat/stream]", err);
+          const errMsg = err instanceof Error ? err.message : String(err);
+          console.error("[chat/stream] error en stream:", errMsg, err);
           const isImageRequest = !!image;
           if (partialSoFar.trim().length > 0) {
             controller.enqueue(
@@ -295,7 +386,7 @@ export async function POST(req: Request) {
             const fallbackMsg =
               isImageRequest
                 ? "No pude analizar la imagen. Puedes probar con otra más liviana o contarme por texto qué ves."
-                : "Uy, se cortó la conexión. ¿Probamos de nuevo?";
+                : "No pude completar la respuesta ahora. Probá de nuevo en unos segundos; si pasa otra vez, escribí la pregunta en una frase corta.";
             controller.enqueue(
               encoder.encode(JSON.stringify({ error: fallbackMsg }) + "\n")
             );

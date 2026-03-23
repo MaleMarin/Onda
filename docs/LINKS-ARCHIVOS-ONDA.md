@@ -18,6 +18,8 @@ En Cursor/VS Code los enlaces `file://` suelen abrir el archivo al hacer clic.
 - [app/api/feedback/route.ts](file:///Users/malehofmann/Documents/2026/precisar-2026/proyectos-cursor/ondabot/app/api/feedback/route.ts)
 - [app/api/errors/route.ts](file:///Users/malehofmann/Documents/2026/precisar-2026/proyectos-cursor/ondabot/app/api/errors/route.ts)
 - [app/api/webhook/route.ts](file:///Users/malehofmann/Documents/2026/precisar-2026/proyectos-cursor/ondabot/app/api/webhook/route.ts)
+- [docs/WHATSAPP-CONFIG.md](file:///Users/malehofmann/Documents/2026/precisar-2026/proyectos-cursor/ondabot/docs/WHATSAPP-CONFIG.md) — Pasos para configurar WhatsApp cuando tengas los datos de Meta
+- [docs/AUDITORIA-INTEGRACION-ONDABOT.md](file:///Users/malehofmann/Documents/2026/precisar-2026/proyectos-cursor/ondabot/docs/AUDITORIA-INTEGRACION-ONDABOT.md) — Auditoría unificada (números Meta, Vercel, web, WhatsApp, stream)
 
 ## Lógica (lib)
 
@@ -50,6 +52,7 @@ En Cursor/VS Code los enlaces `file://` suelen abrir el archivo al hacer clic.
 
 - [.cursorrules](file:///Users/malehofmann/Documents/2026/precisar-2026/proyectos-cursor/ondabot/.cursorrules)
 - [package.json](file:///Users/malehofmann/Documents/2026/precisar-2026/proyectos-cursor/ondabot/package.json)
+- [example.env](file:///Users/malehofmann/Documents/2026/precisar-2026/proyectos-cursor/ondabot/example.env) — Plantilla de variables (copiar a .env); incluye WhatsApp y OpenAI
 
 ## Scripts
 

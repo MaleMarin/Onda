@@ -1,73 +1,32 @@
-# 🔧 Solución del Error en Meta
+# Solución del error en Meta (ID no existe / permisos)
 
-## ❌ Error que estás viendo:
+## Error que a veces aparece
 
 ```
-Se produjo un problema al registrar
-Unsupported post request. Object with ID '918128831381165' does not exist, 
+Unsupported post request. Object with ID '918128831381165' does not exist,
 cannot be loaded due to missing permissions, or does not support this operation.
 ```
 
-## ✅ Pasos para Solucionarlo:
-
-### Opción 1: Verificar Permisos del Número
-
-1. En Meta, ve a **WhatsApp** → **Configuration**
-2. Busca la sección **"Phone Numbers"** o **"Números de teléfono"**
-3. Verifica que el número esté **verificado** y **activo**
-4. Asegúrate de tener estos permisos:
-   - `whatsapp_business_messaging`
-   - `whatsapp_business_management`
-
-### Opción 2: Regenerar el Número de Prueba
-
-1. En Meta → **WhatsApp** → **API Setup**
-2. Busca la opción para **"Regenerar número de prueba"** o **"Generate new test number"**
-3. Genera un nuevo número
-4. Copia el nuevo **Phone Number ID**
-5. Actualiza la variable en Vercel con el nuevo ID
-
-### Opción 3: Verificar que el Número Esté Activo
-
-1. Ve a **WhatsApp** → **Phone Numbers**
-2. Verifica que el número muestre estado **"Active"** o **"Activo"**
-3. Si está inactivo, haz clic en **"Activate"** o **"Activar"**
-
-### Opción 4: Esperar unos minutos
-
-A veces Meta necesita unos minutos para activar completamente el número. Espera 5-10 minutos y vuelve a intentar.
+Ese ID (`918128831381165`) suele ser el **Phone Number ID del número de prueba** (+1 555 157 6862). Si Meta lo invalidó o cambiaste de número, deja de existir para la API.
 
 ---
 
-## 📋 Valores que DEBES Copiar de la Pantalla:
+## Qué hacer
 
-### ✅ Token de Acceso (ya lo tienes):
-```
-EAASIuZAjP4eQBQxSUyczOxN6PFQu6KsHqHVqxejw6sNPOJ9iZBUDhAJ8sxNGJCSO8N7wzSjPYWEO3sIIWB3ZBAISIAbEMJg7INSe8kCjRbnHgmn8ZA2000JhDFWyDBiZCJ5tdZBjHb
-```
-→ Usa este en `WHATSAPP_ACCESS_TOKEN`
-
-### ✅ Phone Number ID (ya lo tienes):
-```
-918128831381165
-```
-→ Usa este en `WHATSAPP_PHONE_NUMBER_ID`
-
-### ⚠️ Si el error persiste:
-
-1. **Regenera el número de prueba** en Meta
-2. **Copia el nuevo Phone Number ID**
-3. **Actualiza la variable en Vercel**
-4. **Haz Redeploy** en Vercel
+1. **WhatsApp** → **Phone Numbers** / **Números de teléfono** — que el número esté **Activo**.
+2. **Regenerar número de prueba** (si solo usás sandbox) y copiar el **nuevo** Phone Number ID.
+3. Para **ONDA real** (+56 9 9155 3279): usar el Phone Number ID que muestre Meta para **ese** número (documentado en el proyecto: `886309674569527` — verificar en pantalla actual).
+4. Actualizar **`WHATSAPP_PHONE_NUMBER_ID`** en Vercel y **Redeploy**.
 
 ---
 
-## 🎯 Lo Importante Ahora:
+## Tokens (no pegar secretos en docs)
 
-Aunque veas el error, **puedes seguir configurando** el resto. El error puede resolverse cuando:
+- **`WHATSAPP_ACCESS_TOKEN`:** copiarlo siempre desde **Meta** (API Setup o Configuración del negocio → usuario del sistema). Los tokens en documentación quedan **obsoletos**; no uses valores copiados de archivos viejos del repo.
 
-1. Configures el webhook correctamente
-2. El número se active completamente
-3. Tengas todos los permisos necesarios
+---
 
-**Sigue con la configuración del webhook** y luego prueba si funciona.
+## Si el error persiste
+
+- Revisar permisos `whatsapp_business_messaging` y `whatsapp_business_management`.
+- Esperar unos minutos y reintentar (propagación Meta).

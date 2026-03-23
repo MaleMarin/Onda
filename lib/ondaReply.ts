@@ -73,6 +73,19 @@ function getGoogleApiKey(): string | undefined {
   );
 }
 
+/**
+ * Último recurso si fallan el stream principal y GPT-4o (sin llamadas extra a APIs).
+ * Evita mostrar “se cortó la conexión” sin contenido útil.
+ */
+function EMERGENCY_ONDA_REPLY(userText: string): string {
+  const t = (userText || "").trim();
+  const short = t.length > 200 ? `${t.slice(0, 200)}…` : t;
+  const ack = short
+    ? `Leí tu mensaje. `
+    : "";
+  return `${ack}Ahora mismo no pude generar la respuesta completa por un tema técnico momentáneo. **Probá de nuevo en unos segundos** con la misma pregunta o reformulá en una frase corta.\n\nSoy Onda (Precisar): puedo ayudarte con noticias, mensajes, uso responsable de la IA y educación mediática. ¿Qué querés revisar?`;
+}
+
 /** Fallback síncrono cuando falla el clasificador por IA (regex/keywords). */
 function classifyIntentFallback(
   query: string,
@@ -595,8 +608,13 @@ export async function* getOndaReplyStream(
     }
   } catch (err) {
     console.warn("[ondaReply] stream primary failed, fallback gpt-4o:", route, err);
-    const full = await tryFallbackGpt4o(systemContent, historyForApi, userText);
-    for (let i = 0; i < full.length; i += 40) yield full.slice(i, i + 40);
+    try {
+      const full = await tryFallbackGpt4o(systemContent, historyForApi, userText);
+      for (let i = 0; i < full.length; i += 40) yield full.slice(i, i + 40);
+    } catch (fallbackErr) {
+      console.error("[ondaReply] fallback gpt-4o also failed:", fallbackErr);
+      yield EMERGENCY_ONDA_REPLY(userText);
+    }
   }
 }
 

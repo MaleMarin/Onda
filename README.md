@@ -65,7 +65,7 @@ ondabot/
 └── package.json
 ```
 
-## 🔧 Desarrollo Local
+## 🔧 Desarrollo local — Cómo correr
 
 ```bash
 npm install
@@ -73,15 +73,15 @@ npm install
 
 | Comando | Uso |
 |--------|-----|
-| `npm run dev` | **Chat Web** (Next.js) en **http://localhost:3020**. Abrí **http://localhost:3020/chat** |
-| `npm run backend` | **Backend Express** (webhook, TTS, etc.) en **http://localhost:3000** (o el puerto definido en `PORT`) |
+| `npm run dev` | **Chat Web** (Next.js). Abrí **http://localhost:3020/chat** |
+| `npm run backend` | **Backend Express** (WhatsApp webhook, etc.) en **http://localhost:3000** (o el `PORT` que definas) |
 
-**Puertos:**
+**URLs:**
 
-- **Web (Next.js):** http://localhost:3020/chat  
-- **Backend (Express):** http://localhost:3000 (por defecto; configurable con variable de entorno `PORT`)
+- **Web (Next.js):** `npm run dev` → abrir **http://localhost:3020/chat**
+- **Backend (WhatsApp/Express):** `npm run backend` → corre en **http://localhost:3000**; healthcheck: **http://localhost:3000/health** → `{ "ok": true }`
 
-**Correr ambos:** En una terminal ejecutá `npm run backend` y en otra `npm run dev`. Así tenés el chat en el navegador y el backend/API disponibles.
+**Correr ambos:** En una terminal `npm run backend`, en otra `npm run dev`. Así tenés el chat en vivo y el backend disponible.
 
 - Con **solo** `npm run dev` (Next.js), el webhook de la app está en: **http://localhost:3020/api/webhook**.
 - El backend Express (`npm run backend`) corre en el puerto 3000 por defecto.

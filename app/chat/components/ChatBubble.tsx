@@ -134,7 +134,12 @@ export function ChatBubble({ message, color, compact, onPlayTTS, onStopTTS, isTT
   const [feedbackSent, setFeedbackSent] = useState<"up" | "down" | null>(null);
   const isUser = message.role === "user";
   const isEmpty = message.role === "model" && message.content === "";
-  const text = isEmpty ? ONDA_MICROCOPY.typing : message.content;
+  const rawContent = message.content ?? "";
+  const text = isEmpty
+    ? ONDA_MICROCOPY.typing
+    : hideActions && rawContent.includes(ONDA_MICROCOPY.menuIntroFreeText)
+      ? rawContent.replace(ONDA_MICROCOPY.menuIntroFreeText, "").replace(/\n{3,}/g, "\n\n").trim()
+      : rawContent;
   const showCopyDownload = message.role === "model" && message.content && hasTable(message.content);
   const showFuenteVerificada = message.role === "model" && message.content && hasMarkdownLinks(message.content);
   /** Escuchar, Compartir, Copiar/Descargar y Feedback: solo en respuestas generadas y cuando hideActions es false (saludo/error = sin acciones). */
@@ -270,8 +275,8 @@ export function ChatBubble({ message, color, compact, onPlayTTS, onStopTTS, isTT
   };
 
   const menuIntroQuestions =
-    message.role === "model" && onMenuIntroChipClick
-      ? (message.isMenuIntro && message.menuOptionId && MENU_QUESTIONS[message.menuOptionId]) ?? parseMenuIntroQuestions(message.content ?? "")
+    message.role === "model" && onMenuIntroChipClick && message.isMenuIntro
+      ? (message.menuOptionId && MENU_QUESTIONS[message.menuOptionId]) ?? parseMenuIntroQuestions(message.content ?? "")
       : null;
   const showAsMenuIntroButtons = !!menuIntroQuestions;
 

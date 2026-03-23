@@ -134,8 +134,8 @@ Deberías ver un JSON con las variables de entorno. Si todas están en `true`, e
 - [ ] Webhook verificado (check verde)
 - [ ] Webhook suscrito a "messages"
 - [ ] Variables configuradas en Vercel
-- [ ] Phone Number ID correcto en Vercel (`918128831381165`)
-- [ ] Intentas enviar al número de prueba (`+15551576862`)
+- [ ] `WHATSAPP_PHONE_NUMBER_ID` en Vercel = ID del número **FROM** que ves en Meta **hoy** (sandbox: ej. `918128831381165` + escribir a `+1 555…`; ONDA real: ej. `886309674569527` + escribir a `+56 9 9155 3279`)
+- [ ] Probás escribiendo al **mismo** número “Desde” que corresponde a ese Phone Number ID
 
 ---
 

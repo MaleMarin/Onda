@@ -262,7 +262,7 @@ Todos pasan por `runComplete` (WhatsApp) o `runStream` (web); mismo system promp
 ### OpenAI falla / timeout
 
 - **ondaReply:** try/catch en getOndaReply y getOndaReplyStream; fallback `tryFallbackGpt4o(systemContent, historyForApi, userText)`.
-- **Stream:** Si hay `partialSoFar` se envía lo generado + “_La conexión se interrumpió; aquí va lo que pude generar. Puedes preguntar de nuevo para seguir._”; si no, `{ error: "Uy, se cortó la conexión. ¿Probamos de nuevo?" }`.
+- **Stream:** Si hay `partialSoFar` se envía lo generado + “_La conexión se interrumpió; aquí va lo que pude generar. Puedes preguntar de nuevo para seguir._”; si no hay texto aún, `getOndaReplyStream` intenta fallback GPT-4o y luego `EMERGENCY_ONDA_REPLY`; el route envía un `error` con mensaje breve (ya no el texto fijo “Uy, se cortó la conexión…”). Ver `docs/AUDITORIA-INTEGRACION-ONDABOT.md`.
 - **WhatsApp:** catch en getOndaReply/getOndaReplyWithImage no define mensaje concreto; el webhook no envía otro mensaje al usuario en ese catch (solo log). Si sendWhatsAppText falla, se registra en recordError.
 
 ### extractArticle falla / thin / 403
@@ -292,7 +292,7 @@ Todos pasan por `runComplete` (WhatsApp) o `runStream` (web); mismo system promp
 - “El audio es muy corto. Graba al menos un par de segundos y vuelve a intentar.”
 - “No pude transcribir el audio. Puedes probar con otro formato o enviarlo por texto.”
 - “_La conexión se interrumpió; aquí va lo que pude generar. Puedes preguntar de nuevo para seguir._”
-- “Uy, se cortó la conexión. ¿Probamos de nuevo?”
+- Mensaje de error de stream si no hubo ningún chunk (texto actualizado en código; ver `app/api/chat/stream/route.ts`).
 - “No pude analizar la imagen. Puedes probar con otra más liviana o contarme por texto qué ves.”
 - “Algo falló en el servidor. Intenta de nuevo en un momento.” (500 genérico)
 - WhatsApp: “No pude procesar la imagen. ¿Puedes enviarla de nuevo?”; “No pude descargar el audio. ¿Puedes enviar un mensaje de texto?”; “No pude transcribir el audio. ¿Me lo escribes por texto?”; “Uy, falló el análisis de la imagen. Intenta en un ratito.”

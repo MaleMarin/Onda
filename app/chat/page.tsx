@@ -334,6 +334,8 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const [loading, setLoading] = useState(false);
   const [showPickOndaNotice, setShowPickOndaNotice] = useState(false);
+  const [highlightOndaButtons, setHighlightOndaButtons] = useState(false);
+  const [showEnviarTooltip, setShowEnviarTooltip] = useState(false);
   const [justSwitchedEje, setJustSwitchedEje] = useState<EjeOnda | null>(null);
   const [showMenu, setShowMenu] = useState(true);
   const [showIASubmenu, setShowIASubmenu] = useState(false);
@@ -440,9 +442,19 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
 
   function pickEje(eje: EjeOnda): void {
     setShowPickOndaNotice(false);
+    setHighlightOndaButtons(false);
+    setShowEnviarTooltip(false);
     confirmEjeSwitch(eje);
     setShowMenu(true);
     setShowIASubmenu(false);
+    const hasPending = !!(
+      input.trim() ||
+      attachmentImage ||
+      attachmentAudio
+    );
+    if (hasPending) {
+      handleSend(null, { ejeOverride: eje });
+    }
   }
 
   /** Reiniciar el bot: conversación nueva, elegir Onda de nuevo. Siempre disponible (no se deshabilita con loading). */
@@ -452,6 +464,8 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
     setShowMenu(true);
     setShowIASubmenu(false);
     setShowPickOndaNotice(false);
+    setHighlightOndaButtons(false);
+    setShowEnviarTooltip(false);
     setInput("");
     setAttachmentImage(null);
     setAttachmentAudio(null);
@@ -481,17 +495,26 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
     ]);
   }
 
-  async function handleSend(e: React.FormEvent | null, opts?: { audioOverride?: string }) {
+  async function handleSend(e: React.FormEvent | null, opts?: { audioOverride?: string; ejeOverride?: EjeOnda }) {
     e?.preventDefault();
     const audioOverride = opts?.audioOverride;
+    const ejeToUse = opts?.ejeOverride ?? currentEje;
     const text = input.trim();
     const hasContent = text || attachmentImage || attachmentAudio || !!audioOverride;
     if (!hasContent || loading) return;
-    if (currentEje === null) {
+    if (ejeToUse === null) {
       setShowPickOndaNotice(true);
+      setHighlightOndaButtons(true);
+      setShowEnviarTooltip(true);
       if (audioOverride) setAttachmentAudio(audioOverride);
+      setTimeout(() => {
+        setShowEnviarTooltip(false);
+        setHighlightOndaButtons(false);
+      }, 4000);
       return;
     }
+    setShowEnviarTooltip(false);
+    setHighlightOndaButtons(false);
     const sendStartMs = Date.now();
 
     setInput("");
@@ -520,7 +543,7 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
           message: text,
           image: imageToSend ?? undefined,
           audio: audioToSend ?? undefined,
-          eje: currentEje,
+          eje: ejeToUse,
           history,
         }),
         signal: controller.signal,
@@ -602,7 +625,7 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
               : msg
           )
         );
-        trackUsage("message_sent", currentEje, { responseTimeMs: Date.now() - sendStartMs });
+        trackUsage("message_sent", ejeToUse, { responseTimeMs: Date.now() - sendStartMs });
       } else if (!receivedAnyText) {
         setMessages((m) =>
           m.map((msg) =>
@@ -654,6 +677,8 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
     setShowMenu(false);
     setShowIASubmenu(false);
     setShowPickOndaNotice(false);
+    setHighlightOndaButtons(false);
+    setShowEnviarTooltip(false);
   }
 
   /** Feedback 👍/👎: registra voto y, si es 👎, registra fallo para auditoría. */
@@ -845,8 +870,8 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
       recorder.onstop = () => {
         stream.getTracks().forEach((tr) => tr.stop());
         const blob = new Blob(chunks, { type: "audio/webm" });
-        // Evitar enviar audio vacío o demasiado corto (Whisper falla)
-        if (blob.size < 2000) {
+        // Alineado con API: mínimo ~12 KB (audio/webm corto válido)
+        if (blob.size < 12 * 1024) {
           setRecording(false);
           setAudioTooShortHint(true);
           setTimeout(() => setAudioTooShortHint(false), 4000);
@@ -1174,6 +1199,7 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
 
   const hasContent = !!(input.trim() || attachmentImage || attachmentAudio);
   const canSend = !loading && currentEje !== null && hasContent;
+  const canClickEnviar = !loading && hasContent;
 
   const inpStyle: CSSProperties = {
     ...S.input,
@@ -1307,7 +1333,7 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
             <div className="bubble-in" style={S.row(false)}>
               <div style={noticeStyle}>
                 <span>{ONDA_MICROCOPY.pickOndaFirst}</span>
-                <button type="button" data-onda-action="dismiss-notice" onClick={() => setShowPickOndaNotice(false)} style={noticeBtnStyle}>
+                <button type="button" data-onda-action="dismiss-notice" onClick={() => { setShowPickOndaNotice(false); setHighlightOndaButtons(false); setShowEnviarTooltip(false); }} style={noticeBtnStyle}>
                   Entendido
                 </button>
               </div>
@@ -1437,7 +1463,7 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
         <div style={S.composer}>
           {/* Sin Onda elegida: indicar que debe elegir para enviar + botones aquí por si los de arriba no responden (embed/iframe) */}
           {currentEje === null && (
-            <div style={{ marginBottom: 10 }}>
+            <div style={{ marginBottom: 10 }} className={highlightOndaButtons ? "onda-picker-highlight" : ""}>
               <div style={{ display: "flex", flexDirection: "column", gap: 8, maxWidth: "min(88%, 320px)", position: "relative", zIndex: 11 }}>
                 {ORDERED_EJES.map((eje, idx) => {
                   const config = EJE_CONFIGS[eje];
@@ -1682,19 +1708,44 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
               onBlur={() => setInputFocused(false)}
             />
 
-            <button
-              type="button"
-              data-onda-send
-              disabled={!canSend}
-              style={sendStyle}
-              {...S.lift.send}
-              onClick={(e) => {
-                e.preventDefault();
-                handleSend(e as unknown as React.FormEvent);
-              }}
-            >
-              {linkHelp ? ONDA_MICROCOPY.linkHelpCta : ONDA_MICROCOPY.send}
-            </button>
+            <span style={{ position: "relative", display: "inline-flex" }}>
+              {showEnviarTooltip && hasContent && currentEje === null && (
+                <span
+                  role="tooltip"
+                  style={{
+                    position: "absolute",
+                    bottom: "100%",
+                    left: "50%",
+                    transform: "translateX(-50%) translateY(-8px)",
+                    padding: "8px 12px",
+                    borderRadius: 10,
+                    background: "rgba(0,0,0,0.85)",
+                    color: "#fff",
+                    fontSize: "0.8125rem",
+                    fontWeight: 600,
+                    whiteSpace: "nowrap",
+                    zIndex: 20,
+                    boxShadow: "0 4px 12px rgba(0,0,0,0.25)",
+                  }}
+                >
+                  ¡Casi listo! Elige una Onda arriba para enviar tu pregunta.
+                </span>
+              )}
+              <button
+                type="button"
+                data-onda-send
+                disabled={!canClickEnviar}
+                title={hasContent && currentEje === null ? "¡Casi listo! Elige una Onda arriba para enviar tu pregunta." : undefined}
+                style={sendStyle}
+                {...S.lift.send}
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleSend(e as unknown as React.FormEvent);
+                }}
+              >
+                {linkHelp ? ONDA_MICROCOPY.linkHelpCta : ONDA_MICROCOPY.send}
+              </button>
+            </span>
           </form>
         </div>
         </div>

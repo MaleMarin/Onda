@@ -1,6 +1,8 @@
-# 🔧 Solución: No Puedo Cambiar el Número Business
+# Solución: No puedo cambiar el número Business
 
-## ❌ Problema:
+> **Referencia única:** [docs/AUDITORIA-INTEGRACION-ONDABOT.md](docs/AUDITORIA-INTEGRACION-ONDABOT.md) (sandbox vs ONDA real vs destinatario).
+
+## Problema
 
 Estás viendo solo el **número de prueba** (`+1 555 157 6862`) y no puedes cambiarlo al número de ONDA (`+56 9 9155 3279`).
 

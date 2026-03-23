@@ -2353,7 +2353,7 @@ export async function POST(req: Request) {
             const fallbackMsg =
               isImageRequest
                 ? "No pude analizar la imagen. Puedes probar con otra más liviana o contarme por texto qué ves."
-                : "Uy, se cortó la conexión. ¿Probamos de nuevo?";
+                : "No pude completar la respuesta ahora. Probá de nuevo en unos segundos; si pasa otra vez, escribí la pregunta en una frase corta.";
             controller.enqueue(
               encoder.encode(JSON.stringify({ error: fallbackMsg }) + "\n")
             );

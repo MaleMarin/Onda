@@ -11,9 +11,9 @@ const app = express();
 app.use(cors());
 app.use(express.json({ type: "*/*" })); // acepta JSON aunque venga con content-type raro
 
-// Health check
+// Health check (para verificar que el backend está vivo)
 app.get("/health", (_req: Request, res: Response) => {
-  return res.status(200).type("text/plain").send("ok");
+  return res.status(200).json({ ok: true });
 });
 
 // --- Handlers reutilizables ---

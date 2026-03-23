@@ -90,6 +90,8 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  // Log siempre (para ver en Vercel si Meta está llamando)
+  console.log("[webhook] POST recibido");
   try {
     let payload: any;
     let rawBody: string;
@@ -115,7 +117,7 @@ export async function POST(req: Request) {
     // Extraer mensajes del payload de WhatsApp
     const entries = payload?.entry || [];
     if (!entries.length) {
-      if (isDev) console.log("📩 Webhook: sin entries (puede ser status o otro evento)");
+      console.log("[webhook] Sin entries (status u otro evento)");
       return new Response("OK", { status: 200 });
     }
 
@@ -132,6 +134,7 @@ export async function POST(req: Request) {
         }
 
         const messages = value?.messages || [];
+        if (messages.length) console.log("[webhook] Mensaje(s) a procesar:", messages.length);
         for (const msg of messages) {
           const from = msg?.from;
           const text = msg?.text?.body;
