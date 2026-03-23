@@ -536,15 +536,20 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
     const timeoutId = setTimeout(() => controller.abort(), 60_000);
 
     try {
+      const sessionId = getOrCreateSessionId();
       const res = await fetch("/api/chat/stream", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(sessionId ? { "x-session-id": sessionId } : {}),
+        },
         body: JSON.stringify({
           message: text,
           image: imageToSend ?? undefined,
           audio: audioToSend ?? undefined,
           eje: ejeToUse,
           history,
+          sessionId: sessionId || undefined,
         }),
         signal: controller.signal,
       });
@@ -729,10 +734,19 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
     const timeoutId = setTimeout(() => controller.abort(), 60_000);
     (async () => {
       try {
+        const sessionIdChip = getOrCreateSessionId();
         const res = await fetch("/api/chat/stream", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message: t, eje: currentEje, history }),
+          headers: {
+            "Content-Type": "application/json",
+            ...(sessionIdChip ? { "x-session-id": sessionIdChip } : {}),
+          },
+          body: JSON.stringify({
+            message: t,
+            eje: currentEje,
+            history,
+            sessionId: sessionIdChip || undefined,
+          }),
           signal: controller.signal,
         });
         clearTimeout(timeoutId);

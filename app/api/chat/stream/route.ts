@@ -6,6 +6,13 @@ import {
   getOndaReplyWithImage,
   type ArticleContext,
 } from "../../../../lib/ondaReply";
+import {
+  buildMemoryContextBlock,
+  buildSessionSummary,
+  getSessionSummary,
+  saveSessionSummary,
+  type SessionMessage,
+} from "../../../../lib/sessionMemory";
 import { searchPrivateDocs } from "../../../../lib/firebaseRag";
 import { getRagContext } from "../../../../lib/rag";
 import { parseResponseFormat, wantsSources } from "../../../../lib/responseFormat";
@@ -122,6 +129,18 @@ export async function POST(req: Request) {
         role: m.role as "user" | "model",
         content: String(m.content).trim(),
       }));
+
+    const sessionHeader = req.headers.get("x-session-id")?.trim();
+    const sessionBody = typeof body?.sessionId === "string" ? body.sessionId.trim() : "";
+    const sessionId = sessionHeader || sessionBody || "anonymous";
+
+    let memoryBlock = "";
+    if (sessionId !== "anonymous") {
+      const prevSummary = await getSessionSummary("web", sessionId);
+      if (prevSummary) {
+        memoryBlock = buildMemoryContextBlock(prevSummary);
+      }
+    }
 
     if (!message && !image && !audio) {
       return Response.json(
@@ -361,6 +380,7 @@ export async function POST(req: Request) {
     const stream = new ReadableStream({
       async start(controller) {
         let partialSoFar = "";
+        let assistantTextForMemory = "";
         try {
           const includeSources = wantsSources(message);
           let extraContext: string | undefined;
@@ -392,8 +412,10 @@ export async function POST(req: Request) {
               history.length > 0 ? history : null,
               includeSources,
               undefined,
-              extraContext || undefined
+              extraContext || undefined,
+              memoryBlock || undefined
             );
+            assistantTextForMemory = parseResponseFormat(fullReply).text.trim();
             for (const chunk of chunkText(fullReply)) {
               controller.enqueue(encoder.encode(JSON.stringify({ text: chunk }) + "\n"));
             }
@@ -435,12 +457,15 @@ export async function POST(req: Request) {
               history.length > 0 ? history : null,
               includeSources,
               articleContext,
-              extraContext ?? null
+              extraContext ?? null,
+              undefined,
+              memoryBlock || undefined
             )) {
               partialSoFar += chunk;
               controller.enqueue(encoder.encode(JSON.stringify({ text: chunk }) + "\n"));
             }
             const parsed = parseResponseFormat(partialSoFar);
+            assistantTextForMemory = parsed.text.trim();
             if (parsed.formato === "infografia" && parsed.infographicPayload) {
               controller.enqueue(encoder.encode(JSON.stringify({ text: "\n\n_Generando infografía…_" }) + "\n"));
               try {
@@ -478,6 +503,9 @@ export async function POST(req: Request) {
           console.error("[chat/stream] error en stream:", errMsg, err);
           const isImageRequest = !!image;
           if (partialSoFar.trim().length > 0) {
+            if (!assistantTextForMemory) {
+              assistantTextForMemory = parseResponseFormat(partialSoFar.trim()).text.trim();
+            }
             controller.enqueue(
               encoder.encode(JSON.stringify({ text: partialSoFar.trim() }) + "\n")
             );
@@ -494,6 +522,28 @@ export async function POST(req: Request) {
             );
           }
         } finally {
+          if (sessionId !== "anonymous" && assistantTextForMemory) {
+            const userLine =
+              message.trim() ||
+              (image ? "[imagen]" : audio ? "[audio]" : "");
+            const conv: SessionMessage[] = [
+              ...history.map((m: { role: "user" | "model"; content: string }) => ({
+                role: m.role,
+                content: m.content,
+              })),
+              { role: "user", content: userLine || "(mensaje)" },
+              { role: "model", content: assistantTextForMemory },
+            ];
+            if (conv.length > 2) {
+              const intentResult = classifyIntent(message || userLine || "");
+              const ejeLabel = eje ?? EjeOnda.A_MANO;
+              void saveSessionSummary(
+                "web",
+                sessionId,
+                buildSessionSummary(conv, intentResult.intent, ejeLabel)
+              ).catch((saveErr) => console.warn("[memory] error guardando sesión:", saveErr));
+            }
+          }
           controller.close();
         }
       },

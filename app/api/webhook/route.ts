@@ -2,7 +2,14 @@ import { recordError } from "../../../lib/auditStore";
 import { generateImageFromText } from "../../../lib/generateImage";
 import { renderInfographicPng } from "../../../lib/infographic";
 import { getGuideImageBuffer } from "../../../lib/guides";
+import { classifyIntent } from "../../../lib/intentClassifier";
 import { getOndaReply, getOndaReplyWithImage } from "../../../lib/ondaReply";
+import {
+  buildMemoryContextBlock,
+  buildSessionSummary,
+  getSessionSummary,
+  saveSessionSummary,
+} from "../../../lib/sessionMemory";
 import { parseResponseFormat, wantsSources } from "../../../lib/responseFormat";
 import { transcribeAudio } from "../../../lib/transcribe";
 import { generateSpeech } from "../../../lib/tts";
@@ -249,8 +256,17 @@ export async function POST(req: Request) {
           const userMessageForFormat = (text || "").trim() || (type === "audio" ? "(mensaje de voz)" : "");
           const includeSources = wantsSources(userMessageForFormat);
 
+          let memoryBlock = "";
+          if (from && from !== "unknown") {
+            const prevSummary = await getSessionSummary("wa", from);
+            if (prevSummary) {
+              memoryBlock = buildMemoryContextBlock(prevSummary);
+            }
+          }
+
           const locked = await withLock(from, async () => {
             let response: string | null = null;
+            let waUserTurn = "";
 
             // 1) Imagen: descargar → GPT-4o-mini visión
             if (type === "image" && imageId) {
@@ -265,23 +281,26 @@ export async function POST(req: Request) {
                     const iv = await validateImage(imgBuf);
                     if (!iv.valid) {
                       await sendWhatsAppText(from, WA_IMAGE_VALIDATION_REPLY);
-                      return { response: null };
+                      return { response: null, waUserTurn: "" };
                     }
                     const caption = (text || "").trim();
                     if (caption) {
                       const imgSafe = checkUserMessage(caption);
                       if (!imgSafe.safe && imgSafe.response) {
                         await sendWhatsAppText(from, imgSafe.response);
-                        return { response: null };
+                        return { response: null, waUserTurn: "" };
                       }
                     }
+                    waUserTurn = text?.trim() || "¿Qué ves en esta imagen? Responde según ONDA.";
                     response = await getOndaReplyWithImage(
-                      text?.trim() || "¿Qué ves en esta imagen? Responde según ONDA.",
+                      waUserTurn,
                       media.dataUrl,
                       null,
                       null,
                       includeSources,
-                      "whatsapp"
+                      "whatsapp",
+                      undefined,
+                      memoryBlock || undefined
                     );
                   }
                 } else {
@@ -309,16 +328,26 @@ export async function POST(req: Request) {
                           ? WA_AUDIO_TOO_LONG_REPLY
                           : av.error ?? "No pude procesar ese audio.";
                       await sendWhatsAppText(from, reply);
-                      return { response: null };
+                      return { response: null, waUserTurn: "" };
                     }
                     const transcribed = await transcribeAudio(media.dataUrl);
                     const userMessage = transcribed || "(no se pudo transcribir el audio)";
                     const audioSafe = checkUserMessage(userMessage);
                     if (!audioSafe.safe && audioSafe.response) {
                       await sendWhatsAppText(from, audioSafe.response);
-                      return { response: null };
+                      return { response: null, waUserTurn: "" };
                     }
-                    response = await getOndaReply(userMessage, null, null, wantsSources(userMessage), null, "whatsapp");
+                    waUserTurn = userMessage;
+                    response = await getOndaReply(
+                      userMessage,
+                      null,
+                      null,
+                      wantsSources(userMessage),
+                      null,
+                      "whatsapp",
+                      undefined,
+                      memoryBlock || undefined
+                    );
                   }
                 } else {
                   response = "No pude descargar el audio. ¿Puedes enviar un mensaje de texto?";
@@ -340,15 +369,25 @@ export async function POST(req: Request) {
                 const textSafe = checkUserMessage(text.trim());
                 if (!textSafe.safe && textSafe.response) {
                   await sendWhatsAppText(from, textSafe.response);
-                  return { response: null };
+                  return { response: null, waUserTurn: "" };
                 }
-                response = await getOndaReply(text, null, null, includeSources, null, "whatsapp");
+                waUserTurn = text.trim();
+                response = await getOndaReply(
+                  text,
+                  null,
+                  null,
+                  includeSources,
+                  null,
+                  "whatsapp",
+                  undefined,
+                  memoryBlock || undefined
+                );
               } catch (err) {
                 console.error("❌ Error procesando mensaje:", err);
               }
             }
 
-            return { response };
+            return { response, waUserTurn };
           });
 
           if (locked === null) {
@@ -356,7 +395,7 @@ export async function POST(req: Request) {
             continue;
           }
 
-          const { response } = locked;
+          const { response, waUserTurn } = locked;
 
           if (response) {
             const parsed = parseResponseFormat(response);
@@ -442,6 +481,19 @@ export async function POST(req: Request) {
                 botResponse: response ?? undefined,
                 error: error instanceof Error ? error.message : String(error),
               });
+            }
+
+            if (from && from !== "unknown" && waUserTurn) {
+              const intentResult = classifyIntent(waUserTurn);
+              void saveSessionSummary(
+                "wa",
+                from,
+                buildSessionSummary(
+                  [{ role: "user", content: waUserTurn }],
+                  intentResult.intent,
+                  "A_MANO"
+                )
+              ).catch((err) => console.warn("[memory/wa] error guardando sesión:", err));
             }
           } else {
             if (isDev) console.log("⏭️ Mensaje ignorado", { from, type, direction });

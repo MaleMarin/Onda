@@ -557,7 +557,8 @@ export async function getOndaReply(
   includeSourcesList?: boolean,
   articleContext?: ArticleContext | null,
   canal?: CanalOnda,
-  extraContext?: string | null
+  extraContext?: string | null,
+  memoryContext?: string | null
 ): Promise<string> {
   const ejeContext =
     eje != null
@@ -574,6 +575,7 @@ export async function getOndaReply(
   const noticiaBlock = articleContext != null ? NOTICIA_SYSTEM_BLOCK(articleContext) : "";
   const queryIntent = classifyIntent(userText);
   const intentContextBlock = buildIntentContextBlock(queryIntent);
+  const memoryBlock = memoryContext?.trim() ? `\n\n${memoryContext.trim()}\n` : "";
   const ragWebBlock =
     extraContext && extraContext.trim()
       ? `\n\n--- CONTEXTO_DE_ACTUALIDAD (búsqueda web + RAG) ---\nEl sistema ya ejecutó búsqueda en fuentes fiables. Si usas cualquier dato de este bloque: (1) Marca cada afirmación con un número correlativo [1], [2], [3]... (2) Al final de la respuesta incluye la sección ### 📚 Fuentes de Autoridad listando cada número con Nombre: "Título" (URL). Si no tienes el dato en tu conocimiento, USA ESTE CONTEXTO. PROHIBIDO decir "no tengo información en tiempo real".\n\n${sanitizeExternalContent(extraContext.trim())}\n`
@@ -582,6 +584,7 @@ export async function getOndaReply(
     systemPromptFusionadoForCanal(canal) +
     ejeContext +
     intentContextBlock +
+    memoryBlock +
     whatsappBlock +
     sourcesBlock +
     noticiaBlock +
@@ -616,7 +619,8 @@ export async function* getOndaReplyStream(
   includeSourcesList?: boolean,
   articleContext?: ArticleContext | null,
   extraContext?: string | null,
-  canal?: CanalOnda | null
+  canal?: CanalOnda | null,
+  memoryContext?: string | null
 ): AsyncGenerator<string, void, unknown> {
   const ejeContext =
     eje != null
@@ -629,6 +633,7 @@ export async function* getOndaReplyStream(
   const noticiaBlock = articleContext != null ? NOTICIA_SYSTEM_BLOCK(articleContext) : "";
   const queryIntent = classifyIntent(userText);
   const intentContextBlock = buildIntentContextBlock(queryIntent);
+  const memoryBlock = memoryContext?.trim() ? `\n\n${memoryContext.trim()}\n` : "";
   const ragWebBlock =
     extraContext && extraContext.trim()
       ? `\n\n--- CONTEXTO_DE_ACTUALIDAD (búsqueda web + RAG) ---\nEl sistema ya ejecutó búsqueda en fuentes fiables. Si usas cualquier dato de este bloque: (1) Marca cada afirmación con un número correlativo [1], [2], [3]... (2) Al final de la respuesta incluye la sección ### 📚 Fuentes de Autoridad listando cada número con Nombre: "Título" (URL). PROHIBIDO decir "no tengo información en tiempo real".\n\n${sanitizeExternalContent(extraContext.trim())}\n`
@@ -637,6 +642,7 @@ export async function* getOndaReplyStream(
     systemPromptFusionadoForCanal(canal) +
     ejeContext +
     intentContextBlock +
+    memoryBlock +
     sourcesBlock +
     noticiaBlock +
     ragWebBlock;
@@ -707,7 +713,8 @@ export async function getOndaReplyWithImage(
   history?: HistoryEntry[] | null,
   includeSourcesList?: boolean,
   canal?: CanalOnda,
-  extraContext?: string | null
+  extraContext?: string | null,
+  memoryContext?: string | null
 ): Promise<string> {
   const openai = getOpenAI();
   const baseModel = getModelForEje(eje);
@@ -728,6 +735,7 @@ export async function getOndaReplyWithImage(
       : "";
   const queryIntentImg = classifyIntent(userText);
   const intentContextBlockImg = buildIntentContextBlock(queryIntentImg);
+  const memoryBlockImg = memoryContext?.trim() ? `\n\n${memoryContext.trim()}\n` : "";
   const ragWebBlock =
     extraContext && extraContext.trim()
       ? `\n\n--- CONTEXTO_DE_ACTUALIDAD (búsqueda web + RAG) ---\nEl sistema ya ejecutó búsqueda en fuentes fiables. Si usas cualquier dato de este bloque: (1) Marca cada afirmación con un número correlativo [1], [2], [3]... (2) Al final de la respuesta incluye la sección ### 📚 Fuentes de Autoridad listando cada número con Nombre: "Título" (URL). PROHIBIDO decir "no tengo información en tiempo real".\n\n${sanitizeExternalContent(extraContext.trim())}\n`
@@ -736,6 +744,7 @@ export async function getOndaReplyWithImage(
     systemPromptFusionadoForCanal(canal) +
     ejeContext +
     intentContextBlockImg +
+    memoryBlockImg +
     whatsappBlock +
     sourcesBlock +
     ragWebBlock;
