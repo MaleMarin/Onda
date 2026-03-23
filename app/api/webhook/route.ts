@@ -11,7 +11,9 @@ import {
   sendWhatsAppAudio,
   sendWhatsAppImage,
   sendWhatsAppText,
+  splitForWhatsApp,
 } from "../../../lib/whatsapp";
+import { withLock } from "../../../lib/waMessageQueue";
 import { checkRateLimit } from "../../../lib/rateLimiter";
 import { verifyWebhookSignature } from "../../../lib/verifyWebhookSignature";
 import { checkUserMessage } from "../../../lib/promptSafety";
@@ -244,116 +246,133 @@ export async function POST(req: Request) {
             }
           }
 
-          let response: string | null = null;
-
           const userMessageForFormat = (text || "").trim() || (type === "audio" ? "(mensaje de voz)" : "");
           const includeSources = wantsSources(userMessageForFormat);
 
-          // 1) Imagen: descargar → GPT-4o-mini visión
-          if (type === "image" && imageId) {
-            if (isDev) console.log(`🖼️ Imagen recibida de ${from}`);
-            try {
-              const media = await getWhatsAppMediaAsBase64(imageId, "image/jpeg");
-              if (media?.dataUrl) {
-                const imgBuf = bufferFromDataUrl(media.dataUrl);
-                if (!imgBuf) {
-                  response = "No pude procesar la imagen. ¿Puedes enviarla de nuevo?";
-                } else {
-                  const iv = await validateImage(imgBuf);
-                  if (!iv.valid) {
-                    await sendWhatsAppText(from, WA_IMAGE_VALIDATION_REPLY);
-                    continue;
-                  }
-                  const caption = (text || "").trim();
-                  if (caption) {
-                    const imgSafe = checkUserMessage(caption);
-                    if (!imgSafe.safe && imgSafe.response) {
-                      await sendWhatsAppText(from, imgSafe.response);
-                      continue;
+          const locked = await withLock(from, async () => {
+            let response: string | null = null;
+
+            // 1) Imagen: descargar → GPT-4o-mini visión
+            if (type === "image" && imageId) {
+              if (isDev) console.log(`🖼️ Imagen recibida de ${from}`);
+              try {
+                const media = await getWhatsAppMediaAsBase64(imageId, "image/jpeg");
+                if (media?.dataUrl) {
+                  const imgBuf = bufferFromDataUrl(media.dataUrl);
+                  if (!imgBuf) {
+                    response = "No pude procesar la imagen. ¿Puedes enviarla de nuevo?";
+                  } else {
+                    const iv = await validateImage(imgBuf);
+                    if (!iv.valid) {
+                      await sendWhatsAppText(from, WA_IMAGE_VALIDATION_REPLY);
+                      return { response: null };
                     }
+                    const caption = (text || "").trim();
+                    if (caption) {
+                      const imgSafe = checkUserMessage(caption);
+                      if (!imgSafe.safe && imgSafe.response) {
+                        await sendWhatsAppText(from, imgSafe.response);
+                        return { response: null };
+                      }
+                    }
+                    response = await getOndaReplyWithImage(
+                      text?.trim() || "¿Qué ves en esta imagen? Responde según ONDA.",
+                      media.dataUrl,
+                      null,
+                      null,
+                      includeSources,
+                      "whatsapp"
+                    );
                   }
-                  response = await getOndaReplyWithImage(
-                    text?.trim() || "¿Qué ves en esta imagen? Responde según ONDA.",
-                    media.dataUrl,
-                    null,
-                    null,
-                    includeSources,
-                    "whatsapp"
-                  );
-                }
-              } else {
-                response = "No pude procesar la imagen. ¿Puedes enviarla de nuevo?";
-              }
-            } catch (err) {
-              console.error("❌ Error procesando imagen:", err);
-              response = "Uy, falló el análisis de la imagen. Intenta en un ratito.";
-            }
-          }
-          // 2) Audio: descargar → Whisper → texto → ONDA
-          else if (type === "audio" && audioId) {
-            if (isDev) console.log(`🎤 Audio recibido de ${from}`);
-            try {
-              const media = await getWhatsAppMediaAsBase64(audioId, "audio/ogg");
-              if (media?.dataUrl) {
-                const audioBuf = bufferFromDataUrl(media.dataUrl);
-                if (!audioBuf) {
-                  response = "No pude descargar el audio. ¿Puedes enviar un mensaje de texto?";
                 } else {
-                  const av = await validateAudio(audioBuf);
-                  if (!av.valid) {
-                    const reply =
-                      av.error === AUDIO_VALIDATION_TOO_LONG
-                        ? WA_AUDIO_TOO_LONG_REPLY
-                        : av.error ?? "No pude procesar ese audio.";
-                    await sendWhatsAppText(from, reply);
-                    continue;
-                  }
-                  const transcribed = await transcribeAudio(media.dataUrl);
-                  const userMessage = transcribed || "(no se pudo transcribir el audio)";
-                  const audioSafe = checkUserMessage(userMessage);
-                  if (!audioSafe.safe && audioSafe.response) {
-                    await sendWhatsAppText(from, audioSafe.response);
-                    continue;
-                  }
-                  response = await getOndaReply(userMessage, null, null, wantsSources(userMessage), null, "whatsapp");
+                  response = "No pude procesar la imagen. ¿Puedes enviarla de nuevo?";
                 }
-              } else {
-                response = "No pude descargar el audio. ¿Puedes enviar un mensaje de texto?";
+              } catch (err) {
+                console.error("❌ Error procesando imagen:", err);
+                response = "Uy, falló el análisis de la imagen. Intenta en un ratito.";
               }
-            } catch (err) {
-              console.error("❌ Error procesando audio:", err);
-              await recordError({
-                source: "whatsapp",
-                userMessage: "(audio)",
-                error: err instanceof Error ? err.message : String(err),
-              });
-              response = "No pude transcribir el audio. ¿Me lo escribes por texto?";
             }
-          }
-          // 3) Texto
-          else if (text && (type === "text" || !type)) {
-            if (isDev) console.log(`💬 Mensaje recibido de ${from}: ${text}`);
-            try {
-              const textSafe = checkUserMessage(text.trim());
-              if (!textSafe.safe && textSafe.response) {
-                await sendWhatsAppText(from, textSafe.response);
-                continue;
+            // 2) Audio: descargar → Whisper → texto → ONDA
+            else if (type === "audio" && audioId) {
+              if (isDev) console.log(`🎤 Audio recibido de ${from}`);
+              try {
+                const media = await getWhatsAppMediaAsBase64(audioId, "audio/ogg");
+                if (media?.dataUrl) {
+                  const audioBuf = bufferFromDataUrl(media.dataUrl);
+                  if (!audioBuf) {
+                    response = "No pude descargar el audio. ¿Puedes enviar un mensaje de texto?";
+                  } else {
+                    const av = await validateAudio(audioBuf);
+                    if (!av.valid) {
+                      const reply =
+                        av.error === AUDIO_VALIDATION_TOO_LONG
+                          ? WA_AUDIO_TOO_LONG_REPLY
+                          : av.error ?? "No pude procesar ese audio.";
+                      await sendWhatsAppText(from, reply);
+                      return { response: null };
+                    }
+                    const transcribed = await transcribeAudio(media.dataUrl);
+                    const userMessage = transcribed || "(no se pudo transcribir el audio)";
+                    const audioSafe = checkUserMessage(userMessage);
+                    if (!audioSafe.safe && audioSafe.response) {
+                      await sendWhatsAppText(from, audioSafe.response);
+                      return { response: null };
+                    }
+                    response = await getOndaReply(userMessage, null, null, wantsSources(userMessage), null, "whatsapp");
+                  }
+                } else {
+                  response = "No pude descargar el audio. ¿Puedes enviar un mensaje de texto?";
+                }
+              } catch (err) {
+                console.error("❌ Error procesando audio:", err);
+                await recordError({
+                  source: "whatsapp",
+                  userMessage: "(audio)",
+                  error: err instanceof Error ? err.message : String(err),
+                });
+                response = "No pude transcribir el audio. ¿Me lo escribes por texto?";
               }
-              response = await getOndaReply(text, null, null, includeSources, null, "whatsapp");
-            } catch (err) {
-              console.error("❌ Error procesando mensaje:", err);
             }
+            // 3) Texto
+            else if (text && (type === "text" || !type)) {
+              if (isDev) console.log(`💬 Mensaje recibido de ${from}: ${text}`);
+              try {
+                const textSafe = checkUserMessage(text.trim());
+                if (!textSafe.safe && textSafe.response) {
+                  await sendWhatsAppText(from, textSafe.response);
+                  return { response: null };
+                }
+                response = await getOndaReply(text, null, null, includeSources, null, "whatsapp");
+              } catch (err) {
+                console.error("❌ Error procesando mensaje:", err);
+              }
+            }
+
+            return { response };
+          });
+
+          if (locked === null) {
+            console.warn(`[queue] mensaje ignorado por lock activo: ${from}`);
+            continue;
           }
+
+          const { response } = locked;
 
           if (response) {
             const parsed = parseResponseFormat(response);
             try {
               if (isDev) console.log(`🤖 Respuesta formato=${parsed.formato}: ${parsed.text.substring(0, 80)}...`);
-              const textResult = await sendWhatsAppText(from, parsed.text);
-              if (textResult.ok) {
-                if (isDev) console.log("✅ Respuesta (texto) enviada correctamente");
-              } else {
-                console.error("❌ Error al enviar texto:", textResult.error);
+              const parts = splitForWhatsApp(parsed.text);
+              for (let pi = 0; pi < parts.length; pi++) {
+                const textResult = await sendWhatsAppText(from, parts[pi]);
+                if (textResult.ok) {
+                  if (isDev) console.log("✅ Respuesta (texto) enviada correctamente");
+                } else {
+                  console.error("❌ Error al enviar texto:", textResult.error);
+                }
+                if (parts.length > 1 && pi < parts.length - 1) {
+                  await new Promise((r) => setTimeout(r, 500));
+                }
               }
 
               if (parsed.formato === "audio" && parsed.text.length <= 4000) {

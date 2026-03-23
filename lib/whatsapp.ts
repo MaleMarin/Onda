@@ -74,6 +74,86 @@ export async function getWhatsAppMediaAsBase64(
 
 const MAX_WA_TEXT_LENGTH = 4096;
 
+function findNaturalSplitIndex(slice: string, maxChars: number): number {
+  const n = Math.min(maxChars, slice.length);
+  const minBreak = Math.max(1, Math.floor(n * 0.45));
+  for (let cut = n; cut >= minBreak; cut--) {
+    if (cut === 0) break;
+    const ch = slice[cut - 1];
+    const next = slice[cut];
+    if (ch === "." && (cut >= slice.length || /[\s\n]/.test(next ?? ""))) {
+      let end = cut;
+      while (end < slice.length && /\s/.test(slice[end])) end++;
+      return end;
+    }
+  }
+  const para = slice.lastIndexOf("\n\n", n - 1);
+  if (para >= minBreak - 1) return para + 2;
+  const nl = slice.lastIndexOf("\n", n - 1);
+  if (nl >= minBreak - 1) return nl + 1;
+  const sp = slice.lastIndexOf(" ", n - 1);
+  if (sp >= minBreak - 1) return sp + 1;
+  return n;
+}
+
+/**
+ * Divide un texto largo en partes para WhatsApp.
+ * Máximo maxChars chars por parte.
+ * Divide en el último punto/párrafo antes del límite.
+ * Si solo hay una parte, retorna array de 1 elemento.
+ */
+export function splitForWhatsApp(text: string, maxChars = 1500): string[] {
+  const t = text ?? "";
+  if (t.length <= maxChars) return [t];
+
+  const parts: string[] = [];
+  let rest = t.trimStart();
+  let guard = 0;
+
+  const pushChunk = (raw: string, isContinuation: boolean) => {
+    let chunk = raw.trimEnd();
+    if (!chunk) return;
+    if (isContinuation && !/^\.\.\./.test(chunk)) {
+      chunk = `...${chunk.replace(/^\.+\s*/, "")}`;
+    }
+    parts.push(chunk);
+  };
+
+  while (rest.length > maxChars) {
+    if (++guard > 500) {
+      const room = parts.length > 0 ? maxChars - 3 : maxChars;
+      pushChunk(rest.slice(0, room), parts.length > 0);
+      rest = rest.slice(room).trimStart();
+      continue;
+    }
+
+    const room = parts.length > 0 ? maxChars - 3 : maxChars;
+    const slice = rest.slice(0, room);
+    let cut = findNaturalSplitIndex(slice, room);
+    if (cut < 1) cut = Math.min(room, rest.length);
+
+    let chunkRaw = rest.slice(0, cut).trimEnd();
+    let nextRest = rest.slice(cut).trimStart();
+
+    if (chunkRaw.length === 0) {
+      cut = Math.min(room, rest.length);
+      chunkRaw = rest.slice(0, cut).trimEnd();
+      nextRest = rest.slice(cut).trimStart();
+    }
+
+    if (chunkRaw.length === 0) break;
+
+    pushChunk(chunkRaw, parts.length > 0);
+    rest = nextRest;
+  }
+
+  if (rest.length > 0) {
+    pushChunk(rest, parts.length > 0);
+  }
+
+  return parts.length > 0 ? parts : [t];
+}
+
 export async function sendWhatsAppText(
   to: string,
   text: string
