@@ -1,4 +1,3 @@
-import crypto from "crypto";
 import { recordError } from "../../../lib/auditStore";
 import { generateImageFromText } from "../../../lib/generateImage";
 import { renderInfographicPng } from "../../../lib/infographic";
@@ -13,26 +12,16 @@ import {
   sendWhatsAppImage,
   sendWhatsAppText,
 } from "../../../lib/whatsapp";
+import { verifyWebhookSignature } from "../../../lib/verifyWebhookSignature";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const isDev = process.env.NODE_ENV === "development";
 
-function verifyWebhookSignature(rawBody: string, signatureHeader: string | null): boolean {
-  const appSecret = process.env.WHATSAPP_APP_SECRET || process.env.META_APP_SECRET;
-  if (!appSecret) {
-    if (process.env.VERCEL_ENV === "production") {
-      console.warn("⚠️ WHATSAPP_APP_SECRET (o META_APP_SECRET) no configurado en producción. Configúralo para verificar la firma del webhook.");
-    }
-    return true; // skip verification when secret not set (evitar romper entornos sin configurar)
-  }
-  if (!signatureHeader) return false;
-  const [algo, sig] = signatureHeader.split("=");
-  if (algo !== "sha256" || !sig) return false;
-  const expected = crypto.createHmac("sha256", appSecret).update(rawBody, "utf8").digest("hex");
-  return crypto.timingSafeEqual(Buffer.from(sig, "hex"), Buffer.from(expected, "hex"));
-}
+const MISSING_WEBHOOK_SECRET_MSG =
+  "CONFIGURACIÓN FALTANTE: WHATSAPP_WEBHOOK_SECRET no está definida.\n" +
+  "El webhook de WhatsApp no puede operar sin esta variable.";
 
 /**
  * Webhook de WhatsApp - Versión limpia y simple
@@ -90,18 +79,30 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  // Log siempre (para ver en Vercel si Meta está llamando)
+  const webhookSecret = process.env.WHATSAPP_WEBHOOK_SECRET?.trim();
+  if (!webhookSecret) {
+    console.error(MISSING_WEBHOOK_SECRET_MSG);
+    return new Response(MISSING_WEBHOOK_SECRET_MSG, {
+      status: 500,
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
+    });
+  }
+
+  const rawBody = await req.text();
+  const signature = req.headers.get("x-hub-signature-256");
+  if (!verifyWebhookSignature(rawBody, signature, webhookSecret)) {
+    console.error("❌ Firma de webhook inválida o ausente");
+    return new Response(JSON.stringify({ error: "Unauthorized: invalid signature" }), {
+      status: 401,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
   console.log("[webhook] POST recibido");
   try {
     let payload: any;
-    let rawBody: string;
     try {
       const contentType = req.headers.get("content-type") || "";
-      rawBody = await req.text();
-      if (!verifyWebhookSignature(rawBody, req.headers.get("x-hub-signature-256"))) {
-        console.error("❌ Firma de webhook inválida");
-        return new Response("Forbidden", { status: 403 });
-      }
       if (rawBody && (contentType.includes("application/json") || rawBody.trim().startsWith("{"))) {
         payload = JSON.parse(rawBody);
       } else {
