@@ -12,6 +12,8 @@ import {
   getGreetingNewDay,
   getWelcomeWithPreferredEje,
   getWelcomeWithTema,
+  getMessageAfterPickerChoice,
+  isStalePickerGreeting,
   EJE_CONFIGS,
   EJE_MENU_OPTIONS,
   IA_SUBMENU_OPTIONS,
@@ -225,6 +227,16 @@ function inferEjeFromMessagesStatic(messages: Message[]): EjeOnda | null {
   return null;
 }
 
+/** Sustituye el saludo “elige Onda” por un texto alineado con la Onda elegida (evita que siga mencionando otra Onda). */
+function syncFirstBubbleAfterEjeChoice(messages: Message[], eje: EjeOnda): Message[] {
+  if (messages.length === 0) return messages;
+  const first = messages[0];
+  if (first.role !== "model" || first.isGenerated || !isStalePickerGreeting(first.content)) {
+    return messages;
+  }
+  return [{ ...first, content: getMessageAfterPickerChoice(eje) }, ...messages.slice(1)];
+}
+
 /** Session/conversation id anónimo para métricas (persiste en la pestaña). */
 function getOrCreateSessionId(): string {
   if (typeof window === "undefined") return "";
@@ -287,6 +299,22 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
       setCurrentEje(null);
     }
     trackUsage("session_start", userCheckResult.restoredEje ?? null);
+
+    // Tras fijar el saludo: si la URL trae ?eje=, aplica esa Onda (evita carrera con el efecto anterior y alinea bienvenida + pestaña).
+    if (typeof window === "undefined" || userCheckResult.shouldRestore) return;
+    const params = new URLSearchParams(window.location.search);
+    const ejeParam = params.get("eje");
+    if (ejeParam === EjeOnda.A_MANO || ejeParam === EjeOnda.CIVITA || ejeParam === EjeOnda.PROFES) {
+      const eje = ejeParam as EjeOnda;
+      localStorage.setItem(STORAGE_KEY_PREFERRED, eje);
+      setPreferredEjeForDisplay(eje);
+      setCurrentEje(eje);
+      setMessages((prev) => syncFirstBubbleAfterEjeChoice(prev, eje));
+      trackUsage("eje_select", eje);
+      params.delete("eje");
+      const newSearch = params.toString();
+      window.history.replaceState({}, "", window.location.pathname + (newSearch ? "?" + newSearch : ""));
+    }
   }, [userCheckResult]);
 
   /** Inferir Onda desde el último mensaje de usuario (ej. ítem de menú) para que pestaña y chips coincidan con la conversación. */
@@ -312,22 +340,6 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
     return () => clearTimeout(id);
   }, [messages, currentEje]);
 
-  /** Al cargar: si la URL tiene ?eje=, usar esa Onda (por enlace o recarga). Registrar eje en métricas y limpiar la URL. */
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const params = new URLSearchParams(window.location.search);
-    const ejeParam = params.get("eje");
-    if (ejeParam === EjeOnda.A_MANO || ejeParam === EjeOnda.CIVITA || ejeParam === EjeOnda.PROFES) {
-      const eje = ejeParam as EjeOnda;
-      localStorage.setItem(STORAGE_KEY_PREFERRED, eje);
-      setCurrentEje(eje);
-      trackUsage("eje_select", eje);
-      params.delete("eje");
-      const newSearch = params.toString();
-      const path = window.location.pathname;
-      window.history.replaceState({}, "", path + (newSearch ? "?" + newSearch : ""));
-    }
-  }, []);
   const [input, setInput] = useState("");
   const [attachmentImage, setAttachmentImage] = useState<string | null>(null);
   const [attachmentAudio, setAttachmentAudio] = useState<string | null>(null);
@@ -459,6 +471,7 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
 
   function confirmEjeSwitch(eje: EjeOnda): void {
     trackUsage("eje_select", eje);
+    setPreferredEjeForDisplay(eje);
     if (typeof window !== "undefined") {
       const prevEje = getPreferredEjeFromStorage();
       if (prevEje != null && prevEje !== eje) localStorage.removeItem(STORAGE_KEY_ULTIMO_TEMA);
@@ -478,6 +491,7 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
     setHighlightOndaButtons(false);
     setShowEnviarTooltip(false);
     confirmEjeSwitch(eje);
+    setMessages((prev) => syncFirstBubbleAfterEjeChoice(prev, eje));
     setShowMenu(true);
     setShowIASubmenu(false);
     const hasPending = !!(

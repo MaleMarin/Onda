@@ -165,6 +165,28 @@ export function getWelcomeWithPreferredEje(eje: EjeOnda): string {
   return `¡Hola de nuevo! Veo que la última vez trabajamos en ${name}. ¿Quieres continuar ahí o exploramos una nueva hoy? 👇`;
 }
 
+/**
+ * Primer mensaje del chat que aún pide elegir Onda (saludo contextual o bienvenida larga).
+ * Si la persona ya eligió una Onda en la UI, ese texto debe sustituirse por {@link getMessageAfterPickerChoice}.
+ */
+export function isStalePickerGreeting(content: string): boolean {
+  const c = (content ?? "").trim();
+  if (!c) return false;
+  if (c.includes("la última vez trabajamos")) return true;
+  if (c.includes("¿Seguimos trabajando en") && c.includes("evidencias")) return true;
+  if (c.includes("¡Hola de nuevo hoy!") && c.includes("¿Qué onda activamos")) return true;
+  if (c.includes("¿En qué onda trabajamos hoy?")) return true;
+  if (c.includes("¿Con qué Onda seguimos hoy?")) return true;
+  if (c.includes("Te doy la bienvenida a Onda") || c.includes("¿Por qué Onda te gustaría empezar")) return true;
+  return false;
+}
+
+/** Mensaje inicial alineado con la Onda elegida (sustituye saludos que aún hablaban de otra Onda o de “elegir”). */
+export function getMessageAfterPickerChoice(eje: EjeOnda): string {
+  const { name, description } = EJE_CONFIGS[eje];
+  return `¡Genial! Estamos en **${name}**. ${description} Elige una opción del menú o escribe lo que necesites. 👇`;
+}
+
 /** Saludo cuando es nuevo día calendarizado (o tras más de 12 h): prioridad 3. Mantiene onda_preferida y onda_ultimo_tema para el mensaje; solo se borra onda_chat_restore. */
 export function getGreetingNewDay(_lastEje?: EjeOnda | null): string {
   const dayName = new Date().toLocaleDateString("es-ES", { weekday: "long" });
