@@ -1,4 +1,5 @@
-import { recordError } from "../../../lib/auditStore";
+import { recordConversation, recordError, recordUsage } from "../../../lib/auditStore";
+import { recordConversationImpact } from "../../../lib/impactMetrics";
 import { generateImageFromText } from "../../../lib/generateImage";
 import { renderInfographicPng } from "../../../lib/infographic";
 import { getGuideImageBuffer } from "../../../lib/guides";
@@ -210,6 +211,7 @@ export async function POST(req: Request) {
         const messages = value?.messages || [];
         if (messages.length) console.log("[webhook] Mensaje(s) a procesar:", messages.length);
         for (const msg of messages) {
+          const messageStart = Date.now();
           const from = msg?.from;
           const text = msg?.text?.body;
           const type = msg?.type;
@@ -495,6 +497,26 @@ export async function POST(req: Request) {
                 error: error instanceof Error ? error.message : String(error),
               });
             }
+
+            const waIntentRecorded = classifyIntent(waUserTurn || textBody || " ");
+            void recordConversationImpact({
+              eje: "A_MANO",
+              canal: "whatsapp",
+              intent: waIntentRecorded.intent,
+              responseMs: Date.now() - messageStart,
+              cacheHit: false,
+              userIdentifier: from || "unknown",
+            }).catch(() => {});
+            void recordUsage({
+              event: "message_sent",
+              eje: "A_MANO",
+              sessionId: from && from !== "unknown" ? from : undefined,
+              responseTimeMs: Date.now() - messageStart,
+            }).catch(() => {});
+            void recordConversation({
+              sessionId: from && from !== "unknown" ? from : undefined,
+              excerpt: `intent=${waIntentRecorded.intent};eje=A_MANO;canal=whatsapp`,
+            }).catch(() => {});
 
             if (from && from !== "unknown" && waUserTurn) {
               const intentResult = classifyIntent(waUserTurn);

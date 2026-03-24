@@ -31,6 +31,9 @@ import {
   validateImage,
 } from "../../../../lib/validateMedia";
 import { generateRequestId } from "../../../../lib/telemetry";
+import { recordConversation } from "../../../../lib/auditStore";
+import { recordConversationImpact } from "../../../../lib/impactMetrics";
+import { getCachedResponse } from "../../../../lib/responseCache";
 
 /** Tiempo máximo de ejecución del handler (Vercel: 60 en Hobby, hasta 300 en Pro). */
 export const maxDuration = 60;
@@ -102,6 +105,8 @@ export async function POST(req: Request) {
         { status: 429 }
       );
     }
+
+    const requestStart = Date.now();
 
     const body = await req.json();
     let message = typeof body?.message === "string" ? body.message.trim() : "";
@@ -382,6 +387,23 @@ export async function POST(req: Request) {
           };
         })();
 
+    const couldUseCacheProbe =
+      !image &&
+      !audio &&
+      history.length === 0 &&
+      !wantsSources(message) &&
+      !articleContext &&
+      !memoryBlock?.trim();
+    let cacheHitForImpact = false;
+    if (couldUseCacheProbe) {
+      try {
+        const cr = await getCachedResponse(message || "", eje ?? "none", intentResultForLog.intent);
+        cacheHitForImpact = Boolean(cr.hit && cr.response);
+      } catch {
+        cacheHitForImpact = false;
+      }
+    }
+
     const stream = new ReadableStream({
       async start(controller) {
         let partialSoFar = "";
@@ -553,6 +575,20 @@ export async function POST(req: Request) {
                 buildSessionSummary(conv, intentResult.intent, ejeLabel)
               ).catch((saveErr) => console.warn("[memory] error guardando sesión:", saveErr));
             }
+          }
+          if (streamOk && assistantTextForMemory) {
+            void recordConversationImpact({
+              eje: eje ?? "A_MANO",
+              canal: "web",
+              intent: intentResultForLog.intent,
+              responseMs: Date.now() - requestStart,
+              cacheHit: cacheHitForImpact,
+              userIdentifier: ip,
+            }).catch(() => {});
+            void recordConversation({
+              sessionId: sessionId !== "anonymous" ? sessionId : undefined,
+              excerpt: `intent=${intentResultForLog.intent};eje=${eje ?? "none"};canal=web`,
+            }).catch(() => {});
           }
           controller.close();
         }
