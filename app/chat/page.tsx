@@ -1296,7 +1296,14 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
     <main
       id="onda-chat-main"
       aria-label="Conversación con Onda"
-      style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, width: "100%" }}
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        flex: 1,
+        minHeight: 0,
+        width: "100%",
+        alignItems: "center",
+      }}
     >
     <div className="onda-shell" style={shellStyle}>
       {/* Header: logo, nombre y botón borrar conversación (privacidad). */}

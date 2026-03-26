@@ -49,8 +49,7 @@ export function ondaStyles(t: OndaTheme) {
     shell: {
       ...t.fx.crystal,
       background: "#ffffff",
-      width: "100%",
-      maxWidth: "min(720px, 92vw)",
+      width: "min(100%, min(720px, 92vw))",
       flex: 1,
       minHeight: 0,
       borderRadius: 28,
