@@ -262,17 +262,18 @@ Onda Profes **no hace la tarea por nadie:** te ayuda a armar la experiencia, las
 
 **¿Qué quieres hacer ahora en Onda Profes?** 👇`;
 
+/** Saludo por hora local del navegador. Tardes hasta las 20:00; noches desde las 20:00 (convención habitual en Chile y muchos países hispanohablantes). */
 export const getTimeGreeting = () => {
   const hour = new Date().getHours();
   const day = new Date().getDay();
   let greeting =
     hour >= 6 && hour < 12
       ? '🌞 Buenos días.'
-      : hour >= 12 && hour < 18
-      ? '⛅ Buenas tardes.'
-      : '🌙 Buenas noches.';
+      : hour >= 12 && hour < 20
+        ? '⛅ Buenas tardes.'
+        : '🌙 Buenas noches.';
   if (day === 1 && hour < 12) return '🌞 **¡Buen lunes!** Esta semana puedes entrenar tu criterio digital paso a paso.';
-  if (day === 5 && hour >= 18) return '🌙 **¡Buen viernes noche!** Si quieres, hoy podemos ir más liviano.';
+  if (day === 5 && hour >= 20) return '🌙 **¡Buen viernes noche!** Si quieres, hoy podemos ir más liviano.';
   return greeting;
 };
 

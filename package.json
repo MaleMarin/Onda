@@ -21,7 +21,10 @@
     "ingest": "ts-node --compiler-options '{\"module\":\"CommonJS\",\"moduleResolution\":\"node\"}' scripts/ingestToFirestore.ts",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "env:pull": "npx vercel env pull .env.local",
+    "env:vercel-pull": "npx vercel env pull .env.vercel.snapshot",
+    "env:local-backup": "node -e \"const fs=require('fs');const p='.env.local';if(fs.existsSync(p)){fs.copyFileSync(p,'.env.local.bak-'+Date.now());console.log('Copia: .env.local.bak-'+Date.now());}else{console.log('No existe .env.local');}\""
   },
   "keywords": [],
   "author": "",

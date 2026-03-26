@@ -4,6 +4,8 @@ Cuando tengas la información de Meta (WhatsApp Business API), con esto el bot q
 
 **Auditoría unificada (números, Vercel, webhook):** [AUDITORIA-INTEGRACION-ONDABOT.md](./AUDITORIA-INTEGRACION-ONDABOT.md)
 
+**Entorno Vercel / `.env.local` (pull seguro, no pisar claves):** [ENTORNO-VERCEL-Y-LOCAL.md](./ENTORNO-VERCEL-Y-LOCAL.md)
+
 ---
 
 ## 0. Datos que ya están en el proyecto

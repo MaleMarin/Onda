@@ -14,6 +14,7 @@ import {
   getWelcomeWithTema,
   getMessageAfterPickerChoice,
   isStalePickerGreeting,
+  MAIN_WELCOME,
   EJE_CONFIGS,
   EJE_MENU_OPTIONS,
   IA_SUBMENU_OPTIONS,
@@ -25,7 +26,6 @@ import { EjeOnda, type Message } from "@/content/types";
 import { parseResponseFormat } from "@/lib/responseFormat";
 import { useOndaTheme } from "@/lib/useOndaTheme";
 import { ondaStyles } from "@/lib/ondaStyles";
-import { AccessibilityControls } from "./components/AccessibilityControls";
 import { ChatBubble } from "./components/ChatBubble";
 import { EjeSelector } from "./components/EjeSelector";
 import { OfflineBanner, type HealthBannerStatus } from "./components/OfflineBanner";
@@ -39,6 +39,14 @@ function newMessage(role: "user" | "model", content: string, extra?: Partial<Mes
     ...extra,
   };
 }
+
+/** Primer mensaje idéntico en servidor y cliente (evita hydration mismatch: no UUID aleatorio ni reloj). */
+const HYDRATION_SAFE_INITIAL_MESSAGE: Message = {
+  id: "onda-hydration-placeholder",
+  role: "model",
+  content: MAIN_WELCOME,
+  timestamp: 0,
+};
 
 const URL_REGEX = /\b(https?:\/\/\S+|www\.\S+)/i;
 function hasUrl(text: string): boolean {
@@ -275,9 +283,7 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
   const userCheckResult = useUserCheck();
   const hasAppliedUserCheckRef = useRef(false);
 
-  const [messages, setMessages] = useState<Message[]>(() => [
-    newMessage("model", getMainWelcome()),
-  ]);
+  const [messages, setMessages] = useState<Message[]>(() => [HYDRATION_SAFE_INITIAL_MESSAGE]);
   const [currentEje, setCurrentEje] = useState<EjeOnda | null>(initialEje);
   const [preferredEjeForDisplay, setPreferredEjeForDisplay] = useState<EjeOnda | null>(null);
 
@@ -901,23 +907,29 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
     e.target.value = "";
   }
 
-  function handlePaste(e: React.ClipboardEvent) {
-    const item = e.clipboardData?.items?.[0];
-    if (item?.type.startsWith("image/")) {
-      e.preventDefault();
-      const file = item.getAsFile();
-      if (file) {
-        const reader = new FileReader();
-        reader.onload = async () => {
-          const dataUrl = reader.result as string;
-          try {
-            const compressed = await compressImage(dataUrl);
-            setAttachmentImage(compressed);
-          } catch {
-            setAttachmentImage(dataUrl);
-          }
-        };
-        reader.readAsDataURL(file);
+  /** Solo intercepta pegado de imagen; el texto (p. ej. https://…) sigue el comportamiento nativo del input. */
+  function handlePaste(e: React.ClipboardEvent<HTMLInputElement>) {
+    const items = e.clipboardData?.items;
+    if (!items?.length) return;
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (item.kind === "file" && item.type.startsWith("image/")) {
+        e.preventDefault();
+        const file = item.getAsFile();
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = async () => {
+            const dataUrl = reader.result as string;
+            try {
+              const compressed = await compressImage(dataUrl);
+              setAttachmentImage(compressed);
+            } catch {
+              setAttachmentImage(dataUrl);
+            }
+          };
+          reader.readAsDataURL(file);
+        }
+        return;
       }
     }
   }
@@ -1306,7 +1318,6 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
           </div>
         </div>
         <div style={{ display: "flex", alignItems: "flex-start", gap: 10, flexWrap: "wrap", marginLeft: "auto" }}>
-          <AccessibilityControls theme={t} compact={compact} />
           <button
             type="button"
             onClick={handleClearConversation}
@@ -1773,7 +1784,6 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
           <form
             aria-label="Escribe y envía tu mensaje a Onda"
             onSubmit={(e) => { e.preventDefault(); handleSend(e); }}
-            onPaste={handlePaste}
             style={{ display: "flex", gap: 10, alignItems: "center" }}
           >
             <input type="file" accept="image/*" onChange={handleImageFile} style={{ display: "none" }} id="onda-image-upload" />
@@ -1822,6 +1832,7 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
               style={inpStyle}
               onFocus={() => setInputFocused(true)}
               onBlur={() => setInputFocused(false)}
+              onPaste={handlePaste}
             />
 
             <span style={{ position: "relative", display: "inline-flex" }}>

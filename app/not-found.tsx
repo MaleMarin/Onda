@@ -22,23 +22,27 @@ export default function NotFound() {
         La ruta que buscás no existe en esta app.
       </p>
       <Link
-        href="/"
+        href="/chat"
         style={{
           display: "inline-block",
           marginTop: "1.5rem",
           padding: "12px 24px",
           borderRadius: 12,
-          background: "linear-gradient(135deg, #43BCCD, #662E9B)",
+          background: "linear-gradient(135deg, #2a8a9e, #662E9B)",
           color: "#fff",
           fontWeight: 700,
           textDecoration: "none",
           fontSize: "0.9rem",
+          textShadow: "0 1px 2px rgba(0,0,0,0.25)",
         }}
       >
         Ir al chat ONDA
       </Link>
-      <p style={{ marginTop: "1.5rem", fontSize: "0.8rem", color: "#6e6e8a", textAlign: "center", maxWidth: 320 }}>
-        Ejecutá <strong>npm run dev</strong> y entrá a <strong>http://localhost:2999</strong>
+      <p style={{ marginTop: "1.5rem", fontSize: "0.8rem", color: "#6e6e8a", textAlign: "center", maxWidth: 360 }}>
+        En local: <strong>npm run dev</strong> →{" "}
+        <strong>http://localhost:3020/chat</strong>
+        <br />
+        Si el 3020 está ocupado: <strong>npm run dev:3010</strong> → puerto <strong>3010</strong>.
       </p>
     </div>
   );

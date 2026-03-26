@@ -19,14 +19,15 @@ Luego abrí en el navegador: **http://localhost:3020/chat**
 
 ### 1. Variables de Entorno
 
-Configura estas variables en Vercel (Settings → Environment Variables):
+En **Vercel** (Settings → Environment Variables del proyecto, p. ej. `onda2026`), definí al menos:
 
-```
-WHATSAPP_VERIFY_TOKEN=tu_token_secreto_aqui
-WHATSAPP_ACCESS_TOKEN=tu_token_de_acceso_whatsapp
-WHATSAPP_PHONE_NUMBER_ID=tu_phone_number_id
-OPENAI_API_KEY=tu_openai_api_key
-```
+- `OPENAI_API_KEY`
+- `WHATSAPP_VERIFY_TOKEN`, `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`
+- **`WHATSAPP_WEBHOOK_SECRET`** (obligatorio para que Meta pueda enviar POST al webhook)
+- Opcional pero recomendado: `WHATSAPP_APP_SECRET` o `META_APP_SECRET`, `KV_REST_API_*`, `ANTHROPIC_API_KEY`, `TAVILY_API_KEY`, Firebase para RAG, `ADMIN_SECRET`
+
+Plantilla comentada: **`example.env`**.  
+**No sobrescribas `.env.local` con `vercel env pull` sin respaldo:** guía **`docs/ENTORNO-VERCEL-Y-LOCAL.md`** y `npm run env:vercel-pull` (descarga a `.env.vercel.snapshot` sin pisar `.env.local`).
 
 ### 2. Configurar Webhook en Meta
 

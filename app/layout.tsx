@@ -33,9 +33,6 @@ const SEND_ORANGE = (typeof process !== "undefined" && process.env.NEXT_PUBLIC_O
 
 const GLOBAL_CSS = `
 .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border-width:0}
-html.onda-a11y-reduced-motion .onda-shell *,html.onda-a11y-reduced-motion .onda-page-wrap *{animation:none!important;transition-duration:0.01ms!important}
-html.onda-a11y-large-text .onda-shell,html.onda-a11y-large-text .onda-page-wrap{font-size:1.0625rem}
-html.onda-a11y-large-text .onda-shell input,html.onda-a11y-large-text .onda-shell textarea{font-size:1.0625rem}
 html,body{height:100%;margin:0;pointer-events:auto;touch-action:manipulation}
 body{-webkit-font-smoothing:antialiased;font-family:var(--font-onda-body),Inter,sans-serif;line-height:1.6;outline:none}
 /* Shell aislado: clics siempre llegan a botones/inputs. No añadir overlays ni ::before/::after que tapen. */
