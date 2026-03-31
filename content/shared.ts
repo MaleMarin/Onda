@@ -184,7 +184,7 @@ Puedes enviarme lo que necesites analizar en el formato que prefieras:
 
 🔗 Links
 
-¿Por qué Onda te gustaría empezar hoy? ✨`;
+¿Con qué Onda quieres empezar hoy? ✨`;
 
 /** Bienvenida principal al abrir el chat: saludo según la hora del día (buenos días / buenas tardes / buenas noches) + texto de bienvenida. Siempre comenzar del inicio con este mensaje. */
 export function getMainWelcome(): string {
@@ -207,7 +207,7 @@ Puedes enviarme lo que necesites analizar en el formato que prefieras:
 
 🔗 Links
 
-¿Por qué Onda te gustaría empezar hoy? ✨`;
+¿Con qué Onda quieres empezar hoy? ✨`;
 
 /** Cuando la persona ya conoce Onda: ir directo a las tres Ondas (bienvenida ágil). */
 export const SHORT_WELCOME = `¿Con qué Onda seguimos hoy? 👇`;
