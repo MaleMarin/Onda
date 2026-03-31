@@ -170,6 +170,18 @@ Privacidad: Trata la privacidad de los datos como un derecho fundamental.
 📤 FORMATO DE RESPUESTA (en las 3 Ondas): Si el usuario pide la respuesta en voz o audio, al final añade [ONDA_FORMATO:audio]. Si pide imagen o infografía y aplica una guía (estafa, phishing, deepfake, criterio, instituciones, derechos, actividad), añade [ONDA_GUIA:nombre], ej. [ONDA_GUIA:estafa]. El sistema enviará además audio o la imagen según esos marcadores.
 `;
 
+/** Cierre de la bienvenida larga (una sola fuente de verdad para cuerpo + migración de localStorage). */
+export const MAIN_WELCOME_CLOSING = "¿Con qué Onda quieres empezar hoy? ✨";
+
+/** Texto guardado en conversaciones antiguas (`onda_chat_restore`); reemplazar al restaurar. */
+export const MAIN_WELCOME_CLOSING_LEGACY = "¿Por qué Onda te gustaría empezar hoy? ✨";
+
+/** Actualiza copy de bienvenida en burbujas persistidas antes del cambio de frase. */
+export function migrateMainWelcomeClosingCopy(text: string): string {
+  if (!text || !text.includes(MAIN_WELCOME_CLOSING_LEGACY)) return text;
+  return text.split(MAIN_WELCOME_CLOSING_LEGACY).join(MAIN_WELCOME_CLOSING);
+}
+
 const MAIN_WELCOME_BODY = `Te doy la bienvenida a Onda 🌊, un espacio diseñado para navegar el mundo digital con menos ruido 🔊 y mucho más criterio 🧠.
 
 Mi objetivo es acompañarte a entender mejor todo lo que ves, escuchas y recibes a diario. Aquí exploramos la información de forma simple y objetiva, siempre bajo el rigor de fuentes confiables y sin sesgos personales.
@@ -184,7 +196,7 @@ Puedes enviarme lo que necesites analizar en el formato que prefieras:
 
 🔗 Links
 
-¿Con qué Onda quieres empezar hoy? ✨`;
+${MAIN_WELCOME_CLOSING}`;
 
 /** Bienvenida principal al abrir el chat: saludo según la hora del día (buenos días / buenas tardes / buenas noches) + texto de bienvenida. Siempre comenzar del inicio con este mensaje. */
 export function getMainWelcome(): string {
@@ -207,7 +219,7 @@ Puedes enviarme lo que necesites analizar en el formato que prefieras:
 
 🔗 Links
 
-¿Con qué Onda quieres empezar hoy? ✨`;
+${MAIN_WELCOME_CLOSING}`;
 
 /** Cuando la persona ya conoce Onda: ir directo a las tres Ondas (bienvenida ágil). */
 export const SHORT_WELCOME = `¿Con qué Onda seguimos hoy? 👇`;
@@ -243,7 +255,7 @@ export function isStalePickerGreeting(content: string): boolean {
   if (c.includes("¡Hola de nuevo hoy!") && c.includes("¿Qué onda activamos")) return true;
   if (c.includes("¿En qué onda trabajamos hoy?")) return true;
   if (c.includes("¿Con qué Onda seguimos hoy?")) return true;
-  if (c.includes("Te doy la bienvenida a Onda") || c.includes("¿Por qué Onda te gustaría empezar")) return true;
+  if (c.includes("Te doy la bienvenida a Onda") || c.includes(MAIN_WELCOME_CLOSING_LEGACY) || c.includes(MAIN_WELCOME_CLOSING)) return true;
   return false;
 }
 

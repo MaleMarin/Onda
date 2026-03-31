@@ -14,6 +14,7 @@ import {
   getWelcomeWithTema,
   getMessageAfterPickerChoice,
   isStalePickerGreeting,
+  migrateMainWelcomeClosingCopy,
   MAIN_WELCOME,
   EJE_CONFIGS,
   EJE_MENU_OPTIONS,
@@ -170,7 +171,11 @@ export function useUserCheck(): UserCheckResult | null {
         ) {
           if (isWithinSameSession(r.savedAt)) {
             // Misma sesión: restaurar y no mostrar mensaje nuevo (scroll al final)
-            const sorted = sortMessagesByTimestamp(r.messages);
+            const sorted = sortMessagesByTimestamp(r.messages).map((m) =>
+              m.role === "model" && typeof m.content === "string"
+                ? { ...m, content: migrateMainWelcomeClosingCopy(m.content) }
+                : m
+            );
             const inferred = inferEjeFromMessagesStatic(sorted);
             const restoredEje = inferred ?? r.currentEje ?? null;
             setResult({
