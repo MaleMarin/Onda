@@ -49,7 +49,9 @@ export function ondaStyles(t: OndaTheme) {
     shell: {
       ...t.fx.crystal,
       background: "#ffffff",
-      width: "min(100%, min(720px, 92vw))",
+      /** 100% + maxWidth evita scroll horizontal en iframes móviles (vw a veces usa el viewport del padre). */
+      width: "100%",
+      maxWidth: "min(720px, 100%)",
       flex: 1,
       minHeight: 0,
       borderRadius: 28,

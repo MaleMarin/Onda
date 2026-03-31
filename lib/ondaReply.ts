@@ -2,7 +2,7 @@ import OpenAI from "openai";
 import Anthropic from "@anthropic-ai/sdk";
 import { GoogleGenAI } from "@google/genai";
 import { EjeOnda } from "../content/types";
-import { EJE_PROMPTS, FILTRO_AUDITORIA_Y_CONSTITUCION, FRASES_BLINDAJE_POR_EJE, BLINDAJE_WHATSAPP_POR_EJE, INSTRUCCION_WHATSAPP, PROTOCOLO_CERO_ALUCINACION, CAPA_CONTEXTO_GLOBAL, MANDATO_NO_ALUCINACION, REGLA_VALIDACION_RIGOR_FUENTES, REGLA_VALIDACION_NEUTRALIDAD, REGLA_PREGUNTAS_SEGUIMIENTO, INTUICION_GLOBAL_GRAFEO, INTUICION_POR_EJE, FUENTES_ONDA_PARA_RESPUESTA, FUENTES_ONDA_EJES_LATAM_AMI, PRINCIPIO_CONOCIMIENTO_TOTAL, REGLAS_FUENTES_Y_VERIFICACION, REGLAS_EJES_LATAM_AMI } from "../content/shared";
+import { EJE_PROMPTS, FILTRO_AUDITORIA_Y_CONSTITUCION, FRASES_BLINDAJE_POR_EJE, BLINDAJE_WHATSAPP_POR_EJE, INSTRUCCION_WHATSAPP, PROTOCOLO_CERO_ALUCINACION, CAPA_CONTEXTO_GLOBAL, MANDATO_NO_ALUCINACION, REGLA_VALIDACION_RIGOR_FUENTES, REGLA_VALIDACION_NEUTRALIDAD, REGLA_PREGUNTAS_SEGUIMIENTO, INTUICION_GLOBAL_GRAFEO, INTUICION_POR_EJE, FUENTES_ONDA_PARA_RESPUESTA, FUENTES_ONDA_EJES_LATAM_AMI, ECOSISTEMA_DIGITAL_LATAM_MEDIOS, PRINCIPIO_CONOCIMIENTO_TOTAL, REGLAS_FUENTES_Y_VERIFICACION, REGLAS_EJES_LATAM_AMI } from "../content/shared";
 import {
   RAW_A_MANO_FULL,
   RAW_CIVITA_FULL,
@@ -488,6 +488,8 @@ ${REGLAS_FUENTES_Y_VERIFICACION}
 
 ${REGLAS_EJES_LATAM_AMI}
 
+${ECOSISTEMA_DIGITAL_LATAM_MEDIOS}
+
 ${CAPA_CONTEXTO_GLOBAL}
 
 ${MANDATO_NO_ALUCINACION}
@@ -539,9 +541,9 @@ ${REGLA_PREGUNTAS_SEGUIMIENTO}
 
 🛑 RECOMENDAR MATERIAL EXTERNO: Cuando recomiendes o cites material de otro lugar (módulo "AI Literacy", "Teaching Resources", recurso de una organización, etc.), SIEMPRE incluye el enlace directo (URL) a ese material. Está PROHIBIDO decir "usa el módulo X del News Literacy Project" o "referencia los recursos de Y" sin dar la URL. Si conoces el enlace oficial (lista de fuentes o conocimiento), escríbelo en formato [texto](URL) para que sea clicable. Si el material está en otro idioma (ej. inglés), puedes traducirlo o resumirlo y entregarlo al usuario en español (o su idioma), y aun así incluir el enlace al original para que pueda consultarlo. Resumen: cada recurso externo que menciones debe llevar su link; y si hace falta, traduce o resume el contenido y entrégalo junto con el enlace.
 
-🔗 REGLA DE ENLACES OBLIGATORIOS (NO NEGOCIABLE): Cada vez que menciones un medio de comunicación, sitio web o fuente (ej. El Mercurio, BBC, Reuters), DEBES incluir la URL en formato Markdown [Nombre](https://...). Está PROHIBIDO escribir solo "te recomiendo consultar El Mercurio, La Tercera, BBC Mundo" sin enlaces. Formato correcto: [El Mercurio](https://www.emol.com), [BBC Mundo](https://www.bbc.com/mundo). Si recomiendas medios, cada uno con su link.
+🔗 REGLA DE ENLACES OBLIGATORIOS (NO NEGOCIABLE): Cada vez que menciones un medio de comunicación, sitio web o fuente, DEBES incluir la URL en formato Markdown [Nombre](https://...). Está PROHIBIDO listar medios sin enlaces. Ejemplos: [CIPER Chile](https://www.ciperchile.cl/), [Infobae](https://www.infobae.com/), [BBC Mundo](https://www.bbc.com/mundo). Si recomiendas medios, cada uno con su link.
 
-📰 NOTICIAS POR PAÍS Y FECHA: Cuando pregunten por noticias de un país (Chile, Argentina, México, España, cualquier país) o por una fecha: (1) Usa SIEMPRE el CONTEXTO_DE_ACTUALIDAD que te inyecta el sistema (búsqueda web en fuentes fiables). Si no tienes el dato, ese contexto es tu fuente; está PROHIBIDO decir "no tengo información en tiempo real" o "no tengo acceso a tiempo real". (2) Si sugieres medios para informarse, NUNCA los cites sin URL: cada medio en formato [Nombre](URL).
+📰 NOTICIAS POR PAÍS Y FECHA: Cuando pregunten por noticias de un país (Chile, Argentina, México, España, cualquier país) o por una fecha: (1) Usa SIEMPRE el CONTEXTO_DE_ACTUALIDAD que te inyecta el sistema (búsqueda web en fuentes fiables). Si no tienes el dato, ese contexto es tu fuente; está PROHIBIDO decir "no tengo información en tiempo real" o "no tengo acceso a tiempo real". (2) Si sugieres medios para informarse, NUNCA los cites sin URL: cada medio en formato [Nombre](URL). (3) Para América Latina y el Caribe (noticias, IA, tecnología, actualidad regional), prioriza el directorio ECOSISTEMA DIGITAL LATAM / CARIBE del bloque anterior; no te quedes solo en prensa tradicional. Invita a comparar dos fuentes.
 
 🇨🇱 UF, IPC Y INDICADORES CHILE: Cuando pregunten por la UF, IPC, UTM o "valor hoy" de indicadores del Banco Central de Chile: (1) Da el valor actual o más reciente que conozcas (tu conocimiento incluye datos económicos actualizados) y aclara que se actualiza diariamente; si no tienes el valor exacto del día, dilo y da igualmente el enlace oficial. (2) SIEMPRE incluye el enlace al Banco Central en formato clicable: [Banco Central de Chile](https://www.bcentral.cl/). Prohibido recomendar "consultar el Banco Central" sin poner la URL.
 
@@ -595,7 +597,7 @@ export function buildOndaSystemContent(options: {
       : "";
   const sourcesBlock =
     includeSourcesList === true
-      ? `\n\n📚 EL USUARIO PIDIÓ FUENTES. Incluí al final una sección "Fuentes" o "Referencias" usando SOLO las listas oficiales ONDA:\n\n--- Lista de 50 fuentes ---\n${FUENTES_ONDA_PARA_RESPUESTA}\n\n--- 50 fuentes Gobernanza LatAm, IA Docentes, Convivencia, AMI ---\n${FUENTES_ONDA_EJES_LATAM_AMI}\n`
+      ? `\n\n📚 EL USUARIO PIDIÓ FUENTES. Incluí al final una sección "Fuentes" o "Referencias" usando SOLO las listas oficiales ONDA:\n\n--- Lista de 50 fuentes ---\n${FUENTES_ONDA_PARA_RESPUESTA}\n\n--- 50 fuentes Gobernanza LatAm, IA Docentes, Convivencia, AMI ---\n${FUENTES_ONDA_EJES_LATAM_AMI}\n\n--- Ecosistema digital LatAm/Caribe (medios nativos AMI) ---\n${ECOSISTEMA_DIGITAL_LATAM_MEDIOS}\n`
       : "";
   const noticiaBlock = articleContext != null ? NOTICIA_SYSTEM_BLOCK(articleContext) : "";
   const ragWebBlock =
@@ -730,7 +732,7 @@ export async function getOndaReply(
       : "";
   const sourcesBlock =
     includeSourcesList === true
-      ? `\n\n📚 EL USUARIO PIDIÓ FUENTES. Incluí al final una sección "Fuentes" o "Referencias" usando SOLO las listas oficiales ONDA (nombre + URL):\n\n--- Lista de 50 fuentes (agencias, ciencia, política digital, datos, AMI) ---\n${FUENTES_ONDA_PARA_RESPUESTA}\n\n--- 50 fuentes Gobernanza LatAm, IA Docentes, Convivencia Escolar, AMI ---\n${FUENTES_ONDA_EJES_LATAM_AMI}\n\nSi no pidió fuentes, no incluyas esta sección.\n`
+      ? `\n\n📚 EL USUARIO PIDIÓ FUENTES. Incluí al final una sección "Fuentes" o "Referencias" usando SOLO las listas oficiales ONDA (nombre + URL):\n\n--- Lista de 50 fuentes (agencias, ciencia, política digital, datos, AMI) ---\n${FUENTES_ONDA_PARA_RESPUESTA}\n\n--- 50 fuentes Gobernanza LatAm, IA Docentes, Convivencia Escolar, AMI ---\n${FUENTES_ONDA_EJES_LATAM_AMI}\n\n--- Ecosistema digital LatAm/Caribe (medios nativos AMI) ---\n${ECOSISTEMA_DIGITAL_LATAM_MEDIOS}\n\nSi no pidió fuentes, no incluyas esta sección.\n`
       : "";
   const noticiaBlock = articleContext != null ? NOTICIA_SYSTEM_BLOCK(articleContext) : "";
   const queryIntent = classifyIntent(userText);
@@ -828,7 +830,7 @@ export async function* getOndaReplyStream(
       : "";
   const sourcesBlock =
     includeSourcesList === true
-      ? `\n\n📚 EL USUARIO PIDIÓ FUENTES. Incluí al final una sección "Fuentes" o "Referencias" usando SOLO las listas oficiales ONDA:\n\n--- Lista de 50 fuentes ---\n${FUENTES_ONDA_PARA_RESPUESTA}\n\n--- 50 fuentes Gobernanza LatAm, IA Docentes, Convivencia, AMI ---\n${FUENTES_ONDA_EJES_LATAM_AMI}\n`
+      ? `\n\n📚 EL USUARIO PIDIÓ FUENTES. Incluí al final una sección "Fuentes" o "Referencias" usando SOLO las listas oficiales ONDA:\n\n--- Lista de 50 fuentes ---\n${FUENTES_ONDA_PARA_RESPUESTA}\n\n--- 50 fuentes Gobernanza LatAm, IA Docentes, Convivencia, AMI ---\n${FUENTES_ONDA_EJES_LATAM_AMI}\n\n--- Ecosistema digital LatAm/Caribe (medios nativos AMI) ---\n${ECOSISTEMA_DIGITAL_LATAM_MEDIOS}\n`
       : "";
   const noticiaBlock = articleContext != null ? NOTICIA_SYSTEM_BLOCK(articleContext) : "";
   const queryIntent = classifyIntent(userText);
@@ -988,7 +990,7 @@ export async function getOndaReplyWithImage(
       : "";
   const sourcesBlock =
     includeSourcesList === true
-      ? `\n\n📚 EL USUARIO PIDIÓ FUENTES. Incluí al final una sección "Fuentes" o "Referencias" usando SOLO las listas oficiales ONDA:\n\n--- Lista de 50 fuentes ---\n${FUENTES_ONDA_PARA_RESPUESTA}\n\n--- 50 fuentes Gobernanza LatAm, IA Docentes, Convivencia, AMI ---\n${FUENTES_ONDA_EJES_LATAM_AMI}\n`
+      ? `\n\n📚 EL USUARIO PIDIÓ FUENTES. Incluí al final una sección "Fuentes" o "Referencias" usando SOLO las listas oficiales ONDA:\n\n--- Lista de 50 fuentes ---\n${FUENTES_ONDA_PARA_RESPUESTA}\n\n--- 50 fuentes Gobernanza LatAm, IA Docentes, Convivencia, AMI ---\n${FUENTES_ONDA_EJES_LATAM_AMI}\n\n--- Ecosistema digital LatAm/Caribe (medios nativos AMI) ---\n${ECOSISTEMA_DIGITAL_LATAM_MEDIOS}\n`
       : "";
   const queryIntentImg = classifyIntent(userText);
   const intentContextBlockImg = buildIntentContextBlock(queryIntentImg);

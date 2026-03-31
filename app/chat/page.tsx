@@ -1080,13 +1080,22 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
     ...(currentEje === null ? { justifyContent: "flex-start", alignItems: "center" } : {}),
   };
 
-  /** En embed: mismo layout que local (altura fija) para que el scroll funcione dentro del área de mensajes. */
-  const embedWrap: CSSProperties | undefined = isEmbed ? pageStyle : undefined;
+  /** En embed: sin padding inline (lo da CSS + safe-area); ancho 100% para móvil/Wix sin scroll horizontal. */
+  const embedWrap: CSSProperties | undefined = isEmbed
+    ? {
+        ...S.page,
+        padding: 0,
+        width: "100%",
+        maxWidth: "100%",
+        overflowX: "hidden",
+        boxSizing: "border-box",
+      }
+    : undefined;
   /** Marco neumórfico en embed: ocupa el espacio disponible (flex:1 minHeight:0) y es contenedor flex para que el shell tenga altura acotada y el área de mensajes haga scroll. */
   const embedFrameStyle: CSSProperties | undefined = isEmbed
     ? {
         width: "100%",
-        maxWidth: 720,
+        maxWidth: "100%",
         margin: "0 auto",
         borderRadius: 28,
         overflow: "hidden",
@@ -1096,6 +1105,7 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
         minHeight: 0,
         display: "flex",
         flexDirection: "column",
+        boxSizing: "border-box",
       }
     : undefined;
 
@@ -1302,7 +1312,10 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
         flex: 1,
         minHeight: 0,
         width: "100%",
+        maxWidth: "100%",
+        minWidth: 0,
         alignItems: "center",
+        boxSizing: "border-box",
       }}
     >
     <div className="onda-shell" style={shellStyle}>
@@ -1890,7 +1903,7 @@ export default function ChatPage({ initialEje = null }: ChatPageProps) {
 
   if (isEmbed) {
     return (
-      <div ref={embedWrapRef} className="onda-page-wrap" style={embedWrap}>
+      <div ref={embedWrapRef} className="onda-page-wrap" data-onda-embed="1" style={embedWrap}>
         <div className="onda-embed-frame" style={embedFrameStyle}>
           {content}
         </div>

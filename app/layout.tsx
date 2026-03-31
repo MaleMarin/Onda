@@ -12,6 +12,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 5,
   userScalable: true,
+  viewportFit: "cover",
 };
 
 /** Cuerpo de mensajes: Inter, legible y neutro. */
@@ -33,7 +34,7 @@ const SEND_ORANGE = (typeof process !== "undefined" && process.env.NEXT_PUBLIC_O
 
 const GLOBAL_CSS = `
 .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border-width:0}
-html,body{height:100%;margin:0;pointer-events:auto;touch-action:manipulation}
+html,body{height:100%;margin:0;pointer-events:auto;touch-action:manipulation;max-width:100%;overflow-x:hidden}
 body{-webkit-font-smoothing:antialiased;font-family:var(--font-onda-body),Inter,sans-serif;line-height:1.6;outline:none}
 /* Shell aislado: clics siempre llegan a botones/inputs. No añadir overlays ni ::before/::after que tapen. */
 .onda-shell{position:relative;z-index:1;isolation:isolate;pointer-events:auto}
@@ -76,11 +77,29 @@ button[data-onda-send]:focus{background:${SEND_ORANGE} !important;color:#fff !im
 .onda-messages-inner::-webkit-scrollbar{width:6px}
 .onda-messages-inner::-webkit-scrollbar-track{background:transparent}
 .onda-messages-inner::-webkit-scrollbar-thumb{background:rgba(0,0,0,0.2);border-radius:3px}
+/* Embed (Wix / Precisar): sin padding inline grande; bordes y safe-area en móvil */
+[data-onda-embed="1"]{
+  width:100%!important;
+  max-width:100%!important;
+  overflow-x:hidden!important;
+  box-sizing:border-box!important;
+  padding:max(8px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left))!important;
+}
+[data-onda-embed="1"] .onda-embed-frame{
+  width:100%!important;
+  max-width:100%!important;
+  box-sizing:border-box!important;
+  border-radius:min(24px, 5vw)!important;
+}
 /* Móvil: tipografía legible y zonas táctiles ≥44px */
 @media (max-width:480px){
   html{font-size:18px}
   .onda-shell button,.onda-shell [role="button"],.onda-shell label[for]{min-height:44px;min-width:44px}
   .onda-shell input{min-height:48px;font-size:1rem}
+  .onda-shell{border-radius:min(22px, 4vw)!important}
+  .onda-messages{margin:8px!important;border-radius:16px!important}
+  .onda-shell header{padding-left:14px!important;padding-right:14px!important}
+  .onda-page-wrap:not([data-onda-embed="1"]){padding:max(10px, env(safe-area-inset-top)) 12px max(14px, env(safe-area-inset-bottom)) 12px!important}
 }
 `;
 
