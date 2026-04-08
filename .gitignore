@@ -8,3 +8,10 @@ dist
 tmp
 coverage
 .env*.local
+artifacts/evals/latest.json
+artifacts/evals/latest.md
+artifacts/evals/history/
+artifacts/evals/ci-smoke/
+test-results/
+playwright-report/
+playwright/.cache/

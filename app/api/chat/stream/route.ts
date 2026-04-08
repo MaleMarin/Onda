@@ -34,6 +34,8 @@ import { generateRequestId } from "../../../../lib/telemetry";
 import { recordConversation } from "../../../../lib/auditStore";
 import { recordConversationImpact } from "../../../../lib/impactMetrics";
 import { getCachedResponse } from "../../../../lib/responseCache";
+import { parseUserPreferencesFromApi } from "../../../../lib/userPreferences";
+import { computeWebPlayAudioDecision } from "../../../../lib/playAudioContract";
 
 /** Tiempo máximo de ejecución del handler (Vercel: 60 en Hobby, hasta 300 en Pro). */
 export const maxDuration = 60;
@@ -139,6 +141,8 @@ export async function POST(req: Request) {
     const sessionHeader = req.headers.get("x-session-id")?.trim();
     const sessionBody = typeof body?.sessionId === "string" ? body.sessionId.trim() : "";
     const sessionId = sessionHeader || sessionBody || "anonymous";
+
+    const userPreferences = parseUserPreferencesFromApi(body?.userPreferences);
 
     let memoryBlock = "";
     if (sessionId !== "anonymous") {
@@ -424,6 +428,24 @@ export async function POST(req: Request) {
             console.warn("[chat/stream] context fetch failed, continuing without:", contextErr);
             extraContext = undefined;
           }
+
+          const emitPlayAudioContract = (rawAssistant: string, userMsg: string) => {
+            const p = parseResponseFormat(rawAssistant);
+            const dec = computeWebPlayAudioDecision({
+              outputMode: userPreferences.outputMode,
+              userMessage: userMsg,
+              parsed: p,
+            });
+            controller.enqueue(
+              encoder.encode(
+                JSON.stringify({
+                  playAudio: dec.play,
+                  playAudioReason: dec.reason,
+                }) + "\n"
+              )
+            );
+          };
+
           controller.enqueue(
             encoder.encode(
               JSON.stringify({
@@ -439,10 +461,11 @@ export async function POST(req: Request) {
               eje,
               history.length > 0 ? history : null,
               includeSources,
-              undefined,
+              "web",
               extraContext || undefined,
               memoryBlock || undefined,
-              telemetryCtx
+              telemetryCtx,
+              userPreferences
             );
             assistantTextForMemory = parseResponseFormat(fullReply).text.trim();
             for (const chunk of chunkText(fullReply)) {
@@ -473,6 +496,7 @@ export async function POST(req: Request) {
                 console.warn("[chat/stream] image generation failed:", imgErr);
               }
             }
+            emitPlayAudioContract(fullReply, message.trim());
             try {
               const tema = await generateTemaFromExchange(message || "¿Qué ves en esta imagen?", fullReply);
               if (tema) controller.enqueue(encoder.encode(JSON.stringify({ tema }) + "\n"));
@@ -487,9 +511,10 @@ export async function POST(req: Request) {
               includeSources,
               articleContext,
               extraContext ?? null,
-              undefined,
+              "web",
               memoryBlock || undefined,
-              telemetryCtx
+              telemetryCtx,
+              userPreferences
             )) {
               partialSoFar += chunk;
               controller.enqueue(encoder.encode(JSON.stringify({ text: chunk }) + "\n"));
@@ -520,6 +545,7 @@ export async function POST(req: Request) {
                 console.warn("[chat/stream] image generation failed:", imgErr);
               }
             }
+            emitPlayAudioContract(partialSoFar, message.trim());
             try {
               const tema = await generateTemaFromExchange(query, partialSoFar);
               if (tema) controller.enqueue(encoder.encode(JSON.stringify({ tema }) + "\n"));

@@ -47,15 +47,13 @@ import {
   WA_OPT_OUT_ACK,
 } from "../../../lib/waCompliance";
 import { generateRequestId } from "../../../lib/telemetry";
+import { parseWaInclusiveCommand } from "../../../lib/waInclusivePreferences";
+import { formatWebhookPostBlockedMessage, getWhatsAppEnvReport } from "../../../lib/waWebhookEnv";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const isDev = process.env.NODE_ENV === "development";
-
-const MISSING_WEBHOOK_SECRET_MSG =
-  "CONFIGURACIÓN FALTANTE: WHATSAPP_WEBHOOK_SECRET no está definida.\n" +
-  "El webhook de WhatsApp no puede operar sin esta variable.";
 
 const WA_IMAGE_VALIDATION_REPLY =
   "No pude leer esa imagen. ¿Podés enviarla en JPG, PNG o WebP de menos de 5MB?";
@@ -105,20 +103,40 @@ export async function GET(req: Request) {
 
   // Si no es una verificación, mostrar diagnóstico
   if (!mode && !token) {
+    const waReport = getWhatsAppEnvReport();
+    const origin = new URL(req.url).origin;
     return new Response(
       JSON.stringify(
         {
           status: "ONDA WhatsApp Bot",
-          message: "Webhook funcionando correctamente",
-          url: "Usa esta URL en Meta: " + new URL(req.url).origin + "/api/webhook",
-          env_check: {
+          message: "Diagnóstico del endpoint (GET). Para POST firmado revisá `whatsapp` y `health_url`.",
+          url_webhook: `${origin}/api/webhook`,
+          health_url: `${origin}/api/wa/health`,
+          whatsapp: waReport,
+          env_flags: {
+            WHATSAPP_WEBHOOK_SECRET: !!process.env.WHATSAPP_WEBHOOK_SECRET?.trim(),
             WHATSAPP_VERIFY_TOKEN: !!process.env.WHATSAPP_VERIFY_TOKEN,
             WHATSAPP_ACCESS_TOKEN: !!process.env.WHATSAPP_ACCESS_TOKEN,
             WHATSAPP_PHONE_NUMBER_ID: !!process.env.WHATSAPP_PHONE_NUMBER_ID,
             WHATSAPP_APP_SECRET_OR_META_APP_SECRET: !!(process.env.WHATSAPP_APP_SECRET || process.env.META_APP_SECRET),
             OPENAI_API_KEY: !!process.env.OPENAI_API_KEY,
           },
-          security_note: "En producción configura WHATSAPP_APP_SECRET (o META_APP_SECRET) para verificar la firma del webhook.",
+          documentation: {
+            checklist_operativo: "docs/META-WHATSAPP-CHECKLIST.md",
+            detalle_tecnico: "docs/WHATSAPP-OPERACION.md",
+          },
+          meta_vs_repo: {
+            repo_must_provide: [
+              "WHATSAPP_WEBHOOK_SECRET — firma de cada POST (x-hub-signature-256). Sin esto el servidor rechaza el cuerpo.",
+              "WHATSAPP_ACCESS_TOKEN y WHATSAPP_PHONE_NUMBER_ID — para enviar respuestas por la API de Meta.",
+              "WHATSAPP_VERIFY_TOKEN — debe coincidir con el token que configurás al suscribir el webhook en Meta.",
+            ],
+            meta_must_provide: [
+              "App de Meta + número de WhatsApp Business aprobado según sus políticas.",
+              "URL pública HTTPS de este webhook y suscripción a eventos `messages`.",
+              "Mismo secreto en Meta (App Secret / configuración de webhook) que en WHATSAPP_WEBHOOK_SECRET.",
+            ],
+          },
         },
         null,
         2
@@ -137,21 +155,41 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const webhookSecret = process.env.WHATSAPP_WEBHOOK_SECRET?.trim();
   if (!webhookSecret) {
-    console.error(MISSING_WEBHOOK_SECRET_MSG);
-    return new Response(MISSING_WEBHOOK_SECRET_MSG, {
-      status: 500,
-      headers: { "Content-Type": "text/plain; charset=utf-8" },
-    });
+    const report = getWhatsAppEnvReport();
+    const body = formatWebhookPostBlockedMessage(report);
+    console.error("[webhook] POST bloqueado:", report.missingForWebhookPost.join(", "));
+    return new Response(
+      JSON.stringify({
+        error: "configuration",
+        code: "MISSING_WHATSAPP_WEBHOOK_SECRET",
+        message: body,
+        missing: report.missingForWebhookPost,
+        health_url_hint: "GET /api/wa/health para el informe completo.",
+        documentation: { checklist: "docs/META-WHATSAPP-CHECKLIST.md" },
+      }),
+      {
+        status: 503,
+        headers: { "Content-Type": "application/json; charset=utf-8" },
+      }
+    );
   }
 
   const rawBody = await req.text();
   const signature = req.headers.get("x-hub-signature-256");
   if (!verifyWebhookSignature(rawBody, signature, webhookSecret)) {
     console.error("❌ Firma de webhook inválida o ausente");
-    return new Response(JSON.stringify({ error: "Unauthorized: invalid signature" }), {
-      status: 401,
-      headers: { "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({
+        error: "unauthorized",
+        code: "INVALID_WEBHOOK_SIGNATURE",
+        message:
+          "El header x-hub-signature-256 no coincide con el cuerpo. Revisá WHATSAPP_WEBHOOK_SECRET y que el proxy no altere el body. Checklist: docs/META-WHATSAPP-CHECKLIST.md",
+      }),
+      {
+        status: 401,
+        headers: { "Content-Type": "application/json; charset=utf-8" },
+      }
+    );
   }
 
   console.log("[webhook] POST recibido");
@@ -304,8 +342,14 @@ export async function POST(req: Request) {
                       }
                     }
                     waUserTurn = text?.trim() || "¿Qué ves en esta imagen? Responde según ONDA.";
+                    const imgCmd = parseWaInclusiveCommand(from, waUserTurn);
+                    if (imgCmd.helpReply) await sendWhatsAppText(from, imgCmd.helpReply);
+                    if (!imgCmd.outgoingText.trim()) {
+                      return { response: null, waUserTurn: waUserTurn };
+                    }
+                    const imgText = imgCmd.outgoingText.trim();
                     response = await getOndaReplyWithImage(
-                      waUserTurn,
+                      imgText,
                       media.dataUrl,
                       null,
                       null,
@@ -313,7 +357,8 @@ export async function POST(req: Request) {
                       "whatsapp",
                       undefined,
                       memoryBlock || undefined,
-                      telemetryWa
+                      telemetryWa,
+                      imgCmd.prefs
                     );
                   }
                 } else {
@@ -350,17 +395,24 @@ export async function POST(req: Request) {
                       await sendWhatsAppText(from, audioSafe.response);
                       return { response: null, waUserTurn: "" };
                     }
-                    waUserTurn = userMessage;
+                    const auCmd = parseWaInclusiveCommand(from, userMessage);
+                    if (auCmd.helpReply) await sendWhatsAppText(from, auCmd.helpReply);
+                    if (!auCmd.outgoingText.trim()) {
+                      return { response: null, waUserTurn: userMessage };
+                    }
+                    const audioText = auCmd.outgoingText.trim();
+                    waUserTurn = audioText;
                     response = await getOndaReply(
-                      userMessage,
+                      audioText,
                       null,
                       null,
-                      wantsSources(userMessage),
+                      wantsSources(audioText),
                       null,
                       "whatsapp",
                       undefined,
                       memoryBlock || undefined,
-                      telemetryWa
+                      telemetryWa,
+                      auCmd.prefs
                     );
                   }
                 } else {
@@ -380,14 +432,20 @@ export async function POST(req: Request) {
             else if (text && (type === "text" || !type)) {
               if (isDev) console.log(`💬 Mensaje recibido de ${from}: ${text}`);
               try {
-                const textSafe = checkUserMessage(text.trim());
+                const txCmd = parseWaInclusiveCommand(from, text.trim());
+                if (txCmd.helpReply) await sendWhatsAppText(from, txCmd.helpReply);
+                if (!txCmd.outgoingText.trim()) {
+                  return { response: null, waUserTurn: text.trim() };
+                }
+                const textForOnda = txCmd.outgoingText.trim();
+                const textSafe = checkUserMessage(textForOnda);
                 if (!textSafe.safe && textSafe.response) {
                   await sendWhatsAppText(from, textSafe.response);
                   return { response: null, waUserTurn: "" };
                 }
-                waUserTurn = text.trim();
+                waUserTurn = textForOnda;
                 response = await getOndaReply(
-                  text,
+                  textForOnda,
                   null,
                   null,
                   includeSources,
@@ -395,7 +453,8 @@ export async function POST(req: Request) {
                   "whatsapp",
                   undefined,
                   memoryBlock || undefined,
-                  telemetryWa
+                  telemetryWa,
+                  txCmd.prefs
                 );
               } catch (err) {
                 console.error("❌ Error procesando mensaje:", err);

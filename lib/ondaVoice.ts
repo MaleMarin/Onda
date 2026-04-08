@@ -180,36 +180,63 @@ function pick<T>(items: readonly T[]): T {
   return items[Math.floor(Math.random() * items.length)]!;
 }
 
+export type DelightLocale = "es-LATAM" | "pt-BR";
+
 /**
  * Cierre opcional para web: no aplica en WhatsApp ni con intents sensibles.
+ * Con `locale === "pt-BR"` el cierre va en portugués (sin mezclar con español).
  */
 export function buildDelightMoment(
   intent: ConversationIntent,
   canal?: CanalReply | null,
-  confidence?: "high" | "low"
+  confidence?: "high" | "low",
+  locale?: DelightLocale | null
 ): string {
   if (canal === "whatsapp") return "";
   if (intent === "emotional" || intent === "disinformation") return "";
 
+  const pt = locale === "pt-BR";
+
   if (intent === "fact_check") {
-    return pick([
-      "\n\n💡 *Dato para tu kit mental:* Los verificadores de hechos usan esta misma lógica que acabas de aplicar. Ya tienes el instinto, solo faltaba el método.",
-      "\n\n💡 *Dato para tu kit mental:* Preguntar, contrastar y no quedarte con el titular es exactamente el hábito que entrenan los equipos de verificación.",
-    ] as const);
+    return pick(
+      pt
+        ? ([
+            "\n\n💡 *Dado para o seu kit mental:* Os verificadores de factos usam a mesma lógica que você acabou de aplicar. Você já tem o instinto; faltava o método.",
+            "\n\n💡 *Dado para o seu kit mental:* Perguntar, contrastar e não ficar só na manchete é o hábito que equipes de verificação treinam o tempo todo.",
+          ] as const)
+        : ([
+            "\n\n💡 *Dato para tu kit mental:* Los verificadores de hechos usan esta misma lógica que acabas de aplicar. Ya tienes el instinto, solo faltaba el método.",
+            "\n\n💡 *Dato para tu kit mental:* Preguntar, contrastar y no quedarte con el titular es exactamente el hábito que entrenan los equipos de verificación.",
+          ] as const)
+    );
   }
 
   if (intent === "explanation") {
-    return pick([
-      "\n\n🔍 *¿Sabías que...?* Esta pregunta que hiciste es de las que más circulan en talleres de alfabetización mediática. Mucha gente tiene la misma duda y pocos se animan a preguntar.",
-      "\n\n🔍 *¿Sabías que...?* Formular la duda así ya es un paso de alfabetización: nombrar lo que no entiendes es la mitad del camino.",
-    ] as const);
+    return pick(
+      pt
+        ? ([
+            "\n\n🔍 *Você sabia...?* Essa pergunta é das que mais aparecem em oficinas de letramento midiático. Muita gente tem a mesma dúvida e poucos se arriscam a perguntar.",
+            "\n\n🔍 *Você sabia...?* Formular a dúvida assim já é letramento: nomear o que você não entende é metade do caminho.",
+          ] as const)
+        : ([
+            "\n\n🔍 *¿Sabías que...?* Esta pregunta que hiciste es de las que más circulan en talleres de alfabetización mediática. Mucha gente tiene la misma duda y pocos se animan a preguntar.",
+            "\n\n🔍 *¿Sabías que...?* Formular la duda así ya es un paso de alfabetización: nombrar lo que no entiendes es la mitad del camino.",
+          ] as const)
+    );
   }
 
   if (intent === "action") {
-    return pick([
-      "\n\n✅ *Siguiente nivel:* Si esto te resultó útil, en Precisar tenemos recursos para profundizar. Visita precisar.net/saberes",
-      "\n\n✅ *Siguiente nivel:* Dar pasos concretos es lo que diferencia el pánico del criterio; si quieres más herramientas, explora precisar.net/saberes",
-    ] as const);
+    return pick(
+      pt
+        ? ([
+            "\n\n✅ *Próximo nível:* Se isso foi útil, a Precisar tem materiais para aprofundar. Visite precisar.net/saberes",
+            "\n\n✅ *Próximo nível:* Dar passos concretos é o que separa o pânico do critério; se quiser mais ferramentas, explore precisar.net/saberes",
+          ] as const)
+        : ([
+            "\n\n✅ *Siguiente nivel:* Si esto te resultó útil, en Precisar tenemos recursos para profundizar. Visita precisar.net/saberes",
+            "\n\n✅ *Siguiente nivel:* Dar pasos concretos es lo que diferencia el pánico del criterio; si quieres más herramientas, explora precisar.net/saberes",
+          ] as const)
+    );
   }
 
   if (confidence === "high") return "";

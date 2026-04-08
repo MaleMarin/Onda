@@ -1,5 +1,5 @@
-# CI para Onda (ondabot): raíz del repo, Next.js + TypeScript + Vitest.
-# No usar working-directory de otro proyecto (p. ej. mi-politica-digital).
+# CI en PR/push a main: verificación base + validación rápida (E2E + evals smoke).
+# Las evaluaciones completas (75 casos + modelo) están en evals-full.yml (manual o nocturna).
 
 name: CI
 
@@ -9,7 +9,6 @@ on:
   pull_request:
     branches: [main]
 
-# Evita que un push nuevo marque el anterior como "cancelled" (check rojo confuso).
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
@@ -47,3 +46,43 @@ jobs:
 
       - name: Build Next.js
         run: npm run build
+
+  validate-quick:
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      NODE_OPTIONS: --max-old-space-size=6144
+      NEXT_TELEMETRY_DISABLED: "1"
+      CI: "1"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Instalar dependencias
+        run: npm ci --no-audit --no-fund
+
+      - name: Playwright (Firefox)
+        run: npx playwright install --with-deps firefox
+
+      - name: E2E /chat
+        run: npm run test:e2e
+
+      - name: Evals smoke (sin API de modelo)
+        run: npm run evals:ci
+
+      - name: Subir informe evals smoke (opcional)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: evals-ci-smoke
+          path: artifacts/evals/ci-smoke/
+          if-no-files-found: ignore

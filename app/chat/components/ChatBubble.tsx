@@ -3,8 +3,9 @@
 import { useState, useEffect, useCallback } from "react";
 import type { CSSProperties } from "react";
 import type { Message } from "@/content/types";
-import { ONDA_MICROCOPY } from "@/content/shared";
 import { MENU_QUESTIONS } from "@/content/menuQuestions";
+import type { OndaChatLocale } from "@/lib/userPreferences";
+import { getChatMicrocopy } from "@/lib/chatI18n";
 import type { OndaTheme } from "@/lib/ondaTheme";
 import { ondaStyles } from "@/lib/ondaStyles";
 
@@ -44,6 +45,8 @@ interface ChatBubbleProps {
   /** true mientras se genera o reproduce el audio (evita doble clic y segunda voz). */
   isTTSPlaying?: boolean;
   theme: OndaTheme;
+  /** Idioma de microcopy (compartir, menú intro, etc.). */
+  uiLocale?: OndaChatLocale;
   /** En la primera vista, la burbuja de bienvenida crece para llenar el espacio (sin huecos). */
   fillHeight?: boolean;
   /** Cuando el mensaje es intro de menú (3 preguntas), clic en un botón: envía ese texto o abre el input (frase libre). */
@@ -52,6 +55,8 @@ interface ChatBubbleProps {
   onFeedback?: (messageId: string, vote: "up" | "down") => void;
   /** true = saludo o error: oculta Escuchar, Compartir, Copiar/Descargar y Feedback. Elimina ruido visual de raíz. */
   hideActions?: boolean;
+  /** No cargar PNG de guía; solo enlace liviano (modo bajo consumo). */
+  lowBandwidth?: boolean;
 }
 
 const LINK_REGEX = /\[([^\]]*)\]\((https?:\/\/[^)\s]+)\)/g;
@@ -128,17 +133,32 @@ function formatContent(text: string): React.ReactNode[] {
   return out;
 }
 
-export function ChatBubble({ message, color, compact, onPlayTTS, onStopTTS, isTTSPlaying, theme: t, fillHeight, onMenuIntroChipClick, onFeedback, hideActions }: ChatBubbleProps) {
+export function ChatBubble({
+  message,
+  color,
+  compact,
+  onPlayTTS,
+  onStopTTS,
+  isTTSPlaying,
+  theme: t,
+  uiLocale = "es-LATAM",
+  fillHeight,
+  onMenuIntroChipClick,
+  onFeedback,
+  hideActions,
+  lowBandwidth,
+}: ChatBubbleProps) {
   const S = ondaStyles(t);
+  const mc = getChatMicrocopy(uiLocale);
   const [copied, setCopied] = useState(false);
   const [feedbackSent, setFeedbackSent] = useState<"up" | "down" | null>(null);
   const isUser = message.role === "user";
   const isEmpty = message.role === "model" && message.content === "";
   const rawContent = message.content ?? "";
   const text = isEmpty
-    ? ONDA_MICROCOPY.typing
-    : hideActions && rawContent.includes(ONDA_MICROCOPY.menuIntroFreeText)
-      ? rawContent.replace(ONDA_MICROCOPY.menuIntroFreeText, "").replace(/\n{3,}/g, "\n\n").trim()
+    ? mc.typing
+    : hideActions && rawContent.includes(mc.menuIntroFreeText)
+      ? rawContent.replace(mc.menuIntroFreeText, "").replace(/\n{3,}/g, "\n\n").trim()
       : rawContent;
   const showCopyDownload = message.role === "model" && message.content && hasTable(message.content);
   const showFuenteVerificada = message.role === "model" && message.content && hasMarkdownLinks(message.content);
@@ -288,14 +308,27 @@ export function ChatBubble({ message, color, compact, onPlayTTS, onStopTTS, isTT
         </div>
       )}
       {message.guideId && message.role === "model" && (
-        <div style={imgWrapStyle}>
-          <img src={`/guides/${message.guideId}.png`} alt={`Guía ${message.guideId}`} style={{ width: "100%", height: "auto", display: "block" }} />
-        </div>
+        lowBandwidth ? (
+          <p style={{ margin: "0 0 8px", fontSize: "0.9375rem" }}>
+            <a
+              href={`/guides/${message.guideId}.png`}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: "inherit", fontWeight: 600, textDecoration: "underline" }}
+            >
+              Abrir guía ({message.guideId})
+            </a>
+          </p>
+        ) : (
+          <div style={imgWrapStyle}>
+            <img src={`/guides/${message.guideId}.png`} alt={`Guía ilustrada: ${message.guideId}`} style={{ width: "100%", height: "auto", display: "block" }} loading="lazy" />
+          </div>
+        )
       )}
       <div style={isUser ? userBubbleStyle : botBubbleStyle}>
         {showAsMenuIntroButtons && menuIntroQuestions ? (
           <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 2 }}>
-            {[...menuIntroQuestions, ONDA_MICROCOPY.menuIntroFreeText].map((label) => (
+            {[...menuIntroQuestions, mc.menuIntroFreeText].map((label) => (
               <button
                 key={label}
                 type="button"
@@ -328,19 +361,19 @@ export function ChatBubble({ message, color, compact, onPlayTTS, onStopTTS, isTT
                 onClick={() => (isTTSPlaying && onStopTTS ? onStopTTS() : onPlayTTS!(message.content))}
                 style={{ ...ttsStyle, opacity: isTTSPlaying ? 0.9 : 1, cursor: "pointer" }}
               >
-                {isTTSPlaying ? "⏹ Parar audio" : "🔊 Escuchar"}
+                {isTTSPlaying ? mc.stopAudio : mc.listenAudio}
               </button>
             )}
             {showCompartir && (
               <button type="button" onClick={handleCopy} style={{ ...ttsStyle, marginTop: 6 }}>
-                {copied ? ONDA_MICROCOPY.compartirCopiado : ONDA_MICROCOPY.compartir}
+                {copied ? mc.compartirCopiado : mc.compartir}
               </button>
             )}
           </>
         )}
         {showFuenteVerificada && !showAsMenuIntroButtons && (
           <span style={{ marginTop: 6, fontSize: "0.8125rem", color: t.c.muted, display: "inline-block" }}>
-            ✓ {ONDA_MICROCOPY.fuenteVerificada}
+            ✓ {mc.fuenteVerificada}
           </span>
         )}
         {showCopyDownload && showActionButtons && (

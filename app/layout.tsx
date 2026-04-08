@@ -69,7 +69,38 @@ button[data-onda-send]:focus{background:${SEND_ORANGE} !important;color:#fff !im
 .onda-picker-highlight [data-onda-picker-composer]{animation:ondaPickerPulse .85s ease-in-out 3}
 .bubble-in{animation:bubbleIn .28s cubic-bezier(.25,.75,.2,1) both}
 .onda-shell input::placeholder{color:#5a5d62;opacity:0.9;font-weight:500;letter-spacing:0.02em}
-.onda-shell *,.onda-shell *:focus,.onda-shell *:focus-visible{outline:none !important}
+/* Foco visible en controles (accesibilidad); el outline global se anula solo sin :focus-visible */
+.onda-shell *:focus:not(:focus-visible){outline:none !important}
+.onda-shell button:focus-visible,
+.onda-shell [role="button"]:focus-visible,
+.onda-shell a:focus-visible,
+.onda-shell input:focus-visible,
+.onda-shell select:focus-visible,
+.onda-shell textarea:focus-visible,
+.onda-shell [tabindex]:not([tabindex="-1"]):focus-visible{
+  outline:3px solid #2563eb !important;
+  outline-offset:2px !important;
+}
+.onda-skip-link{
+  position:absolute;
+  left:-9999px;
+  top:0;
+  z-index:10000;
+  padding:12px 16px;
+  background:#111;
+  color:#fff;
+  font-weight:600;
+  text-decoration:none;
+  border-radius:8px;
+  font-family:var(--font-onda-heading),Montserrat,sans-serif;
+}
+.onda-skip-link:focus,
+.onda-skip-link:focus-visible{
+  left:12px;
+  top:12px;
+  outline:3px solid #f59e0b !important;
+  outline-offset:2px !important;
+}
 .onda-page-wrap{outline:none;position:relative;z-index:0}
 /* Área de mensajes: flujo hacia abajo (arriba = viejo, abajo = nuevo), como WhatsApp */
 .onda-messages{min-height:0;display:flex;flex-direction:column;overflow:hidden;position:relative;z-index:1}
@@ -101,6 +132,8 @@ button[data-onda-send]:focus{background:${SEND_ORANGE} !important;color:#fff !im
   .onda-shell header{padding-left:14px!important;padding-right:14px!important}
   .onda-page-wrap:not([data-onda-embed="1"]){padding:max(10px, env(safe-area-inset-top)) 12px max(14px, env(safe-area-inset-bottom)) 12px!important}
 }
+/* Bajo consumo: menos sombras y animaciones en la carcasa del chat */
+.onda-shell[data-onda-low-bandwidth="1"] .bubble-in{animation:none!important}
 `;
 
 export default function RootLayout({

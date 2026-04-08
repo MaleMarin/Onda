@@ -251,11 +251,16 @@ export function isStalePickerGreeting(content: string): boolean {
   const c = (content ?? "").trim();
   if (!c) return false;
   if (c.includes("la última vez trabajamos")) return true;
+  if (c.includes("da última vez trabalhamos")) return true;
   if (c.includes("¿Seguimos trabajando en") && c.includes("evidencias")) return true;
+  if (c.includes("Continuamos trabalhando em") && c.includes("evidências")) return true;
   if (c.includes("¡Hola de nuevo hoy!") && c.includes("¿Qué onda activamos")) return true;
+  if (c.includes("Olá de novo hoje!") && c.includes("Qual onda ativamos")) return true;
   if (c.includes("¿En qué onda trabajamos hoy?")) return true;
+  if (c.includes("Em qual onda trabalhamos hoje?")) return true;
   if (c.includes("¿Con qué Onda seguimos hoy?")) return true;
   if (c.includes("Te doy la bienvenida a Onda") || c.includes(MAIN_WELCOME_CLOSING_LEGACY) || c.includes(MAIN_WELCOME_CLOSING)) return true;
+  if (c.includes("Dou as boas-vindas à Onda") || c.includes("Com qual Onda você quer começar")) return true;
   return false;
 }
 

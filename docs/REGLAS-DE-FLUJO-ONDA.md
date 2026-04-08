@@ -1,6 +1,6 @@
 # Reglas de flujo — Cómo funciona el bot Onda
 
-Resumen de la lógica de bienvenida y persistencia. Origen: `app/chat/page.tsx` (hook `useUserCheck()`).
+Resumen de la lógica de bienvenida y persistencia. Origen: `app/chat/ChatPageContent.tsx` (hook interno `useUserCheck()`).
 
 ---
 

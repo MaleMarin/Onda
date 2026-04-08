@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import ChatPage from "@/app/chat/page";
+import { ChatPageContent } from "@/app/chat/ChatPageContent";
 import { EjeOnda } from "@/content/types";
 
 type SearchParams = Promise<{ [key: string]: string | string[] | undefined }>;
@@ -26,7 +26,7 @@ export default async function Home({
       : null;
   return (
     <Suspense fallback={<ChatFallback />}>
-      <ChatPage initialEje={initialEje} />
+      <ChatPageContent initialEje={initialEje} />
     </Suspense>
   );
 }

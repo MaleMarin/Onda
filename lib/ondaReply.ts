@@ -32,8 +32,12 @@ import {
   withCircuitBreaker,
   CircuitOpenError,
 } from "@/lib/circuitBreaker";
+import { buildInclusivePromptLayer } from "@/content/inclusivePrompts";
+import type { OndaUserPreferences } from "@/lib/userPreferences";
+import { shouldSkipCacheForInclusivePrefs } from "@/lib/userPreferences";
 
 export { getVoiceProfile };
+export type { OndaUserPreferences } from "@/lib/userPreferences";
 export type { VoiceProfile } from "@/lib/ondaVoice";
 
 const MAX_TOKENS_RESPUESTA = 4000;
@@ -675,12 +679,14 @@ function shouldSkipResponseCache(opts: {
   articleContext?: ArticleContext | null;
   extraContext?: string | null;
   memoryContext?: string | null;
+  inclusivePreferences?: OndaUserPreferences | null;
 }): boolean {
   if (opts.history && opts.history.length > 0) return true;
   if (opts.includeSourcesList) return true;
   if (opts.articleContext != null) return true;
   if (opts.extraContext?.trim()) return true;
   if (opts.memoryContext?.trim()) return true;
+  if (shouldSkipCacheForInclusivePrefs(opts.inclusivePreferences)) return true;
   return false;
 }
 
@@ -720,7 +726,8 @@ export async function getOndaReply(
   canal?: CanalOnda,
   extraContext?: string | null,
   memoryContext?: string | null,
-  telemetry?: OndaTelemetryContext | null
+  telemetry?: OndaTelemetryContext | null,
+  inclusivePreferences?: OndaUserPreferences | null
 ): Promise<string> {
   const ejeContext =
     eje != null
@@ -742,7 +749,7 @@ export async function getOndaReply(
     extraContext && extraContext.trim()
       ? `\n\n--- CONTEXTO_DE_ACTUALIDAD (búsqueda web + RAG) ---\nEl sistema ya ejecutó búsqueda en fuentes fiables. Si usas cualquier dato de este bloque: (1) Marca cada afirmación con un número correlativo [1], [2], [3]... (2) Al final de la respuesta incluye la sección ### 📚 Fuentes de Autoridad listando cada número con Nombre: "Título" (URL). Si no tienes el dato en tu conocimiento, USA ESTE CONTEXTO. PROHIBIDO decir "no tengo información en tiempo real".\n\n${sanitizeExternalContent(extraContext.trim())}\n`
       : "";
-  const systemContent =
+  const systemContentCore =
     systemPromptFusionadoForCanal(canal) +
     ejeContext +
     chainIntentVoiceEmotionMemory(
@@ -755,6 +762,9 @@ export async function getOndaReply(
       noticiaBlock,
       ragWebBlock
     );
+  const systemContent =
+    systemContentCore +
+    buildInclusivePromptLayer(userText, inclusivePreferences ?? null, eje ?? null, canal ?? null);
 
   const { prompt: systemForModel, wasOptimized } = optimizeSystemPrompt(systemContent);
   if (wasOptimized) {
@@ -769,6 +779,7 @@ export async function getOndaReply(
       articleContext,
       extraContext,
       memoryContext,
+      inclusivePreferences: inclusivePreferences ?? null,
     })
   ) {
     const cached = await getCachedResponse(userText, ejeCacheKey, queryIntent.intent);
@@ -802,7 +813,9 @@ export async function getOndaReply(
   }
   if (reply === null) reply = EMERGENCY_RESPONSE;
   const isEmergency = reply === EMERGENCY_RESPONSE;
-  const delight = isEmergency ? "" : buildDelightMoment(queryIntent.intent, canal, queryIntent.confidence);
+  const delight = isEmergency
+    ? ""
+    : buildDelightMoment(queryIntent.intent, canal, queryIntent.confidence, inclusivePreferences?.locale ?? null);
   const fullReply = reply + delight;
   void setCachedResponse(userText, ejeCacheKey, queryIntent.intent, fullReply).catch(() => {});
   return fullReply;
@@ -822,7 +835,8 @@ export async function* getOndaReplyStream(
   extraContext?: string | null,
   canal?: CanalOnda | null,
   memoryContext?: string | null,
-  telemetry?: OndaTelemetryContext | null
+  telemetry?: OndaTelemetryContext | null,
+  inclusivePreferences?: OndaUserPreferences | null
 ): AsyncGenerator<string, void, unknown> {
   const ejeContext =
     eje != null
@@ -840,7 +854,7 @@ export async function* getOndaReplyStream(
     extraContext && extraContext.trim()
       ? `\n\n--- CONTEXTO_DE_ACTUALIDAD (búsqueda web + RAG) ---\nEl sistema ya ejecutó búsqueda en fuentes fiables. Si usas cualquier dato de este bloque: (1) Marca cada afirmación con un número correlativo [1], [2], [3]... (2) Al final de la respuesta incluye la sección ### 📚 Fuentes de Autoridad listando cada número con Nombre: "Título" (URL). PROHIBIDO decir "no tengo información en tiempo real".\n\n${sanitizeExternalContent(extraContext.trim())}\n`
       : "";
-  const systemContent =
+  const systemContentCore =
     systemPromptFusionadoForCanal(canal) +
     ejeContext +
     chainIntentVoiceEmotionMemory(
@@ -853,6 +867,9 @@ export async function* getOndaReplyStream(
       noticiaBlock,
       ragWebBlock
     );
+  const systemContent =
+    systemContentCore +
+    buildInclusivePromptLayer(userText, inclusivePreferences ?? null, eje ?? null, canal ?? null);
 
   const { prompt: systemForModel, wasOptimized } = optimizeSystemPrompt(systemContent);
   if (wasOptimized) {
@@ -867,6 +884,7 @@ export async function* getOndaReplyStream(
       articleContext,
       extraContext,
       memoryContext,
+      inclusivePreferences: inclusivePreferences ?? null,
     })
   ) {
     const cached = await getCachedResponse(userText, ejeCacheKey, queryIntent.intent);
@@ -911,7 +929,12 @@ export async function* getOndaReplyStream(
     yield streamedAcc;
   }
   if (!usedEmergency) {
-    const delight = buildDelightMoment(queryIntent.intent, canal ?? "web", queryIntent.confidence);
+    const delight = buildDelightMoment(
+      queryIntent.intent,
+      canal ?? "web",
+      queryIntent.confidence,
+      inclusivePreferences?.locale ?? null
+    );
     if (delight) {
       streamedAcc += delight;
       yield delight;
@@ -923,6 +946,7 @@ export async function* getOndaReplyStream(
         articleContext,
         extraContext,
         memoryContext,
+        inclusivePreferences: inclusivePreferences ?? null,
       })
     ) {
       void setCachedResponse(userText, ejeCacheKey, queryIntent.intent, streamedAcc).catch(() => {});
@@ -973,7 +997,8 @@ export async function getOndaReplyWithImage(
   canal?: CanalOnda,
   extraContext?: string | null,
   memoryContext?: string | null,
-  telemetry?: OndaTelemetryContext | null
+  telemetry?: OndaTelemetryContext | null,
+  inclusivePreferences?: OndaUserPreferences | null
 ): Promise<string> {
   const openai = getOpenAI();
   const baseModel = getModelForEje(eje);
@@ -1000,7 +1025,7 @@ export async function getOndaReplyWithImage(
       ? `\n\n--- CONTEXTO_DE_ACTUALIDAD (búsqueda web + RAG) ---\nEl sistema ya ejecutó búsqueda en fuentes fiables. Si usas cualquier dato de este bloque: (1) Marca cada afirmación con un número correlativo [1], [2], [3]... (2) Al final de la respuesta incluye la sección ### 📚 Fuentes de Autoridad listando cada número con Nombre: "Título" (URL). PROHIBIDO decir "no tengo información en tiempo real".\n\n${sanitizeExternalContent(extraContext.trim())}\n`
       : "";
   const noticiaBlockImg = "";
-  const systemContent =
+  const systemContentCore =
     systemPromptFusionadoForCanal(canal) +
     ejeContext +
     chainIntentVoiceEmotionMemory(
@@ -1013,6 +1038,9 @@ export async function getOndaReplyWithImage(
       noticiaBlockImg,
       ragWebBlock
     );
+  const systemContent =
+    systemContentCore +
+    buildInclusivePromptLayer(userText, inclusivePreferences ?? null, eje ?? null, canal ?? null);
 
   const { prompt: systemForModelVision, wasOptimized: visionOpt } = optimizeSystemPrompt(systemContent);
   if (visionOpt) {
@@ -1033,7 +1061,12 @@ export async function getOndaReplyWithImage(
   }
   userContent.push({ type: "text", text: userText || "¿Qué ves en esta imagen? Responde según ONDA." });
 
-  const delight = buildDelightMoment(queryIntentImg.intent, canal, queryIntentImg.confidence);
+  const delight = buildDelightMoment(
+    queryIntentImg.intent,
+    canal,
+    queryIntentImg.confidence,
+    inclusivePreferences?.locale ?? null
+  );
   const intentImg = queryIntentImg.intent;
   const primaryProvider = model === MODEL_PROFUNDO ? "openai-gpt4o" : "openai-mini";
   try {

@@ -1,0 +1,48 @@
+# Evaluaciones completas (~75 casos). Requiere OPENAI_API_KEY (u orquestador configurado en evals).
+# No corre en cada push: workflow_dispatch y/o cron nocturno.
+
+name: Evals full
+
+on:
+  workflow_dispatch:
+  schedule:
+    # ~03:00 America/Santiago (invierno); ajustar si hace falta
+    - cron: "0 6 * * *"
+
+jobs:
+  evals-full:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      NODE_OPTIONS: --max-old-space-size=6144
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Instalar dependencias
+        run: npm ci --no-audit --no-fund
+
+      - name: Evals deterministas (dataset completo)
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          EVALS_MODE: deterministic
+        run: npm run evals
+
+      - name: Subir informe completo
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: evals-full-latest
+          path: |
+            artifacts/evals/latest.json
+            artifacts/evals/latest.md
+            artifacts/evals/history/
+          if-no-files-found: ignore

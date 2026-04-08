@@ -89,6 +89,13 @@ describe("buildDelightMoment", () => {
     expect(buildDelightMoment("fact_check", "web").length).toBeGreaterThan(0);
   });
 
+  it("pt-BR: cierre en portugués para explanation", () => {
+    const d = buildDelightMoment("explanation", "web", "low", "pt-BR");
+    expect(d.length).toBeGreaterThan(0);
+    expect(d.toLowerCase()).toMatch(/você|sabia|pergunta/);
+    expect(d).not.toMatch(/¿sabías|hiciste/i);
+  });
+
   it("explanation y action en web añaden cierre (independiente de confidence)", () => {
     expect(buildDelightMoment("explanation", "web", "high").length).toBeGreaterThan(0);
     expect(buildDelightMoment("action", "web", "low").length).toBeGreaterThan(0);
