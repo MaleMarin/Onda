@@ -251,6 +251,34 @@ export type ChatUiMicrocopy = {
   menuWriteFreely: string;
   menuBackToMenu: string;
   menuViewMenu: string;
+  /** Cabecera: enlace logo + marca → sitio Precisar. */
+  precisarSiteLinkAria: string;
+  /** Tabs Onda (role=tablist). */
+  ejeTablistAria: string;
+  /** Picker grande: prefijo aria “Elegir …”. */
+  ejePickerChoosePrefix: string;
+  /** Picker grande: prefijo aria “Continuar en …”. */
+  ejePickerContinuePrefix: string;
+  /** Badge “Continuar” en tarjeta preferida. */
+  pickerContinueBadge: string;
+  /** title botón volver a submenú / menú. */
+  menuShowSubmenuAgainTitle: string;
+  /** title botón inicio (menú principal, texto largo). */
+  menuMainGoInicioLongTitle: string;
+  /** Enlace texto bajo composer: volver al menú. */
+  composerBackToMenuLink: string;
+  /** title enlace volver al menú (composer). */
+  composerShowMenuTitle: string;
+  /** title enlace inicio (composer). */
+  composerGoInicioTitle: string;
+  /** Grabación de voz demasiado corta. */
+  audioTooShortHint: string;
+  /** Alt imagen adjunta. */
+  attachmentPreviewAlt: string;
+  /** Etiqueta mensaje usuario sustituto (voz). */
+  attachmentVoiceLabel: string;
+  /** Etiqueta mensaje usuario sustituto (imagen). */
+  attachmentImageLabel: string;
 };
 
 const CHAT_UI_ES: ChatUiMicrocopy = {
@@ -298,6 +326,20 @@ const CHAT_UI_ES: ChatUiMicrocopy = {
   menuWriteFreely: "✏️ Escribe lo que quieras",
   menuBackToMenu: "↩️ Volver al menú",
   menuViewMenu: "📋 Ver menú",
+  precisarSiteLinkAria: "Fundación Precisar, sitio web (se abre en una pestaña nueva)",
+  ejeTablistAria: "Elegir Onda: perfil de la conversación",
+  ejePickerChoosePrefix: "Elegir",
+  ejePickerContinuePrefix: "Continuar en",
+  pickerContinueBadge: "Continuar",
+  menuShowSubmenuAgainTitle: "Ver de nuevo las opciones de esta Onda",
+  menuMainGoInicioLongTitle: "Reiniciar y elegir otra Onda (A Mano, Civita, Profes)",
+  composerBackToMenuLink: "📋 Volver al menú",
+  composerShowMenuTitle: "Ver de nuevo las opciones de esta Onda",
+  composerGoInicioTitle: "Reiniciar conversación y elegir otra Onda",
+  audioTooShortHint: "Graba un poco más (al menos 2 segundos) y vuelve a intentar.",
+  attachmentPreviewAlt: "Adjunto",
+  attachmentVoiceLabel: "🎤 Mensaje de voz",
+  attachmentImageLabel: "🖼️ Imagen",
 };
 
 const CHAT_UI_PT: ChatUiMicrocopy = {
@@ -345,6 +387,20 @@ const CHAT_UI_PT: ChatUiMicrocopy = {
   menuWriteFreely: "✏️ Escreva o que quiser",
   menuBackToMenu: "↩️ Voltar ao menu",
   menuViewMenu: "📋 Ver menu",
+  precisarSiteLinkAria: "Fundação Precisar, site oficial (abre em uma nova aba)",
+  ejeTablistAria: "Escolher Onda: perfil da conversa",
+  ejePickerChoosePrefix: "Escolher",
+  ejePickerContinuePrefix: "Continuar em",
+  pickerContinueBadge: "Continuar",
+  menuShowSubmenuAgainTitle: "Ver de novo as opções desta Onda",
+  menuMainGoInicioLongTitle: "Reiniciar e escolher outra Onda (A Mano, Civita, Profes)",
+  composerBackToMenuLink: "📋 Voltar ao menu",
+  composerShowMenuTitle: "Ver de novo as opções desta Onda",
+  composerGoInicioTitle: "Reiniciar a conversa e escolher outra Onda",
+  audioTooShortHint: "Grave um pouco mais (pelo menos 2 segundos) e tente de novo.",
+  attachmentPreviewAlt: "Anexo",
+  attachmentVoiceLabel: "🎤 Mensagem de voz",
+  attachmentImageLabel: "🖼️ Imagem",
 };
 
 export function getChatMicrocopy(locale: OndaChatLocale): ChatUiMicrocopy {
@@ -378,6 +434,35 @@ export function getEjePlaceholder(locale: OndaChatLocale, eje: EjeOnda): string 
     [EjeOnda.PROFES]: "Diseñemos una actividad educativa crítica con IA...",
   };
   return ES[eje];
+}
+
+const EJE_CARD_SUBTITLE_ES: Record<EjeOnda, string> = {
+  [EjeOnda.A_MANO]: "Vida digital cotidiana, criterio e IA.",
+  [EjeOnda.CIVITA]: "Vida pública, instituciones y ciudadanía.",
+  [EjeOnda.PROFES]: "Docencia y proyectos educativos con IA.",
+};
+
+const EJE_CARD_SUBTITLE_PT: Record<EjeOnda, string> = {
+  [EjeOnda.A_MANO]: "Vida digital do dia a dia, critério e IA.",
+  [EjeOnda.CIVITA]: "Vida pública, instituições e cidadania.",
+  [EjeOnda.PROFES]: "Docência e projetos educativos com IA.",
+};
+
+/** Subtítulo de tarjeta Onda (picker / tabs): siempre según locale efectivo. */
+export function getEjeCardSubtitle(locale: OndaChatLocale, eje: EjeOnda): string {
+  return locale === "pt-BR" ? EJE_CARD_SUBTITLE_PT[eje] : EJE_CARD_SUBTITLE_ES[eje];
+}
+
+/** aria-label del picker grande (enlaces neumórficos). */
+export function buildEjePickerAriaLabel(
+  locale: OndaChatLocale,
+  ejeName: string,
+  subtitle: string,
+  isPreferred: boolean
+): string {
+  const mc = getChatMicrocopy(locale);
+  const prefix = isPreferred ? mc.ejePickerContinuePrefix : mc.ejePickerChoosePrefix;
+  return `${prefix} ${ejeName}. ${subtitle}`;
 }
 
 /** Códigos ISO2 com nombre para selector (UI español/neutro). */

@@ -129,12 +129,14 @@ export function getLocalizedWelcomeWithPreferredEje(eje: EjeOnda, locale: OndaCh
 }
 
 export function getLocalizedGreetingNewDay(_lastEje: EjeOnda | null | undefined, locale: OndaChatLocale): string {
-  const locTag = locale === "pt-BR" ? "pt-BR" : "es-419";
-  const dayName = new Date().toLocaleDateString(locTag, { weekday: "long" });
-  const dayCapitalized = dayName.charAt(0).toUpperCase() + dayName.slice(1);
+  const now = new Date();
   if (locale === "pt-BR") {
-    return `Olá de novo hoje! Que bom te ver — hoje é ${dayCapitalized}. Qual onda ativamos hoje? 👇`;
+    const weekdayRaw = new Intl.DateTimeFormat("pt-BR", { weekday: "long" }).format(now);
+    const weekday = weekdayRaw.toLowerCase();
+    return `Olá! Que bom te ver de novo — hoje é ${weekday}. Qual Onda vamos ativar hoje? 👇`;
   }
+  const dayName = new Date().toLocaleDateString("es-419", { weekday: "long" });
+  const dayCapitalized = dayName.charAt(0).toUpperCase() + dayName.slice(1);
   return `¡Hola de nuevo hoy! Qué bueno verte este ${dayCapitalized}. ¿Qué onda activamos hoy? 👇`;
 }
 

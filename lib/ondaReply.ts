@@ -63,6 +63,7 @@ import { infographicLocaleSystemBlock } from "@/lib/infographicPrompt";
 import type { OndaUserPreferences } from "@/lib/userPreferences";
 import { shouldSkipCacheForInclusivePrefs } from "@/lib/userPreferences";
 import {
+  buildOutputLanguageLockAppend,
   buildUnifiedFormatPromptAppend,
   isDefaultUserPrefs,
   type UserPrefs,
@@ -874,6 +875,7 @@ export async function getOndaReply(
     infographicLocaleSystemBlock(inclusivePreferences?.locale) +
     buildRiskSystemAppend(riskPipeline ?? null, inclusivePreferences?.locale) +
     buildUnifiedFormatPromptAppend(userText, unifiedUserPrefs ?? null) +
+    buildOutputLanguageLockAppend(inclusivePreferences?.locale ?? "pt-BR", unifiedUserPrefs ?? null) +
     transparencySystemAppend(
       userText,
       inclusivePreferences ?? null,
@@ -1003,6 +1005,7 @@ export async function* getOndaReplyStream(
     infographicLocaleSystemBlock(inclusivePreferences?.locale) +
     buildRiskSystemAppend(riskPipeline ?? null, inclusivePreferences?.locale) +
     buildUnifiedFormatPromptAppend(userText, unifiedUserPrefs ?? null) +
+    buildOutputLanguageLockAppend(inclusivePreferences?.locale ?? "pt-BR", unifiedUserPrefs ?? null) +
     transparencySystemAppend(
       userText,
       inclusivePreferences ?? null,
@@ -1196,6 +1199,7 @@ export async function getOndaReplyWithImage(
     infographicLocaleSystemBlock(inclusivePreferences?.locale) +
     buildRiskSystemAppend(riskPipeline ?? null, inclusivePreferences?.locale) +
     buildUnifiedFormatPromptAppend(userText, unifiedUserPrefs ?? null) +
+    buildOutputLanguageLockAppend(inclusivePreferences?.locale ?? "pt-BR", unifiedUserPrefs ?? null) +
     transparencySystemAppend(
       userText,
       inclusivePreferences ?? null,

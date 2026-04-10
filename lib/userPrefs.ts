@@ -362,6 +362,46 @@ export function unifiedLocaleToOndaLocale(l: PrefLocale, userText: string): Onda
 }
 
 /**
+ * Locale efectivo persistido (onda_prefs_v1 + inferencia auto con texto vacío).
+ * Usar en saludos antes de hidratar React para alinear con la fuente única de idioma.
+ */
+export function readEffectiveChatLocaleFromStorage(): OndaChatLocale {
+  if (typeof window === "undefined") return "pt-BR";
+  const u = loadUnifiedPrefsFromStorage();
+  return mapPrefsToOndaChatLocale(u, "");
+}
+
+/** Si idioma unificado es `auto` y el mensaje del usuario permite inferir pt/es, devuelve prefs actualizadas para persistir. */
+export function persistAutoInferredUnifiedLocale(unified: UserPrefs, userMessage: string): UserPrefs | null {
+  const u = normalizePrefs(unified);
+  if (u.locale !== "auto") return null;
+  const sig = inferLocaleFromMessage(userMessage);
+  if (sig === "unknown") return null;
+  return { ...u, locale: sig };
+}
+
+/**
+ * Refuerzo de system prompt: una sola lengua en la respuesta del modelo (alineado a `effectiveLocale` ya resuelto en la petición).
+ */
+export function buildOutputLanguageLockAppend(
+  ondaLocale: OndaChatLocale,
+  unifiedUserPrefs: UserPrefs | null | undefined
+): string {
+  const u = normalizePrefs(unifiedUserPrefs ?? DEFAULT_USER_PREFS);
+  const auto = u.locale === "auto";
+  if (ondaLocale === "pt-BR") {
+    if (auto) {
+      return "\n\n--- IDIOMA (preferência automática) ---\nEscreva TODA a resposta em português brasileiro (pt-BR) coerente com a mensagem da pessoa. Não misture espanhol na mesma resposta.";
+    }
+    return "\n\n--- IDIOMA (fixo: pt-BR) ---\nEscreva TODA a resposta em português brasileiro correto. É proibido misturar espanhol ou frases híbridas.";
+  }
+  if (auto) {
+    return "\n\n--- IDIOMA (preferencia automática) ---\nEscribe TODA la respuesta en español neutro latinoamericano coherente con el mensaje de la persona. No mezcles portugués en la misma respuesta.";
+  }
+  return "\n\n--- IDIOMA (fijo: español) ---\nEscribe TODA la respuesta en español neutro latinoamericano. Está prohibido mezclar portugués o frases híbridas.";
+}
+
+/**
  * Refuerzo de system prompt cuando hay preferencias de formato unificadas (no sustituye pedido explícito en el mensaje: ya va en effectiveFormat).
  */
 export function buildUnifiedFormatPromptAppend(userText: string, unified: UserPrefs | null | undefined): string {

@@ -2,6 +2,8 @@
 
 import { EJE_CONFIGS, ORDERED_EJES } from "@/content/shared";
 import { EjeOnda } from "@/content/types";
+import { getChatMicrocopy, getEjeCardSubtitle } from "@/lib/chatI18n";
+import type { OndaChatLocale } from "@/lib/userPreferences";
 import type { OndaTheme } from "@/lib/ondaTheme";
 import { ondaStyles } from "@/lib/ondaStyles";
 
@@ -10,22 +12,26 @@ interface EjeSelectorProps {
   onSelect: (eje: EjeOnda) => void;
   compact?: boolean;
   theme: OndaTheme;
+  /** Locale efectivo de producto (unificado + inferencia). */
+  locale: OndaChatLocale;
 }
 
-export function EjeSelector({ currentEje, onSelect, compact, theme }: EjeSelectorProps) {
+export function EjeSelector({ currentEje, onSelect, compact, theme, locale }: EjeSelectorProps) {
   const S = ondaStyles(theme);
   const t = theme;
+  const mc = getChatMicrocopy(locale);
 
   return (
     <div
       id="onda-eje-tablist"
       role="tablist"
-      aria-label="Escolher Onda: perfil da conversa"
+      aria-label={mc.ejeTablistAria}
       style={{ ...S.tabs, marginBottom: 6 }}
     >
       {ORDERED_EJES.map((eje) => {
         const isActive = currentEje === eje;
         const config = EJE_CONFIGS[eje];
+        const subtitle = getEjeCardSubtitle(locale, eje);
         const shortName = config.name.split(" ").pop() ?? config.name;
         return (
           <button
@@ -37,7 +43,7 @@ export function EjeSelector({ currentEje, onSelect, compact, theme }: EjeSelecto
             tabIndex={isActive ? 0 : -1}
             aria-controls="onda-chat-main"
             onClick={() => onSelect(eje)}
-            aria-label={`${config.name}. ${config.description}`}
+            aria-label={`${config.name}. ${subtitle}`}
             style={{
               ...S.tab(isActive),
               flexDirection: "column",
@@ -60,7 +66,7 @@ export function EjeSelector({ currentEje, onSelect, compact, theme }: EjeSelecto
                 maxWidth: "100%",
               }}
             >
-              {config.description}
+              {subtitle}
             </span>
           </button>
         );
