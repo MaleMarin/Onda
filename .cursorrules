@@ -114,9 +114,9 @@ Orden de evaluación: primero usuario nuevo (4); luego, si hay restore y misma s
 
 Después de CADA tarea completada, sin excepción:
 
-1. `git add -A`
-2. `git commit -m "descripción corta del cambio"`
-3. `git push`
+1. git add -A
+2. git commit -m "descripción corta del cambio"
+3. git push
 
 Nunca terminar una tarea sin hacer push.
 
