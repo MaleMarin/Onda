@@ -46,7 +46,7 @@ describe("userPrefs", () => {
     expect(
       mapPrefsToOndaChatLocale({ ...DEFAULT_USER_PREFS, locale: "auto" }, "gracias por la información de hoy")
     ).toBe("es-LATAM");
-    expect(mapPrefsToOndaChatLocale({ ...DEFAULT_USER_PREFS, locale: "auto" }, "ok")).toBe("pt-BR");
+    expect(mapPrefsToOndaChatLocale({ ...DEFAULT_USER_PREFS, locale: "auto" }, "ok")).toBe("es-LATAM");
   });
 
   it("shouldForceFormat detecta pedidos en frase (no solo comando puro)", () => {

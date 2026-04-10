@@ -1,6 +1,7 @@
 /**
  * Bienvenidas y copy de picker alineadas al locale del chat (pt-BR vs es-LATAM).
- * Fallback: español neutro si el locale no es pt-BR.
+ * El locale lo fija el estado de la app (localStorage / prefs); por defecto es es-LATAM.
+ * Aquí no se lee el navegador: solo se ramifica por `OndaChatLocale` recibido.
  */
 
 import { EjeOnda } from "@/content/types";

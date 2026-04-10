@@ -98,7 +98,7 @@ export function inferLocaleFromMessage(text: string): "pt" | "es" | "unknown" {
 /**
  * Mapea preferencias unificadas al locale del modelo inclusivo.
  * - pt → pt-BR, es → es-LATAM
- * - auto → inferencia por `fallbackFromText`; si unknown → pt-BR
+ * - auto → inferencia por `fallbackFromText`; si unknown → es-LATAM
  */
 export function mapPrefsToOndaChatLocale(prefs: UserPrefs, fallbackFromText: string): OndaChatLocale {
   const u = normalizePrefs(prefs);
@@ -107,7 +107,7 @@ export function mapPrefsToOndaChatLocale(prefs: UserPrefs, fallbackFromText: str
   const sig = inferLocaleFromMessage(fallbackFromText);
   if (sig === "pt") return "pt-BR";
   if (sig === "es") return "es-LATAM";
-  return "pt-BR";
+  return "es-LATAM";
 }
 
 /** @deprecated usar mapPrefsToOndaChatLocale */
@@ -171,7 +171,8 @@ export function pickPreferenceAck(merged: UserPrefs, ack: { pt: string; es: stri
   if (m.locale === "es") return ack.es;
   if (m.locale === "pt") return ack.pt;
   if (fallbackUiLocale === "es-LATAM") return ack.es;
-  return ack.pt;
+  if (fallbackUiLocale === "pt-BR") return ack.pt;
+  return ack.es;
 }
 
 /**
@@ -366,7 +367,7 @@ export function unifiedLocaleToOndaLocale(l: PrefLocale, userText: string): Onda
  * Usar en saludos antes de hidratar React para alinear con la fuente única de idioma.
  */
 export function readEffectiveChatLocaleFromStorage(): OndaChatLocale {
-  if (typeof window === "undefined") return "pt-BR";
+  if (typeof window === "undefined") return "es-LATAM";
   const u = loadUnifiedPrefsFromStorage();
   return mapPrefsToOndaChatLocale(u, "");
 }

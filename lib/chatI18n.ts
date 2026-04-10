@@ -1,5 +1,6 @@
 /**
  * Textos de UI del chat (base i18n). Ampliar aquí para más pantallas.
+ * Todas las funciones reciben `OndaChatLocale` desde el estado de la app (default es-LATAM).
  */
 
 import { EjeOnda } from "@/content/types";

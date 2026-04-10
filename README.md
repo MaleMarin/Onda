@@ -12,6 +12,7 @@ npm run dev
 
 Luego abrí en el navegador: **http://localhost:3020/chat**
 
+- **Producción (Precisar):** chat en **https://onda.precisar.net/chat** (webhook: **https://onda.precisar.net/api/webhook**).
 - El comando `npm run dev` levanta **siempre** el Chat Web (Next.js) en el puerto **3020**.
 - Si ves "address already in use", cerrá otras terminales donde corra Next o probá: `npm run dev:fresh` o `npm run dev:3010` y entrá a **http://localhost:3010**.
 
@@ -19,7 +20,7 @@ Luego abrí en el navegador: **http://localhost:3020/chat**
 
 ### 1. Variables de Entorno
 
-En **Vercel** (Settings → Environment Variables del proyecto, p. ej. `onda2026`), definí al menos:
+En **Vercel** (Settings → Environment Variables del proyecto; producción: **onda.precisar.net**), definí al menos:
 
 - `OPENAI_API_KEY`
 - `WHATSAPP_VERIFY_TOKEN`, `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`
@@ -34,14 +35,14 @@ Plantilla comentada: **`example.env`**.
 1. Ve a [Meta for Developers](https://developers.facebook.com/)
 2. Selecciona tu App → WhatsApp → Configuration
 3. En "Webhook", configura:
-   - **Callback URL**: `https://tu-dominio.vercel.app/api/webhook`
+   - **Callback URL**: `https://onda.precisar.net/api/webhook` (o tu dominio / preview de Vercel)
    - **Verify Token**: El mismo valor que `WHATSAPP_VERIFY_TOKEN`
 4. Haz clic en "Verify and save"
 5. Suscríbete a los eventos: `messages`
 
 ### 3. Verificar que Funciona
 
-Abre en el navegador: `https://tu-dominio.vercel.app/api/webhook`
+Abre en el navegador: `https://onda.precisar.net/api/webhook` (o el dominio que uses en Vercel)
 
 Deberías ver un JSON con el estado de las variables de entorno. Si todas están en `true`, está bien configurado.
 

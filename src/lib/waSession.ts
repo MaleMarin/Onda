@@ -97,7 +97,7 @@ const SUMMARY_MAX_CHARS = 320;
 function resolveSummaryLang(locale: WaPrefs["locale"], textSample: string): "pt" | "es" {
   if (locale === "es") return "es";
   if (locale === "pt") return "pt";
-  return inferChatLocaleFromMessage(textSample, "pt-BR") === "es-LATAM" ? "es" : "pt";
+  return inferChatLocaleFromMessage(textSample, "es-LATAM") === "es-LATAM" ? "es" : "pt";
 }
 
 /**

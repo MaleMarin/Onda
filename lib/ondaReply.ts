@@ -875,7 +875,7 @@ export async function getOndaReply(
     infographicLocaleSystemBlock(inclusivePreferences?.locale) +
     buildRiskSystemAppend(riskPipeline ?? null, inclusivePreferences?.locale) +
     buildUnifiedFormatPromptAppend(userText, unifiedUserPrefs ?? null) +
-    buildOutputLanguageLockAppend(inclusivePreferences?.locale ?? "pt-BR", unifiedUserPrefs ?? null) +
+    buildOutputLanguageLockAppend(inclusivePreferences?.locale ?? "es-LATAM", unifiedUserPrefs ?? null) +
     transparencySystemAppend(
       userText,
       inclusivePreferences ?? null,
@@ -1005,7 +1005,7 @@ export async function* getOndaReplyStream(
     infographicLocaleSystemBlock(inclusivePreferences?.locale) +
     buildRiskSystemAppend(riskPipeline ?? null, inclusivePreferences?.locale) +
     buildUnifiedFormatPromptAppend(userText, unifiedUserPrefs ?? null) +
-    buildOutputLanguageLockAppend(inclusivePreferences?.locale ?? "pt-BR", unifiedUserPrefs ?? null) +
+    buildOutputLanguageLockAppend(inclusivePreferences?.locale ?? "es-LATAM", unifiedUserPrefs ?? null) +
     transparencySystemAppend(
       userText,
       inclusivePreferences ?? null,
@@ -1199,7 +1199,7 @@ export async function getOndaReplyWithImage(
     infographicLocaleSystemBlock(inclusivePreferences?.locale) +
     buildRiskSystemAppend(riskPipeline ?? null, inclusivePreferences?.locale) +
     buildUnifiedFormatPromptAppend(userText, unifiedUserPrefs ?? null) +
-    buildOutputLanguageLockAppend(inclusivePreferences?.locale ?? "pt-BR", unifiedUserPrefs ?? null) +
+    buildOutputLanguageLockAppend(inclusivePreferences?.locale ?? "es-LATAM", unifiedUserPrefs ?? null) +
     transparencySystemAppend(
       userText,
       inclusivePreferences ?? null,

@@ -1,7 +1,17 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   transpilePackages: [],
-  /** Evita que `/` y `/chat` queden “pegados” a un deploy viejo en navegador o iframe (p. ej. Wix). */
+  /**
+   * Alias de URL: misma página que `/chat`, barra de direcciones puede mostrar `/onda`.
+   * Cambiá `source` si querés otro path (ej. `/asistente`).
+   */
+  async rewrites() {
+    return [
+      { source: "/onda", destination: "/chat" },
+      { source: "/onda/", destination: "/chat" },
+    ];
+  },
+  /** Evita que `/`, `/chat` y el alias queden “pegados” a un deploy viejo en navegador o iframe (p. ej. Wix). */
   async headers() {
     return [
       {
@@ -10,6 +20,10 @@ const nextConfig = {
       },
       {
         source: "/chat",
+        headers: [{ key: "Cache-Control", value: "private, no-cache, no-store, must-revalidate" }],
+      },
+      {
+        source: "/onda",
         headers: [{ key: "Cache-Control", value: "private, no-cache, no-store, must-revalidate" }],
       },
     ];

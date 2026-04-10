@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
+import { ONDA_PUBLIC_BASE_URL } from "@/lib/ondaPublicBaseUrl";
 
 export const metadata: Metadata = {
+  metadataBase: new URL(ONDA_PUBLIC_BASE_URL),
   title: "Onda - Asistente Digital Precisar",
   description:
     "Webhook WhatsApp para ONDA. Asistente de Alfabetización Mediática e Informacional (AMI).",

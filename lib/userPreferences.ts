@@ -41,8 +41,8 @@ export const DEFAULT_ONDA_USER_PREFERENCES: OndaUserPreferences = {
   outputMode: "text",
   bandwidthMode: "standard",
   audienceProfile: "general",
-  /** Português claro (BR) como padrão; es-LATAM quando o usuário escolhe ou o texto sugere espanhol. */
-  locale: "pt-BR",
+  /** Español (LatAm) por defecto; pt-BR si la persona lo elige en el panel o por comandos. */
+  locale: "es-LATAM",
   userCountry: null,
 };
 

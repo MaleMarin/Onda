@@ -104,7 +104,7 @@ const WA_TECHNICAL_REPLY_PT =
 function sttLangFromSession(session: WaSession, text: string): "pt" | "es" {
   if (session.prefs.locale === "pt") return "pt";
   if (session.prefs.locale === "es") return "es";
-  const loc = inferChatLocaleFromMessage(text, "pt-BR");
+  const loc = inferChatLocaleFromMessage(text, "es-LATAM");
   return loc === "es-LATAM" ? "es" : "pt";
 }
 
