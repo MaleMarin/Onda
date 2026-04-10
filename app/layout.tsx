@@ -4,6 +4,11 @@ export const metadata: Metadata = {
   title: "Onda - Asistente Digital Precisar",
   description:
     "Webhook WhatsApp para ONDA. Asistente de Alfabetización Mediática e Informacional (AMI).",
+  icons: {
+    icon: [{ url: "/favicon-onda.png", type: "image/png" }],
+    apple: "/favicon-onda.png",
+    shortcut: "/favicon-onda.png",
+  },
 };
 
 export const viewport: Viewport = {

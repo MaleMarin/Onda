@@ -2,7 +2,7 @@
 const nextConfig = {
   transpilePackages: [],
   async rewrites() {
-    return [{ source: "/favicon.ico", destination: "/icon.svg" }];
+    return [{ source: "/favicon.ico", destination: "/favicon-onda.png" }];
   },
   /** Evita que `/` y `/chat` queden “pegados” a un deploy viejo en navegador o iframe (p. ej. Wix). */
   async headers() {
