@@ -101,9 +101,9 @@ export function getLocalizedShortWelcome(locale: OndaChatLocale): string {
   const greeting = getTimeGreeting(locale);
   const open = locale === "pt-BR" ? "Olá!" : "¡Hola!";
   if (locale === "pt-BR") {
-    return `${open} ${greeting}\n\nEm qual onda trabalhamos hoje? Estou aqui para o que precisar — escolha uma e seguimos. 👇`;
+    return `${open} ${greeting}\n\nEm qual onda trabalhamos hoje? Estou aqui para o que precisar — escolha uma e seguimos.`;
   }
-  return `${open} ${greeting}\n\n¿En qué onda trabajamos hoy? Estoy aquí para lo que necesites — elige una y seguimos. 👇`;
+  return "Hola de nuevo. ¿Con qué Onda arrancamos hoy?";
 }
 
 function shortWelcomeOpen(locale: OndaChatLocale): string {
@@ -114,18 +114,18 @@ export function getLocalizedWelcomeWithTema(tema: string, locale: OndaChatLocale
   const temaTrim = (tema || "").trim().slice(0, 80);
   if (!temaTrim) return getLocalizedShortWelcome(locale);
   if (locale === "pt-BR") {
-    return `${shortWelcomeOpen(locale)} Que bom te ver. Continuamos trabalhando em ${temaTrim} ou buscamos novas evidências hoje? 👇`;
+    return `${shortWelcomeOpen(locale)} Que bom te ver. Continuamos trabalhando em ${temaTrim} ou buscamos novas evidências hoje?`;
   }
-  return `¡Hola! Qué bueno verte. ¿Seguimos trabajando en ${temaTrim} o buscamos nuevas evidencias hoy? 👇`;
+  return `Hola de nuevo. ¿Seguimos trabajando en ${temaTrim} o buscamos nuevas evidencias hoy?`;
 }
 
 export function getLocalizedWelcomeWithPreferredEje(eje: EjeOnda, locale: OndaChatLocale): string {
   const { nameEs, namePt } = EJE_PRESENTATION[eje];
   const name = locale === "pt-BR" ? namePt : nameEs;
   if (locale === "pt-BR") {
-    return `Olá de novo! Vejo que da última vez trabalhamos em ${name}. Quer continuar aí ou explorar uma nova hoje? 👇`;
+    return `Olá de novo! Vejo que da última vez trabalhamos em ${name}. Quer continuar aí ou explorar uma nova hoje?`;
   }
-  return `¡Hola de nuevo! Veo que la última vez trabajamos en ${name}. ¿Quieres continuar ahí o exploramos una nueva hoy? 👇`;
+  return `Hola de nuevo. Veo que la última vez trabajamos en ${name}. ¿Quieres continuar ahí o exploramos una nueva hoy?`;
 }
 
 export function getLocalizedGreetingNewDay(_lastEje: EjeOnda | null | undefined, locale: OndaChatLocale): string {
@@ -133,11 +133,11 @@ export function getLocalizedGreetingNewDay(_lastEje: EjeOnda | null | undefined,
   if (locale === "pt-BR") {
     const weekdayRaw = new Intl.DateTimeFormat("pt-BR", { weekday: "long" }).format(now);
     const weekday = weekdayRaw.toLowerCase();
-    return `Olá! Que bom te ver de novo — hoje é ${weekday}. Qual Onda vamos ativar hoje? 👇`;
+    return `Olá! Que bom te ver de novo — hoje é ${weekday}. Qual Onda vamos ativar hoje?`;
   }
   const dayName = new Date().toLocaleDateString("es-419", { weekday: "long" });
   const dayCapitalized = dayName.charAt(0).toUpperCase() + dayName.slice(1);
-  return `¡Hola de nuevo hoy! Qué bueno verte este ${dayCapitalized}. ¿Qué onda activamos hoy? 👇`;
+  return `Hola de nuevo. Hoy es ${dayCapitalized}. ¿Con qué Onda arrancamos hoy?`;
 }
 
 export function getLocalizedMessageAfterPickerChoice(eje: EjeOnda, locale: OndaChatLocale): string {
@@ -145,7 +145,7 @@ export function getLocalizedMessageAfterPickerChoice(eje: EjeOnda, locale: OndaC
   const name = locale === "pt-BR" ? p.namePt : p.nameEs;
   const description = locale === "pt-BR" ? p.descriptionPt : p.descriptionEs;
   if (locale === "pt-BR") {
-    return `Ótimo! Estamos na **${name}**. ${description} Escolha uma opção do menu ou escreva o que precisar. 👇`;
+    return `Ótimo! Estamos na **${name}**. ${description} Escolha uma opção do menu ou escreva o que precisar.`;
   }
-  return `¡Genial! Estamos en **${name}**. ${description} Elige una opción del menú o escribe lo que necesites. 👇`;
+  return `¡Genial! Estamos en **${name}**. ${description} Elige una opción del menú o escribe lo que necesites.`;
 }

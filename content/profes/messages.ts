@@ -12,4 +12,4 @@ Aquí Onda te acompaña a:
 
 Onda Profes no hace la tarea por nadie: te ayuda a armar la experiencia.
 
-**¿Qué quieres hacer ahora en Onda Profes?** 👇`;
+**¿Qué quieres hacer ahora en Onda Profes?**`;

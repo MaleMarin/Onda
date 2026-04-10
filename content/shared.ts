@@ -332,25 +332,24 @@ Puedes enviarme lo que necesites analizar en el formato que prefieras:
 ${MAIN_WELCOME_CLOSING}`;
 
 /** Cuando la persona ya conoce Onda: ir directo a las tres Ondas (bienvenida ágil). */
-export const SHORT_WELCOME = `¿Con qué Onda seguimos hoy? 👇`;
+export const SHORT_WELCOME = `Hola de nuevo. ¿Con qué Onda arrancamos hoy?`;
 
-/** Bienvenida para quien ya conoce Onda: saludo según la hora + frase ágil. Sin repetir las 3 Ondas. */
+/** Bienvenida para quien ya conoce Onda: frase ágil. Sin repetir las 3 Ondas. */
 export function getShortWelcome(): string {
-  const greeting = getTimeGreeting();
-  return `¡Hola! ${greeting}\n\n¿En qué onda trabajamos hoy? Estoy aquí para lo que necesites — elige una y seguimos. 👇`;
+  return "Hola de nuevo. ¿Con qué Onda arrancamos hoy?";
 }
 
 /** Bienvenida cuando existe un tema guardado (Memoria Temática): prioridad 1 en jerarquía de saludos. */
 export function getWelcomeWithTema(tema: string): string {
   const temaTrim = (tema || "").trim().slice(0, 80);
   if (!temaTrim) return getShortWelcome();
-  return `¡Hola! Qué bueno verte. ¿Seguimos trabajando en ${temaTrim} o buscamos nuevas evidencias hoy? 👇`;
+  return `Hola de nuevo. ¿Seguimos trabajando en ${temaTrim} o buscamos nuevas evidencias hoy?`;
 }
 
 /** Bienvenida cuando existe Onda preferida (sin tema guardado): prioridad 2 en jerarquía de saludos. */
 export function getWelcomeWithPreferredEje(eje: EjeOnda): string {
   const name = EJE_CONFIGS[eje].name;
-  return `¡Hola de nuevo! Veo que la última vez trabajamos en ${name}. ¿Quieres continuar ahí o exploramos una nueva hoy? 👇`;
+  return `Hola de nuevo. Veo que la última vez trabajamos en ${name}. ¿Quieres continuar ahí o exploramos una nueva hoy?`;
 }
 
 /**
@@ -367,6 +366,8 @@ export function isStalePickerGreeting(content: string): boolean {
   if (c.includes("¡Hola de nuevo hoy!") && c.includes("¿Qué onda activamos")) return true;
   if (c.includes("Olá de novo hoje!") && c.includes("Qual onda ativamos")) return true;
   if (c.includes("Olá! Que bom te ver de novo") && c.includes("Qual Onda vamos ativar")) return true;
+  if (c.includes("Hola de nuevo. Hoy es") && c.includes("¿Con qué Onda arrancamos hoy?")) return true;
+  if (c.includes("¿Con qué Onda arrancamos hoy?")) return true;
   if (c.includes("¿En qué onda trabajamos hoy?")) return true;
   if (c.includes("Em qual onda trabalhamos hoje?")) return true;
   if (c.includes("¿Con qué Onda seguimos hoy?")) return true;
@@ -378,14 +379,14 @@ export function isStalePickerGreeting(content: string): boolean {
 /** Mensaje inicial alineado con la Onda elegida (sustituye saludos que aún hablaban de otra Onda o de “elegir”). */
 export function getMessageAfterPickerChoice(eje: EjeOnda): string {
   const { name, description } = EJE_CONFIGS[eje];
-  return `¡Genial! Estamos en **${name}**. ${description} Elige una opción del menú o escribe lo que necesites. 👇`;
+  return `¡Genial! Estamos en **${name}**. ${description} Elige una opción del menú o escribe lo que necesites.`;
 }
 
 /** Saludo cuando es nuevo día calendarizado (o tras más de 12 h): prioridad 3. Mantiene onda_preferida y onda_ultimo_tema para el mensaje; solo se borra onda_chat_restore. */
 export function getGreetingNewDay(_lastEje?: EjeOnda | null): string {
-  const dayName = new Date().toLocaleDateString("es-ES", { weekday: "long" });
+  const dayName = new Date().toLocaleDateString("es-419", { weekday: "long" });
   const dayCapitalized = dayName.charAt(0).toUpperCase() + dayName.slice(1);
-  return `¡Hola de nuevo hoy! Qué bueno verte este ${dayCapitalized}. ¿Qué onda activamos hoy? 👇`;
+  return `Hola de nuevo. Hoy es ${dayCapitalized}. ¿Con qué Onda arrancamos hoy?`;
 }
 
 /** Chips de pregunta relacionada después de una respuesta del bot (fallback genérico). */
@@ -433,7 +434,7 @@ Aquí podemos:
 🚨 Detectar señales de engaño o manipulación.  
 🤖🧠 Usar IA como apoyo para estudiar, trabajar o crear, sin perder tu propio criterio.
 
-**¿Qué quieres hacer ahora en Onda a Mano?** 👇`;
+**¿Qué quieres hacer ahora en Onda a Mano?**`;
 
 export const WELCOME_CIVITA = `🟢 **Estás en Onda Civita.**  
 Aquí **haces preguntas** sobre vida pública: 🏛️ instituciones, ⚖️ leyes, 💰 economía, 🌱 medio ambiente, 🕰️ historia. No es para enviar una noticia o un link y que te la explique; eso es **Onda A Mano**.
@@ -454,7 +455,7 @@ Aquí Onda te acompaña a:
 
 Onda Profes **no hace la tarea por nadie:** te ayuda a armar la experiencia, las preguntas, las rúbricas y los cuidados.
 
-**¿Qué quieres hacer ahora en Onda Profes?** 👇`;
+**¿Qué quieres hacer ahora en Onda Profes?**`;
 
 /** Saludo por hora local del navegador. Tardes hasta las 20:00; noches desde las 20:00 (convención habitual en Chile y muchos países hispanohablantes). */
 export const getTimeGreeting = () => {
@@ -661,14 +662,14 @@ Dica: você pode dizer "em áudio" ou "infográfico" na mesma mensagem.
 
 /** Se a pessoa ainda não escolheu perfil depois do primeiro lembrete. */
 export const WA_PROMPT_CHOOSE_ONDA_SHORT = `
-Sem problema 😊
-Responda só com uma palavra para eu ajustar o jeito de ajudar:
+Sin problema.
+Responde solo con una palabra:
 
-*Mão* = vida digital do dia a dia (golpes, dúvidas, bem-estar)
-*Cívita* = vida pública, instituições e cidadania
-*Professores* = educação e IA crítica
+*Mão* = Vida digital cotidiana, criterio e IA
+*Cívita* = Vida pública, instituciones y ciudadanía
+*Professores* = Docencia y proyectos educativos con IA
 
-Qual você escolhe?
+¿Cuál eliges?
 `.trim();
 
 /** Quando já há Onda ativa mas o pedido é muito vago (cumprimento curto, etc.). */

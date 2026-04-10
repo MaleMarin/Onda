@@ -10,4 +10,4 @@ Aquí podemos:
 🚨 Detectar señales de engaño o manipulación.  
 🤖🧠 Usar IA como apoyo para estudiar, trabajar o crear, sin perder tu propio criterio.
 
-**¿Qué quieres hacer ahora en Onda a Mano?** 👇`;
+**¿Qué quieres hacer ahora en Onda a Mano?**`;
