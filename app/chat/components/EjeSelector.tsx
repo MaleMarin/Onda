@@ -17,7 +17,12 @@ export function EjeSelector({ currentEje, onSelect, compact, theme }: EjeSelecto
   const t = theme;
 
   return (
-    <div style={{ ...S.tabs, marginBottom: 6 }}>
+    <div
+      id="onda-eje-tablist"
+      role="tablist"
+      aria-label="Escolher Onda: perfil da conversa"
+      style={{ ...S.tabs, marginBottom: 6 }}
+    >
       {ORDERED_EJES.map((eje) => {
         const isActive = currentEje === eje;
         const config = EJE_CONFIGS[eje];
@@ -26,8 +31,12 @@ export function EjeSelector({ currentEje, onSelect, compact, theme }: EjeSelecto
           <button
             key={eje}
             type="button"
+            role="tab"
+            id={`onda-tab-${eje}`}
+            aria-selected={isActive}
+            tabIndex={isActive ? 0 : -1}
+            aria-controls="onda-chat-main"
             onClick={() => onSelect(eje)}
-            aria-current={isActive ? "true" : undefined}
             aria-label={`${config.name}. ${config.description}`}
             style={{
               ...S.tab(isActive),

@@ -49,7 +49,10 @@ export interface EjeConfig {
 
 export interface MenuOption {
   id: string;
+  /** Etiqueta en español (mensajes históricos y fallback). */
   label: string;
+  /** Etiqueta en portugués (Brasil) para UI cuando `locale === pt-BR`. */
+  label_pt?: string;
   intro: string;
   internalPrompt?: string;
   isSubmenu?: boolean;

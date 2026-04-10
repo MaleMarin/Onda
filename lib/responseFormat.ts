@@ -3,6 +3,14 @@
  * Permite que la pregunta y la respuesta se entreguen como el usuario pide: texto, audio, imagen/infografía.
  */
 
+import {
+  buildInfographicPayloadFromModelText,
+  type BuildInfographicOptions,
+  type InfographicPayload,
+} from "./infographicPayload";
+
+export type { InfographicPayload, BuildInfographicOptions } from "./infographicPayload";
+
 /** Detecta si el usuario pide explícitamente respuesta en voz/audio */
 export function wantsAudio(userMessage: string): boolean {
   const t = (userMessage || "").toLowerCase().trim();
@@ -94,14 +102,10 @@ const SUGERENCIAS_REGEX = /\[ONDA_SUGERENCIAS:\s*([^\]]+)\]/gi;
 
 export type FormatoSalida = "texto" | "audio" | "infografia" | "imagen";
 
-/** Payload para renderizar infografía PNG: título, bullets, por qué importa, qué hacer, fuentes opcionales */
-export interface InfographicPayload {
-  title: string;
-  summaryBullets: string[];
-  whyMatters: string[];
-  nextSteps: string[];
-  sources?: string[];
-}
+export type ParseResponseFormatOptions = {
+  /** Contexto para infografía: idioma, modo accesible, eje. */
+  infographic?: BuildInfographicOptions;
+};
 
 export interface ParsedResponse {
   text: string;
@@ -113,113 +117,18 @@ export interface ParsedResponse {
   infographicPayload?: InfographicPayload;
 }
 
-const BULLET_REGEX = /^[\s]*[-*•]\s+/;
-const NUMBERED_REGEX = /^[\s]*\d+[.)]\s+/;
-
-function isBulletLine(line: string): boolean {
-  const t = line.trim();
-  return BULLET_REGEX.test(t) || NUMBERED_REGEX.test(t);
-}
-
-function stripBullet(line: string): string {
-  return line.replace(BULLET_REGEX, "").replace(NUMBERED_REGEX, "").trim();
-}
-
-const MAX_WORDS_BULLET = 12;
-
-function trimToMaxWords(s: string, maxWords: number): string {
-  const parts = s.trim().split(/\s+/);
-  if (parts.length <= maxWords) return s.trim();
-  return parts.slice(0, maxWords).join(" ") + (s.trim().endsWith("…") ? "" : "…");
-}
-
-function sourceToShortLabel(raw: string): string {
-  const t = raw.trim();
-  const urlMatch = t.match(/https?:\/\/([^/]+)/i);
-  if (urlMatch) {
-    const domain = urlMatch[1].replace(/^www\./, "");
-    const short = domain.split(".").slice(-2, -1)[0] ?? domain;
-    return short.charAt(0).toUpperCase() + short.slice(1);
-  }
-  return t.slice(0, 40);
-}
-
 /**
- * Extrae del texto del modelo un payload estructurado para la infografía.
- * Heurística: título (primera línea), bullets (líneas con - * • o 1. 2.), secciones "por qué importa" / "qué hacer".
+ * Compat: mismo resultado que buildInfographicPayloadFromModelText sin opciones de canal.
  */
 export function extractInfographicPayload(text: string): InfographicPayload {
-  const raw = (text || "").trim();
-  if (!raw) {
-    return {
-      title: "Infografía ONDA",
-      summaryBullets: [],
-      whyMatters: [],
-      nextSteps: [],
-    };
-  }
-
-  const lines = raw.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
-  const bullets: string[] = [];
-  let title = "";
-  const whyMatters: string[] = [];
-  const nextSteps: string[] = [];
-  const sources: string[] = [];
-
-  let i = 0;
-  if (lines.length > 0 && !isBulletLine(lines[0])) {
-    title = lines[0].slice(0, 120);
-    i = 1;
-  }
-  while (i < lines.length && bullets.length < 5) {
-    const line = lines[i];
-    if (isBulletLine(line)) {
-      bullets.push(trimToMaxWords(stripBullet(line), MAX_WORDS_BULLET));
-    } else if (/^(por qué importa|porque importa|qué importa|por qué es importante)/i.test(line)) {
-      i++;
-      for (let j = 0; j < 3 && i + j < lines.length; j++) {
-        if (isBulletLine(lines[i + j])) whyMatters.push(trimToMaxWords(stripBullet(lines[i + j]), MAX_WORDS_BULLET));
-      }
-      i += 3;
-      continue;
-    } else if (/^(qué hacer|cómo verificar|pasos|siguiente|qué hacer ahora)/i.test(line)) {
-      i++;
-      for (let j = 0; j < 4 && i + j < lines.length; j++) {
-        if (isBulletLine(lines[i + j])) nextSteps.push(trimToMaxWords(stripBullet(lines[i + j]), MAX_WORDS_BULLET));
-      }
-      i += 4;
-      continue;
-    } else if (/^(fuentes|referencias|📚)/i.test(line)) {
-      i++;
-      for (let j = 0; j < 5 && i + j < lines.length && sources.length < 3; j++) {
-        const ln = lines[i + j].trim();
-        if (ln && (/\d+\./.test(ln) || /[-*•]/.test(ln) || /https?:\/\//i.test(ln))) {
-          sources.push(sourceToShortLabel(ln.replace(/^\d+[.)]\s*/, "").replace(/^[-*•]\s*/, "")));
-        }
-      }
-      i += 5;
-      break;
-    }
-    i++;
-  }
-
-  if (!title && bullets.length > 0) title = bullets.shift()?.slice(0, 120) ?? "Infografía ONDA";
-  if (!title) title = raw.slice(0, 80).split("\n")[0] || "Infografía ONDA";
-  if (whyMatters.length === 0 && bullets.length > 1) {
-    whyMatters.push(bullets[bullets.length - 1] ?? "Resumen del contenido.");
-  }
-  if (nextSteps.length === 0) {
-    nextSteps.push("Revisar fuentes.", "Compartir con criterio.", "Seguir explorando.");
-  }
-
-  return { title, summaryBullets: bullets.slice(0, 5), whyMatters: whyMatters.slice(0, 2), nextSteps: nextSteps.slice(0, 3), sources: sources.length ? sources.slice(0, 3) : undefined };
+  return buildInfographicPayloadFromModelText(text, {});
 }
 
 /**
  * Parsea la respuesta del modelo: quita marcadores [ONDA_FORMATO:...], [ONDA_GUIA:xxx], [ONDA_SUGERENCIAS: ...]
  * y devuelve texto limpio + formato + flags para audio/guía.
  */
-export function parseResponseFormat(reply: string): ParsedResponse {
+export function parseResponseFormat(reply: string, options?: ParseResponseFormatOptions): ParsedResponse {
   let text = reply || "";
   let formato: FormatoSalida = "texto";
   let guideId: string | null = null;
@@ -248,6 +157,7 @@ export function parseResponseFormat(reply: string): ParsedResponse {
   text = text.replace(/\n{3,}/g, "\n\n").trim();
   const f = formato as FormatoSalida;
   const sendAudio = f === "audio";
-  const infographicPayload = f === "infografia" ? extractInfographicPayload(text) : undefined;
+  const infographicPayload =
+    f === "infografia" ? buildInfographicPayloadFromModelText(text, options?.infographic) : undefined;
   return { text, formato: f, sendAudio, guideId, suggestions, infographicPayload };
 }

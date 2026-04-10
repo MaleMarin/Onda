@@ -159,10 +159,10 @@ export function createOndaTheme(mode: OndaMode, options?: OndaThemeOptions) {
   const r = { lg: 24, md: 18, sm: 14, pill: 999 } as const;
 
   const font = {
-    /** Cuerpo y UI general: Inter (identidad Onda). */
-    ui: `var(--font-onda-body), "Inter", ui-sans-serif, system-ui, sans-serif`,
-    /** Títulos y botones: Montserrat (precisión tecnológica). */
-    heading: `var(--font-onda-heading), "Montserrat", ui-sans-serif, system-ui, sans-serif`,
+    /** Cuerpo y UI: Avenir (pila en app/layout.tsx → --font-onda). */
+    ui: `var(--font-onda), ui-sans-serif, system-ui, sans-serif`,
+    /** Títulos y botones: misma familia (marca unificada). */
+    heading: `var(--font-onda), ui-sans-serif, system-ui, sans-serif`,
     mono: `ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace`,
   } as const;
 

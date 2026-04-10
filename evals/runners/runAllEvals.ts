@@ -18,6 +18,90 @@ import { loadAllCases } from "../loadDatasets";
 import { detectCaseRegression, detectRunRegression } from "../regression";
 import { useLlmJudge } from "../config";
 
+function meanScoresByOnda(results: EvalCaseResult[]): EvalRunSummary["mean_scores_by_onda"] {
+  const dims: (keyof EvalDimensions)[] = [
+    "clarity",
+    "accuracy",
+    "neutrality",
+    "usefulness",
+    "safety",
+    "consistency",
+  ];
+  const acc: Record<string, { sums: Record<keyof EvalDimensions, number>; n: number }> = {};
+  for (const r of results) {
+    const o = r.case.onda;
+    if (!acc[o]) {
+      acc[o] = {
+        sums: {
+          clarity: 0,
+          accuracy: 0,
+          neutrality: 0,
+          usefulness: 0,
+          safety: 0,
+          consistency: 0,
+        },
+        n: 0,
+      };
+    }
+    acc[o].n += 1;
+    for (const d of dims) acc[o].sums[d] += r.dimensions[d].score;
+  }
+  const out: EvalRunSummary["mean_scores_by_onda"] = {};
+  for (const [o, v] of Object.entries(acc)) {
+    const row = {} as Record<keyof EvalDimensions, number>;
+    for (const d of dims) row[d] = v.sums[d] / Math.max(1, v.n);
+    out[o] = row;
+  }
+  return out;
+}
+
+function meanScoresByLanguage(results: EvalCaseResult[]): EvalRunSummary["mean_scores_by_language"] {
+  const dims: (keyof EvalDimensions)[] = [
+    "clarity",
+    "accuracy",
+    "neutrality",
+    "usefulness",
+    "safety",
+    "consistency",
+  ];
+  const acc: Record<string, { sums: Record<keyof EvalDimensions, number>; n: number }> = {};
+  for (const r of results) {
+    const lang = ((r.case.language || "und") as string).toLowerCase().slice(0, 12) || "und";
+    if (!acc[lang]) {
+      acc[lang] = {
+        sums: {
+          clarity: 0,
+          accuracy: 0,
+          neutrality: 0,
+          usefulness: 0,
+          safety: 0,
+          consistency: 0,
+        },
+        n: 0,
+      };
+    }
+    acc[lang].n += 1;
+    for (const d of dims) acc[lang].sums[d] += r.dimensions[d].score;
+  }
+  const out: EvalRunSummary["mean_scores_by_language"] = {};
+  for (const [lang, v] of Object.entries(acc)) {
+    const row = {} as Record<keyof EvalDimensions, number>;
+    for (const d of dims) row[d] = v.sums[d] / Math.max(1, v.n);
+    out[lang] = row;
+  }
+  return out;
+}
+
+function worstByMean(results: EvalCaseResult[]): EvalRunSummary["worst_by_mean"] {
+  const rows = results.map((r) => ({
+    id: r.case.id,
+    mean: averageScore(r.dimensions),
+    passed: r.global_pass,
+  }));
+  rows.sort((a, b) => a.mean - b.mean);
+  return rows.slice(0, 10);
+}
+
 function commitHash(): string | null {
   try {
     const { execSync } = require("node:child_process") as typeof import("node:child_process");
@@ -120,10 +204,13 @@ function buildSummary(results: EvalCaseResult[], mode: EvalMode, runRegression: 
     failed,
     regression: anyCaseRegression || runRegression,
     mean_scores,
+    mean_scores_by_onda: meanScoresByOnda(results),
+    mean_scores_by_language: meanScoresByLanguage(results),
     by_onda,
     by_channel,
     by_category,
     top_failures: failures,
+    worst_by_mean: worstByMean(results),
     timestamp_iso: new Date().toISOString(),
     commit: commitHash(),
     mode,
@@ -152,7 +239,7 @@ export async function runAllEvals(options: RunAllEvalsOptions): Promise<EvalRunO
       message: c.input,
       onda: c.onda,
       channel: c.channel,
-      history: [] as InvokeOndaParams["history"],
+      history: (c.history?.length ? c.history : []) as InvokeOndaParams["history"],
       mode: options.mode,
       mockWeb: (options.mode === "deterministic" ? undefined : false) as string | false | undefined,
       mockRag: (options.mode === "deterministic" ? undefined : false) as string | false | undefined,

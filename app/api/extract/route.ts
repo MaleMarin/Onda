@@ -12,7 +12,12 @@ export async function GET(req: Request) {
 
   if (!result.ok) {
     return NextResponse.json(
-      { ok: false, error: result.error },
+      {
+        ok: false,
+        error: result.error,
+        ...(result.host != null ? { host: result.host } : {}),
+        ...(result.meta != null ? { meta: result.meta } : {}),
+      },
       { status: result.error === "invalid_url" ? 400 : 500 }
     );
   }

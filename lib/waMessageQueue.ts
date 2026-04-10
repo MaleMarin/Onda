@@ -1,9 +1,18 @@
 import { kv } from "@vercel/kv";
 
-const LOCK_TTL_SECONDS = 30;
+/** TTL del lock por número (evita deadlocks; tras expirar, el siguiente mensaje puede re-adquirir). */
+export const WA_LOCK_TTL_SECONDS = 25;
+
+const isDev = process.env.NODE_ENV === "development";
 
 function normalizePhoneForLock(phone: string): string {
   return String(phone ?? "").replace(/\D/g, "");
+}
+
+function logPhone(phone: string): string {
+  const id = normalizePhoneForLock(phone);
+  if (id.length <= 4) return id ? `***${id}` : "(empty)";
+  return `***${id.slice(-4)}`;
 }
 
 function lockKey(phone: string): string {
@@ -13,7 +22,7 @@ function lockKey(phone: string): string {
 /**
  * Intenta adquirir el lock para un número.
  * Usa SET NX (solo si no existe) para atomicidad.
- * Key: wa:lock:{phone}  TTL: 30s
+ * Key: wa:lock:{phone}  TTL: WA_LOCK_TTL_SECONDS
  * Retorna true si adquirió el lock, false si ya había uno.
  * Sin dígitos válidos (p. ej. remitente desconocido): no bloquea, retorna true.
  */
@@ -22,7 +31,7 @@ export async function acquireLock(phone: string): Promise<boolean> {
   if (!id) return true;
 
   try {
-    const r = await kv.set(lockKey(phone), "1", { nx: true, ex: LOCK_TTL_SECONDS });
+    const r = await kv.set(lockKey(phone), "1", { nx: true, ex: WA_LOCK_TTL_SECONDS });
     return r !== null;
   } catch (e) {
     console.warn("[waMessageQueue] KV lock unavailable, fail-open:", e);
@@ -57,11 +66,17 @@ export async function withLock<T>(phone: string, fn: () => Promise<T>): Promise<
   }
 
   const acquired = await acquireLock(phone);
-  if (!acquired) return null;
+  if (!acquired) {
+    if (isDev) console.info(`[wa-lock] timeout phone=${logPhone(phone)}`);
+    return null;
+  }
+
+  if (isDev) console.info(`[wa-lock] acquired phone=${logPhone(phone)} ttl=${WA_LOCK_TTL_SECONDS}`);
 
   try {
     return await fn();
   } finally {
     await releaseLock(phone);
+    if (isDev) console.info(`[wa-lock] released phone=${logPhone(phone)}`);
   }
 }

@@ -11,6 +11,10 @@ export type InfographicTemplatePayload = {
   actions: string[];
   sources?: string[];
   dateLabel?: string;
+  /** Etiquetas de tarjetas y tipografía (accesibilidad / PT-ES). */
+  locale?: "pt" | "es";
+  /** Modo personas mayores: menos ítems, tipografía mayor. */
+  elderFriendly?: boolean;
 };
 
 function escapeXml(s: string): string {
@@ -50,46 +54,59 @@ function wrapText(text: string, maxChars: number): string[] {
   return lines;
 }
 
-function renderBullets(items: string[], x: number, y: number, maxWidthChars = 34): { svg: string; height: number } {
+function renderBullets(
+  items: string[],
+  x: number,
+  y: number,
+  maxWidthChars: number,
+  fontSize: number,
+  lineGap: number
+): { svg: string; height: number } {
   let dy = 0;
   const out: string[] = [];
   for (let i = 0; i < items.length; i++) {
-    const bullet = escapeXml(items[i]);
     const lines = wrapText(items[i], maxWidthChars);
     out.push(
-      `<text x="${x}" y="${y + dy}" font-size="30" fill="rgba(233,240,255,.92)" font-weight="600" font-family="system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial">` +
+      `<text x="${x}" y="${y + dy}" font-size="${fontSize}" fill="rgba(233,240,255,.92)" font-weight="600" font-family="system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial">` +
         `<tspan fill="rgba(233,240,255,.70)">• </tspan>${escapeXml(lines[0])}` +
         `</text>`
     );
-    dy += 42;
+    dy += lineGap;
     for (let j = 1; j < lines.length; j++) {
       out.push(
-        `<text x="${x + 22}" y="${y + dy}" font-size="30" fill="rgba(233,240,255,.86)" font-weight="550" font-family="system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial">${escapeXml(lines[j])}</text>`
+        `<text x="${x + 22}" y="${y + dy}" font-size="${fontSize}" fill="rgba(233,240,255,.86)" font-weight="550" font-family="system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial">${escapeXml(lines[j])}</text>`
       );
-      dy += 42;
+      dy += lineGap;
     }
     dy += 10;
   }
   return { svg: out.join("\n"), height: dy };
 }
 
-function renderNumbered(items: string[], x: number, y: number, maxWidthChars = 34): { svg: string; height: number } {
+function renderNumbered(
+  items: string[],
+  x: number,
+  y: number,
+  maxWidthChars: number,
+  fontSize: number,
+  lineGap: number
+): { svg: string; height: number } {
   let dy = 0;
   const out: string[] = [];
   for (let i = 0; i < items.length; i++) {
     const n = i + 1;
     const lines = wrapText(items[i], maxWidthChars);
     out.push(
-      `<text x="${x}" y="${y + dy}" font-size="30" fill="rgba(233,240,255,.92)" font-weight="650" font-family="system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial">` +
+      `<text x="${x}" y="${y + dy}" font-size="${fontSize}" fill="rgba(233,240,255,.92)" font-weight="650" font-family="system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial">` +
         `<tspan fill="rgba(233,240,255,.70)">${n}. </tspan>${escapeXml(lines[0])}` +
         `</text>`
     );
-    dy += 42;
+    dy += lineGap;
     for (let j = 1; j < lines.length; j++) {
       out.push(
-        `<text x="${x + 28}" y="${y + dy}" font-size="30" fill="rgba(233,240,255,.86)" font-weight="550" font-family="system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial">${escapeXml(lines[j])}</text>`
+        `<text x="${x + 28}" y="${y + dy}" font-size="${fontSize}" fill="rgba(233,240,255,.86)" font-weight="550" font-family="system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial">${escapeXml(lines[j])}</text>`
       );
-      dy += 42;
+      dy += lineGap;
     }
     dy += 10;
   }
@@ -110,11 +127,26 @@ function glassCard(x: number, y: number, w: number, h: number, r: number): strin
   `;
 }
 
-function cardTitle(x: number, y: number, t: string): string {
+function cardTitle(x: number, y: number, t: string, fontSize: number): string {
   return `
-    <text x="${x}" y="${y}" font-size="26" fill="rgba(233,240,255,.78)" font-weight="800"
+    <text x="${x}" y="${y}" font-size="${fontSize}" fill="rgba(233,240,255,.78)" font-weight="800"
       font-family="system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial">${escapeXml(t)}</text>
   `;
+}
+
+function sectionLabels(locale: "pt" | "es" | undefined): { important: string; why: string; actions: string } {
+  if (locale === "pt") {
+    return {
+      important: "O essencial",
+      why: "Por que importa",
+      actions: "O que fazer agora",
+    };
+  }
+  return {
+    important: "Lo importante",
+    why: "Por qué importa",
+    actions: "Qué hacer ahora",
+  };
 }
 
 export function buildInfographicSvg(payload: InfographicTemplatePayload): string {
@@ -123,22 +155,30 @@ export function buildInfographicSvg(payload: InfographicTemplatePayload): string
   const pad = 72;
   const { primary, label } = modeColors(payload.eje);
 
+  const elder = payload.elderFriendly === true;
+  const titleFont = elder ? 58 : 56;
+  const bodyFont = elder ? 34 : 32;
+  const cardTitleFont = elder ? 30 : 26;
+  const lineGap = elder ? 48 : 44;
+  const maxWChars = elder ? 32 : 38;
+
   const title = escapeXml(payload.title).slice(0, 140);
 
-  const important = clampLines(payload.important, 5);
-  const why = clampLines(payload.why, 2);
+  const important = clampLines(payload.important, elder ? 3 : 5);
+  const why = clampLines(payload.why, elder ? 1 : 2);
   const actions = clampLines(payload.actions, 3);
   const sources = clampLines(payload.sources ?? [], 3);
 
   const dateLabel = escapeXml(payload.dateLabel ?? "");
+  const labels = sectionLabels(payload.locale);
 
   const cardW = W - pad * 2;
   const cardR = 28;
   const gap = 22;
 
-  const imp = renderBullets(important, pad + 40, 0, 38);
-  const whyB = renderBullets(why, pad + 40, 0, 38);
-  const act = renderNumbered(actions, pad + 40, 0, 38);
+  const imp = renderBullets(important, pad + 40, 0, maxWChars, bodyFont, lineGap);
+  const whyB = renderBullets(why, pad + 40, 0, maxWChars, bodyFont, lineGap);
+  const act = renderNumbered(actions, pad + 40, 0, maxWChars, bodyFont, lineGap);
 
   const headerY = 74;
   const titleY = 174;
@@ -225,7 +265,7 @@ export function buildInfographicSvg(payload: InfographicTemplatePayload): string
     ${dateLabel ? `<text x="${W - pad}" y="${headerY}" text-anchor="end" font-size="20" fill="rgba(233,240,255,.55)" font-weight="600"
       font-family="system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial">${dateLabel}</text>` : ""}
 
-    <text x="${pad}" y="${titleY}" font-size="54" fill="rgba(233,240,255,.92)" font-weight="800"
+    <text x="${pad}" y="${titleY}" font-size="${titleFont}" fill="rgba(233,240,255,.92)" font-weight="800"
       font-family="system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial">
       ${title}
     </text>
@@ -235,26 +275,26 @@ export function buildInfographicSvg(payload: InfographicTemplatePayload): string
   ${glassCard(pad, card2Y, cardW, card2H, cardR)}
   ${glassCard(pad, card3Y, cardW, card3H, cardR)}
 
-  ${cardTitle(pad + 36, card1Y + 72, "Lo importante")}
-  ${cardTitle(pad + 36, card2Y + 72, "Por qué importa")}
-  ${cardTitle(pad + 36, card3Y + 72, "Qué hacer ahora")}
+  ${cardTitle(pad + 36, card1Y + 72, labels.important, cardTitleFont)}
+  ${cardTitle(pad + 36, card2Y + 72, labels.why, cardTitleFont)}
+  ${cardTitle(pad + 36, card3Y + 72, labels.actions, cardTitleFont)}
 
   <g transform="translate(0, ${card1Y + 120})">
-    ${renderBullets(important, pad + 44, 0, 40).svg}
+    ${imp.svg}
   </g>
 
   <g transform="translate(0, ${card2Y + 120})">
-    ${renderBullets(why, pad + 44, 0, 40).svg}
+    ${whyB.svg}
   </g>
 
   <g transform="translate(0, ${card3Y + 120})">
-    ${renderNumbered(actions, pad + 44, 0, 40).svg}
+    ${act.svg}
   </g>
 
   ${sourcesText ? `
     <text x="${pad}" y="${footerY}" font-size="20" fill="rgba(233,240,255,.55)" font-weight="650"
       font-family="system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial">
-      Fuentes: ${escapeXml(sourcesText).slice(0, 220)}
+      ${payload.locale === "pt" ? "Fontes" : "Fuentes"}: ${escapeXml(sourcesText).slice(0, 220)}
     </text>
   ` : ""}
 

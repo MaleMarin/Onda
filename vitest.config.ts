@@ -11,8 +11,15 @@ export default defineConfig({
   test: {
     environment: "node",
     globals: true,
+    /** Solo unitarios / rápidos. Integración con red/servidor: `vitest.integration.config.ts` → npm run test:integration */
     include: ["**/*.test.ts"],
-    exclude: ["e2e/**", "node_modules/**", ".next/**"],
+    exclude: ["e2e/**", "tests/integration/**", "node_modules/**", ".next/**"],
+    /** Evita espera indefinida en Cursor/CI si un test se cuelga */
+    testTimeout: 30_000,
+    hookTimeout: 15_000,
+    teardownTimeout: 10_000,
+    pool: "forks",
+    fileParallelism: true,
     coverage: {
       provider: "v8",
       reporter: ["text", "json-summary"],

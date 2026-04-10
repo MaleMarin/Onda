@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Montserrat } from "next/font/google";
 
 export const metadata: Metadata = {
   title: "Onda - Asistente Digital Precisar",
@@ -15,27 +14,20 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
-/** Cuerpo de mensajes: Inter, legible y neutro. */
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-onda-body",
-  display: "swap",
-});
-
-/** Títulos y botones: Montserrat, precisión tecnológica. */
-const montserrat = Montserrat({
-  subsets: ["latin"],
-  variable: "--font-onda-heading",
-  display: "swap",
-});
+/**
+ * Tipografía de marca: Avenir (sistema cuando está instalado; pila sans explícita para que nunca caiga en serif).
+ * Antes: Inter + Montserrat (Google), lo que podía verse distinto entre local y producción según carga de fuentes.
+ */
+const FONT_ONDA_STACK = String.raw`"Avenir Next", Avenir, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Helvetica, Arial, sans-serif`;
 
 /** Naranja del botón Enviar (neumórfico). Env NEXT_PUBLIC_ONDA_ORANGE o naranja oscuro #C43E00 por defecto. */
 const SEND_ORANGE = (typeof process !== "undefined" && process.env.NEXT_PUBLIC_ONDA_ORANGE) || "#C43E00";
 
 const GLOBAL_CSS = `
+:root{--font-onda:${FONT_ONDA_STACK}}
 .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border-width:0}
 html,body{height:100%;margin:0;pointer-events:auto;touch-action:manipulation;max-width:100%;overflow-x:hidden}
-body{-webkit-font-smoothing:antialiased;font-family:var(--font-onda-body),Inter,sans-serif;line-height:1.6;outline:none}
+body{-webkit-font-smoothing:antialiased;font-family:var(--font-onda);line-height:1.6;outline:none}
 /* Shell aislado: clics siempre llegan a botones/inputs. No añadir overlays ni ::before/::after que tapen. */
 .onda-shell{position:relative;z-index:1;isolation:isolate;pointer-events:auto}
 .onda-shell *{pointer-events:auto}
@@ -54,20 +46,24 @@ button[data-onda-send]:focus{background:${SEND_ORANGE} !important;color:#fff !im
 /* Botones del menú y acciones: siempre clicables */
 .onda-menu-btn,button[data-onda-action],button[data-onda-menu-id]{position:relative;z-index:2;pointer-events:auto !important;cursor:pointer}
 *,*::before,*::after{box-sizing:border-box}
-/* Tipografía: Inter 16px (text-base), line-height 1.6, espacio real entre párrafos */
-.onda-page-wrap,.onda-messages,.onda-messages-inner,.onda-shell{font-family:var(--font-onda-body),Inter,sans-serif;font-size:1rem;line-height:1.6}
-.prose-onda{font-family:var(--font-onda-body),Inter,sans-serif;font-size:1rem;line-height:1.6}
+/* Tipografía: Avenir / pila sans (16px base), line-height 1.6 */
+.onda-page-wrap,.onda-messages,.onda-messages-inner,.onda-shell{font-family:var(--font-onda);font-size:1rem;line-height:1.6}
+.prose-onda{font-family:var(--font-onda);font-size:1rem;line-height:1.6}
 .prose-onda p + p{margin-top:1em}
 /* Negritas: peso 600 (semibold), nunca 700 o superior */
 .prose-onda b,.prose-onda strong,b,strong{color:inherit;font-weight:600 !important}
-/* Títulos y botones: Montserrat, precisión tecnológica */
-.onda-shell header,.onda-shell button,.onda-shell [role="button"],.onda-shell label,.onda-shell .onda-menu-btn,.onda-shell [data-onda-send],.onda-shell [data-onda-action],.onda-shell [data-onda-picker-composer]{font-family:var(--font-onda-heading),Montserrat,sans-serif}
+/* Cabecera, botones y picker: misma familia Avenir (identidad unificada) */
+.onda-shell header,.onda-shell button,.onda-shell [role="button"],.onda-shell label,.onda-shell .onda-menu-btn,.onda-shell [data-onda-send],.onda-shell [data-onda-action],.onda-shell [data-onda-picker-composer]{font-family:var(--font-onda)}
 @keyframes bubbleIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
 @keyframes ondaOfflineBannerIn{from{opacity:0}to{opacity:1}}
 @keyframes ondaPickerPulse{0%,100%{box-shadow:0 4px 14px rgba(0,0,0,0.15)}50%{box-shadow:0 0 0 4px rgba(255,180,0,0.75)}}
 .onda-picker-highlight [data-onda-picker-composer]{animation:ondaPickerPulse .85s ease-in-out 3}
 .bubble-in{animation:bubbleIn .28s cubic-bezier(.25,.75,.2,1) both}
+@media (prefers-reduced-motion: reduce){
+.bubble-in,.onda-picker-highlight [data-onda-picker-composer]{animation:none !important}
+.onda-messages-inner{scroll-behavior:auto}
+}
 .onda-shell input::placeholder{color:#5a5d62;opacity:0.9;font-weight:500;letter-spacing:0.02em}
 /* Foco visible en controles (accesibilidad); el outline global se anula solo sin :focus-visible */
 .onda-shell *:focus:not(:focus-visible){outline:none !important}
@@ -92,7 +88,7 @@ button[data-onda-send]:focus{background:${SEND_ORANGE} !important;color:#fff !im
   font-weight:600;
   text-decoration:none;
   border-radius:8px;
-  font-family:var(--font-onda-heading),Montserrat,sans-serif;
+  font-family:var(--font-onda);
 }
 .onda-skip-link:focus,
 .onda-skip-link:focus-visible{
@@ -142,7 +138,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="es" className={`${inter.variable} ${montserrat.variable}`} style={{ height: "100%", overflow: "hidden" }}>
+    <html lang="es" style={{ height: "100%", overflow: "hidden" }}>
       <head>
         <style dangerouslySetInnerHTML={{ __html: GLOBAL_CSS }} />
       </head>

@@ -24,6 +24,11 @@ export type OndaUserPreferences = {
   locale: OndaChatLocale;
   /** Código ISO2 en mayúsculas o "LATAM" para marco regional genérico */
   userCountry: string | null;
+  /**
+   * WhatsApp (sesión KV): el usuario envió el comando "transparência"/"transparencia";
+   * el siguiente turno debe activar el bloque de transparencia y luego limpiarse.
+   */
+  transparencyNext?: boolean;
 };
 
 export const STORAGE_KEY_ONDA_USER_PREFERENCES = "onda_user_preferences";
@@ -36,7 +41,8 @@ export const DEFAULT_ONDA_USER_PREFERENCES: OndaUserPreferences = {
   outputMode: "text",
   bandwidthMode: "standard",
   audienceProfile: "general",
-  locale: "es-LATAM",
+  /** Português claro (BR) como padrão; es-LATAM quando o usuário escolhe ou o texto sugere espanhol. */
+  locale: "pt-BR",
   userCountry: null,
 };
 
@@ -69,6 +75,10 @@ export function mergeOndaUserPreferences(
         : patch.userCountry === null || patch.userCountry === ""
           ? null
           : String(patch.userCountry).slice(0, 32).toUpperCase(),
+    transparencyNext:
+      patch.transparencyNext === true || patch.transparencyNext === false
+        ? patch.transparencyNext
+        : base.transparencyNext,
   };
 }
 
@@ -106,12 +116,20 @@ export function saveOndaUserPreferencesToStorage(prefs: OndaUserPreferences): vo
   }
 }
 
+/** Preferencias comparables con el default (excluye flags de sesión como transparencyNext). */
+function prefsWithoutSessionFlags(p: OndaUserPreferences): Omit<OndaUserPreferences, "transparencyNext"> {
+  const { transparencyNext: _tn, ...rest } = p;
+  return rest;
+}
+
 /** Si es true, no usar caché de respuesta corta (misma pregunta puede variar según prefs). */
 export function shouldSkipCacheForInclusivePrefs(prefs: OndaUserPreferences | null | undefined): boolean {
   if (!prefs) return false;
-  return JSON.stringify(prefs) !== JSON.stringify(DEFAULT_ONDA_USER_PREFERENCES);
+  return JSON.stringify(prefsWithoutSessionFlags(prefs)) !== JSON.stringify(DEFAULT_ONDA_USER_PREFERENCES);
 }
 
 export function isDefaultOndaUserPreferences(prefs: OndaUserPreferences): boolean {
-  return JSON.stringify(prefs) === JSON.stringify(DEFAULT_ONDA_USER_PREFERENCES);
+  return (
+    JSON.stringify(prefsWithoutSessionFlags(prefs)) === JSON.stringify(DEFAULT_ONDA_USER_PREFERENCES)
+  );
 }

@@ -15,12 +15,13 @@ import {
 } from "../../../../lib/sessionMemory";
 import { searchPrivateDocs } from "../../../../lib/firebaseRag";
 import { getRagContext } from "../../../../lib/rag";
-import { parseResponseFormat, wantsSources } from "../../../../lib/responseFormat";
+import { parseResponseFormat, wantsSources, type ParseResponseFormatOptions } from "../../../../lib/responseFormat";
 import { searchWeb } from "../../../../lib/searchWeb";
 import { transcribeAudio, TRANSCRIBE_ERROR } from "../../../../lib/transcribe";
 import { extractArticle } from "../../../../lib/extractArticle";
 import { generateImageFromText } from "../../../../lib/generateImage";
 import { renderInfographicPng } from "../../../../lib/infographic";
+import { infographicStreamAltPrefix } from "../../../../lib/infographicPayload";
 import { EjeOnda } from "../../../../content/types";
 import { checkRateLimit } from "../../../../lib/rateLimiter";
 import { checkUserMessage } from "../../../../lib/promptSafety";
@@ -34,8 +35,17 @@ import { generateRequestId } from "../../../../lib/telemetry";
 import { recordConversation } from "../../../../lib/auditStore";
 import { recordConversationImpact } from "../../../../lib/impactMetrics";
 import { getCachedResponse } from "../../../../lib/responseCache";
-import { parseUserPreferencesFromApi } from "../../../../lib/userPreferences";
+import { parseUserPreferencesFromApi, type OndaUserPreferences } from "../../../../lib/userPreferences";
+import {
+  buildOndaPreferencesForRequest,
+  isDefaultUserPrefs,
+  maybeInfographicUserPrefix,
+  normalizePrefs,
+  parseUserPrefsFromApi,
+} from "../../../../lib/userPrefs";
 import { computeWebPlayAudioDecision } from "../../../../lib/playAudioContract";
+import { computeRiskPipelineFlags, riskPipelineSkipsCache } from "../../../../lib/riskModes";
+import { detectTransparencyRequest } from "../../../../lib/transparencyMode";
 
 /** Tiempo máximo de ejecución del handler (Vercel: 60 en Hobby, hasta 300 en Pro). */
 export const maxDuration = 60;
@@ -54,6 +64,24 @@ function extFromAudioMime(mime: string): string {
   if (m.includes("mpeg") || m.includes("mp3")) return "mp3";
   if (m.includes("mp4") || m.includes("m4a")) return "m4a";
   return "?";
+}
+
+function infographicParseOptions(
+  prefs: OndaUserPreferences,
+  userMessage: string,
+  ejeVal: EjeOnda | null
+): ParseResponseFormatOptions {
+  const elderHint =
+    /\b(mais\s+simples|bem\s+grande|para\s+minha\s+m[aã]e|m[aá]s\s+simples|texto\s+grande|lectura\s+f[aá]cil|m[aá]s\s+grande)\b/i.test(
+      userMessage
+    );
+  return {
+    infographic: {
+      locale: prefs.locale === "pt-BR" ? "pt" : "es",
+      elderFriendly: prefs.readingMode === "easy" || elderHint,
+      eje: ejeVal,
+    },
+  };
 }
 
 function extractFirstUrl(text: string): string | null {
@@ -142,7 +170,8 @@ export async function POST(req: Request) {
     const sessionBody = typeof body?.sessionId === "string" ? body.sessionId.trim() : "";
     const sessionId = sessionHeader || sessionBody || "anonymous";
 
-    const userPreferences = parseUserPreferencesFromApi(body?.userPreferences);
+    const inclusiveFromApi = parseUserPreferencesFromApi(body?.userPreferences);
+    const unified = normalizePrefs(parseUserPrefsFromApi(body?.prefs));
 
     let memoryBlock = "";
     if (sessionId !== "anonymous") {
@@ -291,6 +320,9 @@ export async function POST(req: Request) {
       }
     }
 
+    const userPreferences = buildOndaPreferencesForRequest(inclusiveFromApi, unified, message);
+    const messageForModel = maybeInfographicUserPrefix(unified, message);
+
     let articleContext: ArticleContext | null = null;
     const firstUrl = getUrlFromMessageOrHistory(message, history);
 
@@ -311,15 +343,21 @@ export async function POST(req: Request) {
           meta: extracted.meta,
         };
       } else {
-        if (isDev) console.log("[article] extract failed:", extracted.error, "| using meta fallback (host only)");
+        if (isDev) console.log("[article] extract failed:", extracted.error, "| host?", "host" in extracted ? extracted.host : "—");
         try {
           const u = new URL(firstUrl);
+          const host =
+            "host" in extracted && extracted.host ? extracted.host : u.host;
+          const meta =
+            "meta" in extracted && extracted.meta
+              ? extracted.meta
+              : { title: "", description: "" };
           articleContext = {
             text: "",
             thin: true,
-            host: u.host,
+            host,
             url: firstUrl,
-            meta: { title: "", description: "" },
+            meta,
           };
         } catch {
           articleContext = null;
@@ -329,6 +367,12 @@ export async function POST(req: Request) {
 
     const encoder = new TextEncoder();
     const query = message ?? "";
+    const riskPre = computeRiskPipelineFlags(query, Boolean(image), eje, userPreferences.locale);
+    const ejeForModel = riskPre.emergency ? EjeOnda.A_MANO : eje;
+    const riskPipeline = computeRiskPipelineFlags(query, Boolean(image), ejeForModel, userPreferences.locale);
+    const transparencyExplicit = detectTransparencyRequest(messageForModel || message, userPreferences.locale)
+      ? true
+      : undefined;
     const requestId = generateRequestId("web");
     const intentResultForLog = classifyIntent(query || " ");
     console.info(`[${requestId}] chat/stream START intent=${intentResultForLog.intent}`);
@@ -345,7 +389,7 @@ export async function POST(req: Request) {
       ? Promise.resolve({ extraContext: undefined, rag_used: false, web_search_used: false })
       : (async (): Promise<StreamContextBundle> => {
           const intentResult = classifyIntent(query);
-          const orch = await classifyOrchestratorDepth(query, eje, 0);
+          const orch = await classifyOrchestratorDepth(query, ejeForModel, 0);
           const isDeep = orch === "deep" || orch === "docs";
           const shouldSearch = isDeep || intentResult.ragNeeded;
 
@@ -396,12 +440,16 @@ export async function POST(req: Request) {
       !audio &&
       history.length === 0 &&
       !wantsSources(message) &&
+      !unified.sources &&
+      isDefaultUserPrefs(unified) &&
       !articleContext &&
-      !memoryBlock?.trim();
+      !memoryBlock?.trim() &&
+      !riskPipelineSkipsCache(riskPipeline) &&
+      !detectTransparencyRequest(messageForModel || message, userPreferences.locale);
     let cacheHitForImpact = false;
     if (couldUseCacheProbe) {
       try {
-        const cr = await getCachedResponse(message || "", eje ?? "none", intentResultForLog.intent);
+        const cr = await getCachedResponse(message || "", ejeForModel ?? "none", intentResultForLog.intent);
         cacheHitForImpact = Boolean(cr.hit && cr.response);
       } catch {
         cacheHitForImpact = false;
@@ -414,7 +462,7 @@ export async function POST(req: Request) {
         let assistantTextForMemory = "";
         let streamOk = true;
         try {
-          const includeSources = wantsSources(message);
+          const includeSources = unified.sources || wantsSources(message);
           let extraContext: string | undefined;
           let bundle: StreamContextBundle = {
             extraContext: undefined,
@@ -456,29 +504,57 @@ export async function POST(req: Request) {
           );
           if (image) {
             const fullReply = await getOndaReplyWithImage(
-              message || "¿Qué ves en esta imagen?",
+              messageForModel || message || "¿Qué ves en esta imagen?",
               image,
-              eje,
+              ejeForModel,
               history.length > 0 ? history : null,
               includeSources,
               "web",
               extraContext || undefined,
               memoryBlock || undefined,
               telemetryCtx,
-              userPreferences
+              userPreferences,
+              riskPipeline,
+              unified,
+              transparencyExplicit
             );
-            assistantTextForMemory = parseResponseFormat(fullReply).text.trim();
+            const imgOpts = infographicParseOptions(userPreferences, messageForModel || message, ejeForModel);
+            assistantTextForMemory = parseResponseFormat(fullReply, imgOpts).text.trim();
             for (const chunk of chunkText(fullReply)) {
               controller.enqueue(encoder.encode(JSON.stringify({ text: chunk }) + "\n"));
             }
-            const parsedImg = parseResponseFormat(fullReply);
+            const parsedImg = parseResponseFormat(fullReply, imgOpts);
             if (parsedImg.formato === "infografia" && parsedImg.infographicPayload) {
               controller.enqueue(encoder.encode(JSON.stringify({ text: "\n\n_Generando infografía…_" }) + "\n"));
               try {
-                const result = await renderInfographicPng(parsedImg.infographicPayload, eje);
+                const result = await renderInfographicPng(parsedImg.infographicPayload, ejeForModel);
                 if (result.ok) {
+                  const alt = parsedImg.infographicPayload.altText;
+                  const altLab = infographicStreamAltPrefix(
+                    userPreferences.locale === "pt-BR" ? "pt" : "es"
+                  );
                   controller.enqueue(
-                    encoder.encode(JSON.stringify({ infographic: { mime: "image/png", dataUrl: result.dataUrl, alt: "Infografía ONDA" } }) + "\n")
+                    encoder.encode(
+                      JSON.stringify({
+                        infographic: {
+                          mime: "image/png",
+                          dataUrl: result.dataUrl,
+                          altText: alt,
+                          alt: alt,
+                        },
+                      }) + "\n"
+                    )
+                  );
+                  controller.enqueue(
+                    encoder.encode(JSON.stringify({ text: `\n\n${altLab}${alt}` }) + "\n")
+                  );
+                } else {
+                  controller.enqueue(
+                    encoder.encode(
+                      JSON.stringify({
+                        text: `\n\n_No se pudo generar la infografía: ${result.error}_`,
+                      }) + "\n"
+                    )
                   );
                 }
               } catch (imgErr) {
@@ -496,7 +572,7 @@ export async function POST(req: Request) {
                 console.warn("[chat/stream] image generation failed:", imgErr);
               }
             }
-            emitPlayAudioContract(fullReply, message.trim());
+            emitPlayAudioContract(fullReply, (messageForModel || message).trim());
             try {
               const tema = await generateTemaFromExchange(message || "¿Qué ves en esta imagen?", fullReply);
               if (tema) controller.enqueue(encoder.encode(JSON.stringify({ tema }) + "\n"));
@@ -505,8 +581,8 @@ export async function POST(req: Request) {
             }
           } else {
             for await (const chunk of getOndaReplyStream(
-              message,
-              eje,
+              messageForModel,
+              ejeForModel,
               history.length > 0 ? history : null,
               includeSources,
               articleContext,
@@ -514,20 +590,48 @@ export async function POST(req: Request) {
               "web",
               memoryBlock || undefined,
               telemetryCtx,
-              userPreferences
+              userPreferences,
+              riskPipeline,
+              unified,
+              transparencyExplicit
             )) {
               partialSoFar += chunk;
               controller.enqueue(encoder.encode(JSON.stringify({ text: chunk }) + "\n"));
             }
-            const parsed = parseResponseFormat(partialSoFar);
+            const streamOpts = infographicParseOptions(userPreferences, messageForModel, ejeForModel);
+            const parsed = parseResponseFormat(partialSoFar, streamOpts);
             assistantTextForMemory = parsed.text.trim();
             if (parsed.formato === "infografia" && parsed.infographicPayload) {
               controller.enqueue(encoder.encode(JSON.stringify({ text: "\n\n_Generando infografía…_" }) + "\n"));
               try {
-                const result = await renderInfographicPng(parsed.infographicPayload, eje);
+                const result = await renderInfographicPng(parsed.infographicPayload, ejeForModel);
                 if (result.ok) {
+                  const alt = parsed.infographicPayload.altText;
+                  const altLab = infographicStreamAltPrefix(
+                    userPreferences.locale === "pt-BR" ? "pt" : "es"
+                  );
                   controller.enqueue(
-                    encoder.encode(JSON.stringify({ infographic: { mime: "image/png", dataUrl: result.dataUrl, alt: "Infografía ONDA" } }) + "\n")
+                    encoder.encode(
+                      JSON.stringify({
+                        infographic: {
+                          mime: "image/png",
+                          dataUrl: result.dataUrl,
+                          altText: alt,
+                          alt: alt,
+                        },
+                      }) + "\n"
+                    )
+                  );
+                  controller.enqueue(
+                    encoder.encode(JSON.stringify({ text: `\n\n${altLab}${alt}` }) + "\n")
+                  );
+                } else {
+                  controller.enqueue(
+                    encoder.encode(
+                      JSON.stringify({
+                        text: `\n\n_No se pudo generar la infografía: ${result.error}_`,
+                      }) + "\n"
+                    )
                   );
                 }
               } catch (imgErr) {
@@ -545,7 +649,7 @@ export async function POST(req: Request) {
                 console.warn("[chat/stream] image generation failed:", imgErr);
               }
             }
-            emitPlayAudioContract(partialSoFar, message.trim());
+            emitPlayAudioContract(partialSoFar, (messageForModel || message).trim());
             try {
               const tema = await generateTemaFromExchange(query, partialSoFar);
               if (tema) controller.enqueue(encoder.encode(JSON.stringify({ tema }) + "\n"));
@@ -594,7 +698,7 @@ export async function POST(req: Request) {
             ];
             if (conv.length > 2) {
               const intentResult = classifyIntent(message || userLine || "");
-              const ejeLabel = eje ?? EjeOnda.A_MANO;
+              const ejeLabel = ejeForModel ?? EjeOnda.A_MANO;
               void saveSessionSummary(
                 "web",
                 sessionId,
@@ -604,7 +708,7 @@ export async function POST(req: Request) {
           }
           if (streamOk && assistantTextForMemory) {
             void recordConversationImpact({
-              eje: eje ?? "A_MANO",
+              eje: ejeForModel ?? "A_MANO",
               canal: "web",
               intent: intentResultForLog.intent,
               responseMs: Date.now() - requestStart,
@@ -613,7 +717,7 @@ export async function POST(req: Request) {
             }).catch(() => {});
             void recordConversation({
               sessionId: sessionId !== "anonymous" ? sessionId : undefined,
-              excerpt: `intent=${intentResultForLog.intent};eje=${eje ?? "none"};canal=web`,
+              excerpt: `intent=${intentResultForLog.intent};eje=${ejeForModel ?? "none"};canal=web`,
             }).catch(() => {});
           }
           controller.close();

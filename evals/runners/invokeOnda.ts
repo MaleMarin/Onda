@@ -1,6 +1,10 @@
 import { EjeOnda } from "@/content/types";
 import { getOndaReply, type ArticleContext, type HistoryEntry } from "@/lib/ondaReply";
+import { computeRiskPipelineFlags } from "@/lib/riskModes";
+import { detectTransparencyRequest } from "@/lib/transparencyMode";
 import { parseResponseFormat, wantsSources } from "@/lib/responseFormat";
+import { DEFAULT_ONDA_USER_PREFERENCES, mergeOndaUserPreferences } from "@/lib/userPreferences";
+import { buildOndaPreferencesForRequest, normalizePrefs } from "@/lib/userPrefs";
 import { evalBaseUrl, useFixtureReply } from "../config";
 import type { EvalCase, EvalChannel, EvalMode, EvalOnda, InvokeOndaParams } from "../types";
 import { MOCK_RAG_SNIPPET } from "../fixtures/mockRag";
@@ -96,7 +100,7 @@ export async function invokeOnda(
   params: InvokeOndaParams,
   case_: Pick<
     EvalCase,
-    "input" | "simulate_article" | "context" | "fixture_reply" | "onda" | "channel"
+    "input" | "simulate_article" | "context" | "fixture_reply" | "onda" | "channel" | "language" | "prefs"
   >
 ): Promise<{ text: string; ms: number }> {
   if (useFixtureReply() && case_.fixture_reply?.trim()) {
@@ -108,13 +112,23 @@ export async function invokeOnda(
     role: m.role,
     content: m.content,
   }));
-  const includeSources = wantsSources(params.message);
+  const unifiedEval = normalizePrefs(case_.prefs ?? {});
+  const baseInclusive = mergeOndaUserPreferences(
+    DEFAULT_ONDA_USER_PREFERENCES,
+    case_.language === "es" ? { locale: "es-LATAM" as const } : { locale: "pt-BR" as const }
+  );
+  const mergedInclusive = buildOndaPreferencesForRequest(baseInclusive, unifiedEval, params.message);
+  const includeSources = unifiedEval.sources || wantsSources(params.message);
   const articleFromCase = params.mockExtract ?? case_.simulate_article;
   const articleContext =
     articleFromCase && Object.keys(articleFromCase).length > 0
       ? toArticleContext(articleFromCase)
       : null;
   const extraContext = resolveExtraContext(params, case_);
+
+  const riskPre = computeRiskPipelineFlags(params.message, false, eje, mergedInclusive.locale);
+  const ejeForReply = riskPre.emergency ? EjeOnda.A_MANO : eje;
+  const riskPipeline = computeRiskPipelineFlags(params.message, false, ejeForReply, mergedInclusive.locale);
 
   const t0 = Date.now();
 
@@ -124,6 +138,8 @@ export async function invokeOnda(
       message: params.message,
       eje,
       history,
+      prefs: unifiedEval,
+      userPreferences: baseInclusive,
     };
     const res = await fetch(`${base}/api/chat/stream`, {
       method: "POST",
@@ -134,16 +150,24 @@ export async function invokeOnda(
     return { text, ms: Date.now() - t0 };
   }
 
+  const transparencyExplicit = detectTransparencyRequest(params.message, mergedInclusive.locale)
+    ? true
+    : undefined;
+
   const reply = await getOndaReply(
     params.message,
-    eje,
+    ejeForReply,
     history.length ? history : null,
     includeSources,
     articleContext,
     params.channel,
     extraContext,
     null,
-    null
+    null,
+    mergedInclusive,
+    riskPipeline,
+    unifiedEval,
+    transparencyExplicit
   );
   const text = parseResponseFormat(reply).text.trim();
   return { text, ms: Date.now() - t0 };

@@ -38,6 +38,12 @@ function localeBlock(prefs: OndaUserPreferences): string {
 Responda em português do Brasil: claro, natural, "você", sem jargão desnecessário. Mantenha neutralidade e as mesmas regras éticas de Onda.
 `.trim();
   }
+  if (prefs.locale === "es-LATAM") {
+    return `
+--- IDIOMA (preferencia de la persona) ---
+Responde en español neutro (Latinoamérica): tuteo ("tú", "quieres", "puedes"), sin voseo rioplatense. Mantén neutralidad y las mismas reglas éticas de Onda.
+`.trim();
+  }
   return "";
 }
 

@@ -17,7 +17,7 @@ export async function runEvalCase(
     message: case_.input,
     onda: case_.onda,
     channel: case_.channel,
-    history: [],
+    history: case_.history?.length ? case_.history : [],
     mode,
     mockWeb: mode === "deterministic" ? undefined : false,
     mockRag: mode === "deterministic" ? undefined : false,

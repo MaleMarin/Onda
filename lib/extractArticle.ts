@@ -27,16 +27,43 @@ function stripHtml(html: string): string {
   return text;
 }
 
+function escapeReKey(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/** Lee content= con name= o property=; admite atributos en cualquier orden. */
+function pickMetaAttribute(html: string, attr: "name" | "property", key: string): string {
+  const k = escapeReKey(key);
+  const a = escapeReKey(attr);
+  const forward = new RegExp(
+    `<meta[^>]+${a}=["']${k}["'][^>]+content=["']([^"']+)["']`,
+    "i"
+  );
+  const backward = new RegExp(
+    `<meta[^>]+content=["']([^"']+)["'][^>]+${a}=["']${k}["']`,
+    "i"
+  );
+  return html.match(forward)?.[1]?.trim() ?? html.match(backward)?.[1]?.trim() ?? "";
+}
+
 function pickMeta(html: string): { title: string; description: string } {
-  const title =
-    html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1]?.trim() ?? "";
-  const desc =
-    html.match(/<meta[^>]+name=["']description["'][^>]+content=["']([^"']+)["']/i)?.[1]?.trim() ??
-    html.match(/<meta[^>]+property=["']og:description["'][^>]+content=["']([^"']+)["']/i)?.[1]?.trim() ??
-    "";
   const ogTitle =
-    html.match(/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']/i)?.[1]?.trim() ?? "";
-  return { title: ogTitle || title, description: desc };
+    pickMetaAttribute(html, "property", "og:title") ||
+    pickMetaAttribute(html, "name", "twitter:title") ||
+    "";
+  const titleTag =
+    html
+      .match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1]
+      ?.replace(/<[^>]+>/g, " ")
+      .replace(/\s+/g, " ")
+      .trim() ?? "";
+  const desc =
+    pickMetaAttribute(html, "name", "description") ||
+    pickMetaAttribute(html, "property", "og:description") ||
+    pickMetaAttribute(html, "name", "twitter:description") ||
+    "";
+  const title = (ogTitle || titleTag).trim();
+  return { title, description: desc.trim() };
 }
 
 export type ExtractResult = {
@@ -50,6 +77,9 @@ export type ExtractResult = {
 } | {
   ok: false;
   error: string;
+  /** Presente si la URL era válida pero falló el fetch (p. ej. red); útil para modo noticia con host solo. */
+  host?: string;
+  meta?: { title: string; description: string };
 };
 
 const MAX_TEXT_LENGTH = 22000;
@@ -69,7 +99,7 @@ export async function extractArticle(urlParam: string): Promise<ExtractResult> {
       redirect: "follow",
     });
 
-    // NUNCA early return por !res.ok: aunque sea 403/404/paywall, leer cuerpo y parsear meta (título, og:description).
+    // NUNCA ignorar el cuerpo por !res.ok: 403/404/paywall suelen devolver HTML con og:title/description.
     const html = await res.text();
     const meta = pickMeta(html);
     const rawText = stripHtml(html);
@@ -86,6 +116,11 @@ export async function extractArticle(urlParam: string): Promise<ExtractResult> {
       thin,
     };
   } catch {
-    return { ok: false, error: "fetch_failed" };
+    return {
+      ok: false,
+      error: "fetch_failed",
+      host: url.host,
+      meta: { title: "", description: "" },
+    };
   }
 }

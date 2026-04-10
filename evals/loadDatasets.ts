@@ -23,8 +23,20 @@ function normalizeCase(raw: unknown): EvalCase {
     expectations: (c.expectations as EvalCase["expectations"]) ?? undefined,
     risk_tags: Array.isArray(c.risk_tags) ? (c.risk_tags as string[]) : [],
     pair_id: typeof c.pair_id === "string" ? c.pair_id : undefined,
+    history: Array.isArray(c.history)
+      ? (c.history as { role: "user" | "model"; content: string }[]).filter(
+          (h) =>
+            h &&
+            (h.role === "user" || h.role === "model") &&
+            typeof h.content === "string"
+        )
+      : undefined,
     fixture_reply: typeof c.fixture_reply === "string" ? c.fixture_reply : undefined,
     notes: typeof c.notes === "string" ? c.notes : undefined,
+    wa_contract:
+      c.wa_contract && typeof c.wa_contract === "object"
+        ? (c.wa_contract as EvalCase["wa_contract"])
+        : undefined,
   };
 }
 

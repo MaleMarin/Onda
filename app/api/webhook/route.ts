@@ -2,16 +2,32 @@ import { recordConversation, recordError, recordUsage } from "../../../lib/audit
 import { recordConversationImpact } from "../../../lib/impactMetrics";
 import { generateImageFromText } from "../../../lib/generateImage";
 import { renderInfographicPng } from "../../../lib/infographic";
+import {
+  altTextForWhatsApp,
+  infographicAltWhatsAppPrefix,
+  type InfographicLocale,
+} from "../../../lib/infographicPayload";
 import { getGuideImageBuffer } from "../../../lib/guides";
 import { classifyIntent } from "../../../lib/intentClassifier";
 import { getOndaReply, getOndaReplyWithImage } from "../../../lib/ondaReply";
+import { computeRiskPipelineFlags, detectEmergencyKeywords } from "../../../lib/riskModes";
 import {
   buildMemoryContextBlock,
   buildSessionSummary,
   getSessionSummary,
   saveSessionSummary,
 } from "../../../lib/sessionMemory";
+import { inferChatLocaleFromMessage } from "../../../lib/inferChatLocale";
+import { computeWebPlayAudioDecision } from "../../../lib/playAudioContract";
 import { parseResponseFormat, wantsSources } from "../../../lib/responseFormat";
+import { detectTransparencyRequest } from "../../../lib/transparencyMode";
+import {
+  mergePrefs,
+  normalizePrefs,
+  parsePreferenceCommand,
+  pickPreferenceAck,
+} from "../../../lib/userPrefs";
+import { DEFAULT_ONDA_USER_PREFERENCES, mergeOndaUserPreferences } from "../../../lib/userPreferences";
 import { transcribeAudio } from "../../../lib/transcribe";
 import { generateSpeech } from "../../../lib/tts";
 import {
@@ -49,17 +65,59 @@ import {
 import { generateRequestId } from "../../../lib/telemetry";
 import { parseWaInclusiveCommand } from "../../../lib/waInclusivePreferences";
 import { formatWebhookPostBlockedMessage, getWhatsAppEnvReport } from "../../../lib/waWebhookEnv";
+import { WA_AUDIO_TRANSCRIBING_ACK } from "../../../content/shared";
+import { EjeOnda } from "../../../content/types";
+import {
+  alignWaSessionAfterModelTurn,
+  appendWaHistory,
+  applyLanguageAndFormatFromText,
+  buildWaModelPreferences,
+  consumeWaEjeCommand,
+  getSession,
+  maybeInfographicHint,
+  ondaPrefsToWaPrefsPatch,
+  responseWhenEjeMissing,
+  responseWhenVagueIntent,
+  setSession,
+  waEjeToEnum,
+  waHistoryToOndaHistory,
+  type WaSession,
+} from "../../../lib/waSession";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const isDev = process.env.NODE_ENV === "development";
 
+/** Límite de caracteres enviados al TTS en WhatsApp (calidad y coste). */
+const WA_TTS_CHAR_LIMIT = 1500;
+
 const WA_IMAGE_VALIDATION_REPLY =
   "No pude leer esa imagen. ¿Podés enviarla en JPG, PNG o WebP de menos de 5MB?";
 
 const WA_AUDIO_TOO_LONG_REPLY =
   "Ese audio es demasiado largo para que lo procese. El máximo es 2 minutos, ¿podés recortarlo?";
+
+const WA_TECHNICAL_REPLY_PT =
+  "Tive um problema técnico agora. Pode tentar de novo? Se preferir, escreva em 1 frase o que você precisa.";
+
+function sttLangFromSession(session: WaSession, text: string): "pt" | "es" {
+  if (session.prefs.locale === "pt") return "pt";
+  if (session.prefs.locale === "es") return "es";
+  const loc = inferChatLocaleFromMessage(text, "pt-BR");
+  return loc === "es-LATAM" ? "es" : "pt";
+}
+
+function sessionHistoryForSummary(session: WaSession): Array<{ role: "user" | "model"; content: string }> {
+  return session.history.map((m) => ({
+    role: m.role === "assistant" ? ("model" as const) : ("user" as const),
+    content: m.content,
+  }));
+}
+
+function impactEjeFromSession(s: WaSession | null | undefined): EjeOnda {
+  return waEjeToEnum(s?.eje ?? null) ?? EjeOnda.A_MANO;
+}
 
 function extractWhatsAppSenderFromPayload(payload: unknown): string {
   try {
@@ -303,9 +361,6 @@ export async function POST(req: Request) {
             }
           }
 
-          const userMessageForFormat = (text || "").trim() || (type === "audio" ? "(mensaje de voz)" : "");
-          const includeSources = wantsSources(userMessageForFormat);
-
           let memoryBlock = "";
           if (from && from !== "unknown") {
             const prevSummary = await getSessionSummary("wa", from);
@@ -314,9 +369,190 @@ export async function POST(req: Request) {
             }
           }
 
-          const locked = await withLock(from, async () => {
+          const locked = await withLock<{
+            response: string | null;
+            waUserTurn: string;
+            nextWaState: WaSession | null;
+          }>(from, async () => {
+            let session = await getSession(from);
             let response: string | null = null;
             let waUserTurn = "";
+            let nextWaState: WaSession | null = null;
+
+            type PipelineOpts = { imageDataUrl?: string };
+
+            const runWaTextPipeline = async (
+              rawIncoming: string,
+              opts: PipelineOpts = {}
+            ): Promise<{ ok: boolean }> => {
+              const trimmedIn = rawIncoming.trim();
+              const txCmd = parseWaInclusiveCommand(from, trimmedIn, {
+                basePrefs: buildWaModelPreferences(session, trimmedIn, null),
+              });
+              if (txCmd.helpReply) await sendWhatsAppText(from, txCmd.helpReply);
+              if (!txCmd.outgoingText.trim()) {
+                session = {
+                  ...session,
+                  ondaMerged: txCmd.prefs,
+                  prefs: { ...session.prefs, ...ondaPrefsToWaPrefsPatch(txCmd.prefs) },
+                };
+                waUserTurn = trimmedIn;
+                nextWaState = session;
+                return { ok: true };
+              }
+              const rawAfter = txCmd.outgoingText.trim();
+              session = {
+                ...session,
+                ondaMerged: txCmd.prefs,
+                prefs: { ...session.prefs, ...ondaPrefsToWaPrefsPatch(txCmd.prefs) },
+              };
+              const purePref = parsePreferenceCommand(rawAfter, normalizePrefs(session.prefs));
+              if (purePref) {
+                const merged = mergePrefs(session.prefs, purePref.patch);
+                session = { ...session, prefs: merged, updatedAt: Date.now() };
+                const ack = pickPreferenceAck(merged, purePref.ackText, session.ondaMerged?.locale);
+                waUserTurn = trimmedIn;
+                nextWaState = appendWaHistory(session, trimmedIn, ack);
+                response = ack;
+                return { ok: true };
+              }
+              /** Comando puro transparência / transparencia — marca el siguiente turno; sin LLM. */
+              if (/^transpar[eê]ncia$/i.test((rawAfter || "").trim())) {
+                const baseOm = mergeOndaUserPreferences(
+                  DEFAULT_ONDA_USER_PREFERENCES,
+                  session.ondaMerged ?? {}
+                );
+                session = {
+                  ...session,
+                  ondaMerged: mergeOndaUserPreferences(baseOm, { transparencyNext: true }),
+                  updatedAt: Date.now(),
+                };
+                const ack =
+                  session.prefs.locale === "es"
+                    ? "Ok. En el próximo mensaje explico la base de la respuesta."
+                    : "Ok. No próximo envio eu explico a base da resposta.";
+                waUserTurn = trimmedIn;
+                nextWaState = appendWaHistory(session, trimmedIn, ack);
+                response = ack;
+                return { ok: true };
+              }
+              session = applyLanguageAndFormatFromText(session, rawAfter);
+              const ejeHit = consumeWaEjeCommand(rawAfter, session);
+              session = ejeHit.session;
+              if (ejeHit.confirmation && !ejeHit.remainder) {
+                waUserTurn = rawAfter;
+                nextWaState = appendWaHistory(session, rawAfter, ejeHit.confirmation);
+                response = ejeHit.confirmation;
+                return { ok: true };
+              }
+              let userLine = (ejeHit.remainder || rawAfter).trim();
+              userLine = maybeInfographicHint(session, userLine);
+              if (!userLine.trim()) {
+                waUserTurn = rawAfter;
+                nextWaState = session;
+                return { ok: true };
+              }
+              const safe = checkUserMessage(userLine);
+              if (!safe.safe && safe.response) {
+                await sendWhatsAppText(from, safe.response);
+                waUserTurn = "";
+                nextWaState = null;
+                response = null;
+                return { ok: false };
+              }
+              const riskLoc = session.prefs.locale === "es" ? "es" : "pt";
+              if (detectEmergencyKeywords(userLine, riskLoc)) {
+                session = {
+                  ...session,
+                  eje: session.eje ?? "A_MANO",
+                  updatedAt: Date.now(),
+                };
+              }
+              const gate = responseWhenEjeMissing(session, userLine);
+              if (gate) {
+                waUserTurn = rawAfter;
+                nextWaState = appendWaHistory(gate.session, rawAfter, gate.text);
+                response = gate.text;
+                return { ok: true };
+              }
+              const vague = responseWhenVagueIntent(session, userLine);
+              if (vague) {
+                waUserTurn = rawAfter;
+                nextWaState = appendWaHistory(vague.session, rawAfter, vague.text);
+                response = vague.text;
+                return { ok: true };
+              }
+              const prefsForModel = buildWaModelPreferences(session, userLine, null);
+              const oneShotTransparency = session.ondaMerged?.transparencyNext === true;
+              const transparencyForTurn =
+                oneShotTransparency || detectTransparencyRequest(userLine, prefsForModel.locale)
+                  ? true
+                  : undefined;
+              const riskPipeline = computeRiskPipelineFlags(
+                userLine,
+                Boolean(opts.imageDataUrl),
+                waEjeToEnum(session.eje),
+                prefsForModel.locale
+              );
+              const includeSources =
+                session.prefs.sources || wantsSources(rawAfter) || wantsSources(userLine);
+              waUserTurn = rawAfter;
+              try {
+                if (opts.imageDataUrl) {
+                  response = await getOndaReplyWithImage(
+                    userLine,
+                    opts.imageDataUrl,
+                    waEjeToEnum(session.eje),
+                    waHistoryToOndaHistory(session),
+                    includeSources,
+                    "whatsapp",
+                    undefined,
+                    memoryBlock || undefined,
+                    telemetryWa,
+                    prefsForModel,
+                    riskPipeline,
+                    normalizePrefs(session.prefs),
+                    transparencyForTurn
+                  );
+                } else {
+                  response = await getOndaReply(
+                    userLine,
+                    waEjeToEnum(session.eje),
+                    waHistoryToOndaHistory(session),
+                    includeSources,
+                    null,
+                    "whatsapp",
+                    undefined,
+                    memoryBlock || undefined,
+                    telemetryWa,
+                    prefsForModel,
+                    riskPipeline,
+                    normalizePrefs(session.prefs),
+                    transparencyForTurn
+                  );
+                }
+              } catch (err) {
+                await recordError({
+                  source: "whatsapp",
+                  userMessage: userLine,
+                  error: err instanceof Error ? err.message : String(err),
+                });
+                response = WA_TECHNICAL_REPLY_PT;
+              }
+              const parsedLocal = parseResponseFormat(response);
+              let aligned = alignWaSessionAfterModelTurn(session, prefsForModel);
+              if (oneShotTransparency) {
+                aligned = {
+                  ...aligned,
+                  ondaMerged: mergeOndaUserPreferences(
+                    aligned.ondaMerged ?? DEFAULT_ONDA_USER_PREFERENCES,
+                    { transparencyNext: false }
+                  ),
+                };
+              }
+              nextWaState = appendWaHistory(aligned, rawAfter, parsedLocal.text);
+              return { ok: true };
+            };
 
             // 1) Imagen: descargar → GPT-4o-mini visión
             if (type === "image" && imageId) {
@@ -331,35 +567,18 @@ export async function POST(req: Request) {
                     const iv = await validateImage(imgBuf);
                     if (!iv.valid) {
                       await sendWhatsAppText(from, WA_IMAGE_VALIDATION_REPLY);
-                      return { response: null, waUserTurn: "" };
+                      return { response: null, waUserTurn: "", nextWaState: null };
                     }
                     const caption = (text || "").trim();
                     if (caption) {
                       const imgSafe = checkUserMessage(caption);
                       if (!imgSafe.safe && imgSafe.response) {
                         await sendWhatsAppText(from, imgSafe.response);
-                        return { response: null, waUserTurn: "" };
+                        return { response: null, waUserTurn: "", nextWaState: null };
                       }
                     }
-                    waUserTurn = text?.trim() || "¿Qué ves en esta imagen? Responde según ONDA.";
-                    const imgCmd = parseWaInclusiveCommand(from, waUserTurn);
-                    if (imgCmd.helpReply) await sendWhatsAppText(from, imgCmd.helpReply);
-                    if (!imgCmd.outgoingText.trim()) {
-                      return { response: null, waUserTurn: waUserTurn };
-                    }
-                    const imgText = imgCmd.outgoingText.trim();
-                    response = await getOndaReplyWithImage(
-                      imgText,
-                      media.dataUrl,
-                      null,
-                      null,
-                      includeSources,
-                      "whatsapp",
-                      undefined,
-                      memoryBlock || undefined,
-                      telemetryWa,
-                      imgCmd.prefs
-                    );
+                    const imgPrompt = text?.trim() || "¿Qué ves en esta imagen? Responde según ONDA.";
+                    await runWaTextPipeline(imgPrompt, { imageDataUrl: media.dataUrl });
                   }
                 } else {
                   response = "No pude procesar la imagen. ¿Puedes enviarla de nuevo?";
@@ -386,34 +605,20 @@ export async function POST(req: Request) {
                           ? WA_AUDIO_TOO_LONG_REPLY
                           : av.error ?? "No pude procesar ese audio.";
                       await sendWhatsAppText(from, reply);
-                      return { response: null, waUserTurn: "" };
+                      return { response: null, waUserTurn: "", nextWaState: null };
                     }
-                    const transcribed = await transcribeAudio(media.dataUrl);
+                    if (session.history.length === 0) {
+                      await sendWhatsAppText(from, WA_AUDIO_TRANSCRIBING_ACK);
+                    }
+                    const sttLang = sttLangFromSession(session, "");
+                    const transcribed = await transcribeAudio(media.dataUrl, { language: sttLang });
                     const userMessage = transcribed || "(no se pudo transcribir el audio)";
                     const audioSafe = checkUserMessage(userMessage);
                     if (!audioSafe.safe && audioSafe.response) {
                       await sendWhatsAppText(from, audioSafe.response);
-                      return { response: null, waUserTurn: "" };
+                      return { response: null, waUserTurn: "", nextWaState: null };
                     }
-                    const auCmd = parseWaInclusiveCommand(from, userMessage);
-                    if (auCmd.helpReply) await sendWhatsAppText(from, auCmd.helpReply);
-                    if (!auCmd.outgoingText.trim()) {
-                      return { response: null, waUserTurn: userMessage };
-                    }
-                    const audioText = auCmd.outgoingText.trim();
-                    waUserTurn = audioText;
-                    response = await getOndaReply(
-                      audioText,
-                      null,
-                      null,
-                      wantsSources(audioText),
-                      null,
-                      "whatsapp",
-                      undefined,
-                      memoryBlock || undefined,
-                      telemetryWa,
-                      auCmd.prefs
-                    );
+                    await runWaTextPipeline(userMessage);
                   }
                 } else {
                   response = "No pude descargar el audio. ¿Puedes enviar un mensaje de texto?";
@@ -431,37 +636,10 @@ export async function POST(req: Request) {
             // 3) Texto
             else if (text && (type === "text" || !type)) {
               if (isDev) console.log(`💬 Mensaje recibido de ${from}: ${text}`);
-              try {
-                const txCmd = parseWaInclusiveCommand(from, text.trim());
-                if (txCmd.helpReply) await sendWhatsAppText(from, txCmd.helpReply);
-                if (!txCmd.outgoingText.trim()) {
-                  return { response: null, waUserTurn: text.trim() };
-                }
-                const textForOnda = txCmd.outgoingText.trim();
-                const textSafe = checkUserMessage(textForOnda);
-                if (!textSafe.safe && textSafe.response) {
-                  await sendWhatsAppText(from, textSafe.response);
-                  return { response: null, waUserTurn: "" };
-                }
-                waUserTurn = textForOnda;
-                response = await getOndaReply(
-                  textForOnda,
-                  null,
-                  null,
-                  includeSources,
-                  null,
-                  "whatsapp",
-                  undefined,
-                  memoryBlock || undefined,
-                  telemetryWa,
-                  txCmd.prefs
-                );
-              } catch (err) {
-                console.error("❌ Error procesando mensaje:", err);
-              }
+              await runWaTextPipeline(text.trim());
             }
 
-            return { response, waUserTurn };
+            return { response, waUserTurn, nextWaState };
           });
 
           if (locked === null) {
@@ -469,10 +647,20 @@ export async function POST(req: Request) {
             continue;
           }
 
-          const { response, waUserTurn } = locked;
+          const { response, waUserTurn, nextWaState } = locked;
+
+          if (nextWaState && from && from !== "unknown") {
+            await setSession(from, nextWaState);
+          }
 
           if (response) {
-            const parsed = parseResponseFormat(response);
+            const parsed = parseResponseFormat(response, {
+              infographic: {
+                locale: nextWaState?.prefs.locale === "es" ? "es" : "pt",
+                elderFriendly: nextWaState?.ondaMerged?.readingMode === "easy",
+                eje: waEjeToEnum(nextWaState?.eje ?? null),
+              },
+            });
             try {
               if (isDev) console.log(`🤖 Respuesta formato=${parsed.formato}: ${parsed.text.substring(0, 80)}...`);
               const parts = splitForWhatsApp(parsed.text);
@@ -488,9 +676,15 @@ export async function POST(req: Request) {
                 }
               }
 
-              if (parsed.formato === "audio" && parsed.text.length <= 4000) {
+              const audioDecision = computeWebPlayAudioDecision({
+                outputMode: nextWaState?.ondaMerged?.outputMode ?? "text",
+                userMessage: waUserTurn || "",
+                parsed,
+              });
+              if (audioDecision.play && parsed.text.trim().length > 0) {
                 try {
-                  const audioBuffer = await generateSpeech(parsed.text);
+                  const ttsText = parsed.text.slice(0, WA_TTS_CHAR_LIMIT);
+                  const audioBuffer = await generateSpeech(ttsText);
                   const audioResult = await sendWhatsAppAudio(from, audioBuffer);
                   if (audioResult.ok && isDev) console.log("✅ Respuesta (voz) enviada");
                   else console.error("❌ Error al enviar voz:", audioResult.error);
@@ -501,7 +695,10 @@ export async function POST(req: Request) {
 
               if (parsed.formato === "infografia" && parsed.infographicPayload) {
                 try {
-                  const result = await renderInfographicPng(parsed.infographicPayload, null);
+                  const result = await renderInfographicPng(
+                    parsed.infographicPayload,
+                    waEjeToEnum(nextWaState?.eje ?? null)
+                  );
                   if (result.ok) {
                     const caption = parsed.text.slice(0, 200).trim();
                     const imgResult = await sendWhatsAppImage(
@@ -512,6 +709,22 @@ export async function POST(req: Request) {
                     );
                     if (imgResult.ok && isDev) console.log("✅ Infografía PNG enviada");
                     else console.error("❌ Error al enviar infografía:", imgResult.error);
+                    const igLocale: InfographicLocale =
+                      nextWaState?.prefs.locale === "es" ? "es" : "pt";
+                    const altPack = altTextForWhatsApp(parsed.infographicPayload.altText, igLocale);
+                    const altResult = await sendWhatsAppText(
+                      from,
+                      `${infographicAltWhatsAppPrefix(igLocale)}${altPack.text}`
+                    );
+                    if (!altResult.ok && isDev) {
+                      console.error("❌ Error al enviar texto alternativo:", altResult.error);
+                    }
+                  } else {
+                    await sendWhatsAppText(
+                      from,
+                      result.error ||
+                        "Não foi possível gerar a infografia agora. Posso enviar em texto se quiser."
+                    );
                   }
                 } catch (imgErr) {
                   console.error("❌ Error generando/enviando infografía:", imgErr);
@@ -558,8 +771,9 @@ export async function POST(req: Request) {
             }
 
             const waIntentRecorded = classifyIntent(waUserTurn || textBody || " ");
+            const impactEje = impactEjeFromSession(nextWaState);
             void recordConversationImpact({
-              eje: "A_MANO",
+              eje: impactEje,
               canal: "whatsapp",
               intent: waIntentRecorded.intent,
               responseMs: Date.now() - messageStart,
@@ -568,25 +782,24 @@ export async function POST(req: Request) {
             }).catch(() => {});
             void recordUsage({
               event: "message_sent",
-              eje: "A_MANO",
+              eje: impactEje,
               sessionId: from && from !== "unknown" ? from : undefined,
               responseTimeMs: Date.now() - messageStart,
             }).catch(() => {});
             void recordConversation({
               sessionId: from && from !== "unknown" ? from : undefined,
-              excerpt: `intent=${waIntentRecorded.intent};eje=A_MANO;canal=whatsapp`,
+              excerpt: `intent=${waIntentRecorded.intent};eje=${impactEje};canal=whatsapp`,
             }).catch(() => {});
 
             if (from && from !== "unknown" && waUserTurn) {
               const intentResult = classifyIntent(waUserTurn);
+              const hist = nextWaState?.history?.length
+                ? sessionHistoryForSummary(nextWaState)
+                : [{ role: "user" as const, content: waUserTurn }];
               void saveSessionSummary(
                 "wa",
                 from,
-                buildSessionSummary(
-                  [{ role: "user", content: waUserTurn }],
-                  intentResult.intent,
-                  "A_MANO"
-                )
+                buildSessionSummary(hist, intentResult.intent, String(impactEje))
               ).catch((err) => console.warn("[memory/wa] error guardando sesión:", err));
             }
           } else {

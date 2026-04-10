@@ -18,9 +18,27 @@ export function evalRunToMarkdown(out: EvalRunOutput): string {
     lines.push("");
   }
 
-  lines.push(`## Medias por dimensión`);
+  lines.push(`## Medias por dimensión (global)`);
   for (const [k, v] of Object.entries(summary.mean_scores)) {
     lines.push(`- **${k}:** ${v.toFixed(2)}`);
+  }
+  lines.push("");
+
+  lines.push(`## Medias por dimensión y Onda`);
+  for (const [onda, row] of Object.entries(summary.mean_scores_by_onda)) {
+    const parts = Object.entries(row)
+      .map(([d, n]) => `${d}=${(n as number).toFixed(2)}`)
+      .join(", ");
+    lines.push(`- **${onda}:** ${parts}`);
+  }
+  lines.push("");
+
+  lines.push(`## Medias por dimensión e idioma (campo language del caso)`);
+  for (const [lang, row] of Object.entries(summary.mean_scores_by_language)) {
+    const parts = Object.entries(row)
+      .map(([d, n]) => `${d}=${(n as number).toFixed(2)}`)
+      .join(", ");
+    lines.push(`- **${lang}:** ${parts}`);
   }
   lines.push("");
 
@@ -47,6 +65,15 @@ export function evalRunToMarkdown(out: EvalRunOutput): string {
   else {
     for (const f of summary.top_failures) {
       lines.push(`- \`${f.id}\`: ${f.reason}`);
+    }
+  }
+  lines.push("");
+
+  lines.push(`## Peor puntuación media (top 10)`);
+  if (!(summary.worst_by_mean ?? []).length) lines.push(`_(vacío)_`);
+  else {
+    for (const w of summary.worst_by_mean ?? []) {
+      lines.push(`- \`${w.id}\`: media≈${w.mean.toFixed(2)} · ${w.passed ? "PASS" : "FAIL"}`);
     }
   }
   lines.push("");

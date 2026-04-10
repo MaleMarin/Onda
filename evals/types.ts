@@ -24,6 +24,14 @@ export type EvalExpectations = {
 /**
  * Caso de evaluación (JSONL).
  */
+/** Preferencias unificadas (lib/userPrefs); opcional en evals de contrato Web/WA. */
+export type EvalCasePrefs = {
+  locale?: "auto" | "pt" | "es";
+  format?: "auto" | "texto" | "audio" | "infografia";
+  verbosity?: "curto" | "normal" | "longo";
+  sources?: boolean;
+};
+
 export type EvalCase = {
   id: string;
   onda: EvalOnda;
@@ -31,6 +39,8 @@ export type EvalCase = {
   category: string;
   difficulty: EvalDifficulty;
   language?: string;
+  /** Preferencias unificadas (merge con defaults en invokeOnda). */
+  prefs?: EvalCasePrefs | null;
   input: string;
   /** Contexto inyectado como extraContext (simula web+RAG congelado). */
   context?: string | null;
@@ -50,9 +60,16 @@ export type EvalCase = {
   risk_tags?: string[];
   /** Para cross-channel: mismo id de pareja en web y whatsapp. */
   pair_id?: string;
+  /** Historial previo (misma forma que el API de chat). Opcional; default []. */
+  history?: { role: "user" | "model"; content: string }[];
   /** Si EVALS_FIXTURE_REPLY=1, usar esta respuesta y no llamar al LLM. */
   fixture_reply?: string;
   notes?: string;
+  /** Contratos del pipeline WhatsApp verificados por el juez (sin ejecutar Meta). */
+  wa_contract?: {
+    /** Fixture sin [ONDA_FORMATO:audio]; el código debe enviar TTS si outputMode=audio. */
+    audio_pref_without_marker?: boolean;
+  };
 };
 
 export type DimensionResult = {
@@ -89,10 +106,16 @@ export type EvalRunSummary = {
   failed: number;
   regression: boolean;
   mean_scores: Record<string, number>;
+  /** Media de cada dimensión por Onda (solo Ondas presentes en la corrida). */
+  mean_scores_by_onda: Record<string, Record<keyof EvalDimensions, number>>;
+  /** Media por idioma declarado en el caso (`language`, ej. pt / es / und). */
+  mean_scores_by_language: Record<string, Record<keyof EvalDimensions, number>>;
   by_onda: Record<string, { n: number; pass: number; mean_global: number }>;
   by_channel: Record<string, { n: number; pass: number; mean_global: number }>;
   by_category: Record<string, { n: number; pass: number }>;
   top_failures: { id: string; reason: string }[];
+  /** Los 10 casos con media de dimensiones más baja (incluye aprobados). */
+  worst_by_mean: { id: string; mean: number; passed: boolean }[];
   timestamp_iso: string;
   commit: string | null;
   mode: EvalMode;

@@ -3,10 +3,10 @@
  * Se combinan con /onda … en el mensaje. No sustituye un CRM; sirve para activación gradual del canal.
  */
 
-import type { OndaUserPreferences } from "./userPreferences";
 import {
   DEFAULT_ONDA_USER_PREFERENCES,
   mergeOndaUserPreferences,
+  type OndaUserPreferences,
 } from "./userPreferences";
 
 const store = new Map<string, OndaUserPreferences>();
@@ -40,23 +40,30 @@ export const WA_ONDA_PREFS_HELP =
 /**
  * Si el texto empieza por /onda, aplica parche y devuelve el resto (o vacío si solo era comando).
  */
+export type ParseWaInclusiveOptions = {
+  /** Preferências já carregadas (ex.: KV). Se omitido, usa cache em memória por número. */
+  basePrefs?: OndaUserPreferences;
+};
+
 export function parseWaInclusiveCommand(
   phone: string,
-  rawText: string
+  rawText: string,
+  options?: ParseWaInclusiveOptions
 ): { outgoingText: string; prefs: OndaUserPreferences; helpReply?: string } {
+  const base = options?.basePrefs ?? getWaInclusivePrefs(phone);
   const text = rawText.trim();
   const lower = text.toLowerCase();
 
   if (lower === "/onda" || lower === "/onda ayuda" || lower === "/onda help") {
     return {
       outgoingText: "",
-      prefs: getWaInclusivePrefs(phone),
+      prefs: base,
       helpReply: WA_ONDA_PREFS_HELP,
     };
   }
 
   if (!lower.startsWith("/onda ")) {
-    return { outgoingText: rawText, prefs: getWaInclusivePrefs(phone) };
+    return { outgoingText: rawText, prefs: base };
   }
 
   const arg = text.slice("/onda ".length).trim().toLowerCase();
@@ -86,12 +93,13 @@ export function parseWaInclusiveCommand(
   else {
     return {
       outgoingText: rawText,
-      prefs: getWaInclusivePrefs(phone),
+      prefs: base,
       helpReply: `No reconocí ese comando. ${WA_ONDA_PREFS_HELP}`,
     };
   }
 
-  const prefs = patchWaInclusivePrefs(phone, patch);
+  const prefs = mergeOndaUserPreferences(base, patch);
+  store.set(phone, prefs);
   return {
     outgoingText: "",
     prefs,

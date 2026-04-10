@@ -3,6 +3,7 @@
  * Fail-open si KV no está disponible: no bloquear conversaciones.
  */
 
+import { WA_FIRST_CONTACT_PACK } from "@/content/shared";
 import { kv } from "@vercel/kv";
 
 const TTL_OPT_OUT_SEC = 2 * 365 * 24 * 60 * 60; // 2 años
@@ -201,6 +202,5 @@ export const WA_OPT_IN_ACK =
 export const WA_OPTED_OUT_NOTICE =
   "Pediste no recibir más mensajes. Para reactivar la conversación, escribe HOLA, INICIO o CONTINUAR.";
 
-/** Bienvenida primer contacto (opt-in implícito: el usuario escribió primero). */
-export const WA_FIRST_CONTACT_WELCOME =
-  "¡Hola! Soy Onda, asistente de alfabetización mediática de Fundación Precisar. Escribiste primero, así que estamos en conversación. Puedes mandarme texto, una imagen o un audio con algo que quieras entender o verificar. Si ya no quieres mensajes, escribe STOP o PARAR.";
+/** Bienvenida primer contacto (opt-in implícito: el usuario escribió primero). Texto en `content/shared.ts`. */
+export const WA_FIRST_CONTACT_WELCOME = WA_FIRST_CONTACT_PACK;

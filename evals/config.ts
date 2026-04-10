@@ -62,8 +62,25 @@ export const DATASET_FILES = [
   "cross-channel.core.jsonl",
 ] as const;
 
-/** Subconjunto con `fixture_reply` para CI barato (sin llamadas al modelo). Ver `npm run evals:ci`. */
-export const DATASET_FILES_CI = ["ci-smoke.core.jsonl"] as const;
+/**
+ * CI gate: solo casos con `fixture_reply` (sin LLM). Incluye núcleo + roadmap PT/multiformato/etc.
+ * Baseline aprobado: `evals/baselines/approved.json` (ver `npm run evals:approve`).
+ */
+export const DATASET_FILES_CI = [
+  "ci-smoke.core.jsonl",
+  "pt_core.jsonl",
+  "links_paywall.jsonl",
+  "scams_screenshots.jsonl",
+  "emergency_kit.jsonl",
+  "multiformat.jsonl",
+  "transparency.jsonl",
+  "neutralidad_doble_lectura.jsonl",
+  "whatsapp_session.jsonl",
+  "infographics.jsonl",
+  "prefs_unified.jsonl",
+] as const;
+
+export const BASELINE_APPROVED_PATH = path.join(EVALS_ROOT, "baselines", "approved.json");
 
 export function getDatasetFiles(): readonly string[] {
   return process.env.EVALS_DATASET_MODE === "ci" ? DATASET_FILES_CI : DATASET_FILES;

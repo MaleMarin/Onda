@@ -16,6 +16,7 @@ import {
   ORDERED_EJES,
 } from "@/content/shared";
 import { formatMenuIntro } from "@/content/menuQuestions";
+import { displayMenuOptionLabel, userPickedMenuOption } from "@/content/menus";
 import { EjeOnda, type Message } from "@/content/types";
 import { parseResponseFormat } from "@/lib/responseFormat";
 import { consumeChatNdjsonStream } from "@/lib/chatStreamClient";
@@ -34,8 +35,19 @@ import {
   getGuidedPrompts,
   getInclusionUiStrings,
 } from "@/lib/chatI18n";
-import { readStoredChatLocale } from "@/lib/userPreferences";
+import { mergeOndaUserPreferences, readStoredChatLocale } from "@/lib/userPreferences";
 import type { OndaChatLocale } from "@/lib/userPreferences";
+import {
+  DEFAULT_USER_PREFS,
+  loadUnifiedPrefsFromStorage,
+  mergePrefs,
+  normalizePrefs,
+  parsePreferenceCommand,
+  pickPreferenceAck,
+  saveUnifiedPrefsToStorage,
+  unifiedLocaleToOndaLocale,
+  type UserPrefs,
+} from "@/lib/userPrefs";
 import {
   getLocalizedGreetingNewDay,
   getLocalizedMainWelcome,
@@ -106,6 +118,8 @@ const STORAGE_KEY_VISITED = "onda_visited";
 const STORAGE_KEY_RESTORE = "onda_chat_restore";
 const STORAGE_KEY_PREFERRED = "onda_preferida";
 const STORAGE_KEY_ULTIMO_TEMA = "onda_ultimo_tema";
+/** Recupera `?eje=` tras remount en React Strict Mode (dev): el primer paso hace replaceState y la URL queda sin query. */
+const SESSION_KEY_PENDING_EJE_QUERY = "onda_pending_eje_query";
 const RESTORE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 días
 /** Si la última actividad fue hace más de 12 h o en otro día, se considera "nuevo día" y se muestra saludo contextual. */
 const SAME_SESSION_MS = 12 * 60 * 60 * 1000;
@@ -123,6 +137,30 @@ function getPreferredEjeFromStorage(): EjeOnda | null {
   const v = localStorage.getItem(STORAGE_KEY_PREFERRED);
   if (v === EjeOnda.A_MANO || v === EjeOnda.CIVITA || v === EjeOnda.PROFES) return v as EjeOnda;
   return null;
+}
+
+/** Lee `eje` de la query o de sessionStorage si Strict Mode ya borró la query (misma carga de página). */
+function peekEjeQueryParamWithStrictRecovery(): { eje: EjeOnda | null; hadInSearch: boolean } {
+  if (typeof window === "undefined") return { eje: null, hadInSearch: false };
+  const params = new URLSearchParams(window.location.search);
+  const raw = params.get("eje");
+  if (raw === EjeOnda.A_MANO || raw === EjeOnda.CIVITA || raw === EjeOnda.PROFES) {
+    try {
+      sessionStorage.setItem(SESSION_KEY_PENDING_EJE_QUERY, raw);
+    } catch {
+      /* ignore */
+    }
+    return { eje: raw as EjeOnda, hadInSearch: true };
+  }
+  try {
+    const pending = sessionStorage.getItem(SESSION_KEY_PENDING_EJE_QUERY);
+    if (pending === EjeOnda.A_MANO || pending === EjeOnda.CIVITA || pending === EjeOnda.PROFES) {
+      return { eje: pending as EjeOnda, hadInSearch: false };
+    }
+  } catch {
+    /* ignore */
+  }
+  return { eje: null, hadInSearch: false };
 }
 
 /** Ordena mensajes por timestamp para que el historial no tenga saltos temporales. */
@@ -251,8 +289,8 @@ function inferEjeFromMessagesStatic(messages: Message[]): EjeOnda | null {
     if (messages[i].role !== "user") continue;
     const label = messages[i].content;
     for (const eje of ORDERED_EJES) {
-      if (EJE_MENU_OPTIONS[eje].some((o) => o.label === label)) return eje;
-      if (eje === EjeOnda.A_MANO && IA_SUBMENU_OPTIONS.some((o) => o.label === label)) return eje;
+      if (EJE_MENU_OPTIONS[eje].some((o) => userPickedMenuOption(o, label))) return eje;
+      if (eje === EjeOnda.A_MANO && IA_SUBMENU_OPTIONS.some((o) => userPickedMenuOption(o, label))) return eje;
     }
     break;
   }
@@ -304,6 +342,10 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
   const t = useOndaTheme(true);
   const S = useMemo(() => ondaStyles(t), [t]);
   const { prefs: userPrefs, setPrefs: setUserPrefs, hydrated: prefsHydrated } = useOndaUserPreferences();
+  const [unifiedPrefs, setUnifiedPrefs] = useState<UserPrefs>(DEFAULT_USER_PREFS);
+  useEffect(() => {
+    setUnifiedPrefs(loadUnifiedPrefsFromStorage());
+  }, []);
   const mc = useMemo(() => getChatMicrocopy(userPrefs.locale), [userPrefs.locale]);
   const inclusionStrings = useMemo(() => getInclusionUiStrings(userPrefs.locale), [userPrefs.locale]);
   const guidedPrompts = useMemo(() => getGuidedPrompts(userPrefs.locale), [userPrefs.locale]);
@@ -384,9 +426,9 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
     // Tras fijar el saludo: si la URL trae ?eje=, aplica esa Onda (evita carrera con el efecto anterior y alinea bienvenida + pestaña).
     if (typeof window === "undefined" || userCheckResult.shouldRestore) return;
     const params = new URLSearchParams(window.location.search);
-    const ejeParam = params.get("eje");
-    if (ejeParam === EjeOnda.A_MANO || ejeParam === EjeOnda.CIVITA || ejeParam === EjeOnda.PROFES) {
-      const eje = ejeParam as EjeOnda;
+    const { eje: ejeFromQuery, hadInSearch } = peekEjeQueryParamWithStrictRecovery();
+    if (ejeFromQuery) {
+      const eje = ejeFromQuery;
       const loc = readStoredChatLocale();
       localStorage.setItem(STORAGE_KEY_PREFERRED, eje);
       setPreferredEjeForDisplay(eje);
@@ -396,8 +438,28 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
       params.delete("eje");
       const newSearch = params.toString();
       window.history.replaceState({}, "", window.location.pathname + (newSearch ? "?" + newSearch : ""));
+      if (!hadInSearch) {
+        try {
+          sessionStorage.removeItem(SESSION_KEY_PENDING_EJE_QUERY);
+        } catch {
+          /* ignore */
+        }
+      }
     }
   }, [userCheckResult]);
+
+  /** Limpia el respaldo de `?eje=` en sessionStorage tras aplicar (un solo montaje en prod; en dev, tras el segundo paso de Strict Mode). */
+  useEffect(() => {
+    if (typeof window === "undefined" || currentEje === null) return;
+    const t = window.setTimeout(() => {
+      try {
+        sessionStorage.removeItem(SESSION_KEY_PENDING_EJE_QUERY);
+      } catch {
+        /* ignore */
+      }
+    }, 300);
+    return () => clearTimeout(t);
+  }, [currentEje]);
 
   /** Inferir Onda desde el último mensaje de usuario (ej. ítem de menú) para que pestaña y chips coincidan con la conversación. */
   function inferEjeFromMessages(messages: Message[]): EjeOnda | null {
@@ -637,6 +699,23 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
     const text = input.trim();
     const hasContent = text || attachmentImage || attachmentAudio || !!audioOverride;
     if (!hasContent || loading) return;
+
+    const prefCmd = parsePreferenceCommand(text, unifiedPrefs);
+    if (prefCmd && !attachmentImage && !attachmentAudio && !audioOverride) {
+      const merged = mergePrefs(unifiedPrefs, prefCmd.patch);
+      setUnifiedPrefs(merged);
+      saveUnifiedPrefsToStorage(merged);
+      setUserPrefs((prev) =>
+        mergeOndaUserPreferences(prev, {
+          locale: unifiedLocaleToOndaLocale(merged.locale, text),
+        })
+      );
+      const ack = pickPreferenceAck(merged, prefCmd.ackText, userPrefs.locale);
+      setInput("");
+      setMessages((m) => [...m, newMessage("user", text), newMessage("model", ack)]);
+      return;
+    }
+
     if (ejeToUse === null) {
       setShowPickOndaNotice(true);
       setHighlightOndaButtons(true);
@@ -686,6 +765,7 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
           history,
           sessionId: sessionId || undefined,
           userPreferences: userPrefs,
+          prefs: unifiedPrefs,
         }),
         signal: controller.signal,
       });
@@ -853,6 +933,20 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
     const ej = ejeForSend ?? currentEje;
     const t = text.trim();
     if (!t || loading || ej === null) return;
+    const chipPref = parsePreferenceCommand(t, unifiedPrefs);
+    if (chipPref) {
+      const merged = mergePrefs(unifiedPrefs, chipPref.patch);
+      setUnifiedPrefs(merged);
+      saveUnifiedPrefsToStorage(merged);
+      setUserPrefs((prev) =>
+        mergeOndaUserPreferences(prev, {
+          locale: unifiedLocaleToOndaLocale(merged.locale, t),
+        })
+      );
+      const ack = pickPreferenceAck(merged, chipPref.ackText, userPrefs.locale);
+      setMessages((m) => [...m, newMessage("user", t), newMessage("model", ack)]);
+      return;
+    }
     const sendStartMs = Date.now();
     const history = messages.map((m) => ({ role: m.role, content: m.content }));
     const userMsg = newMessage("user", t);
@@ -876,6 +970,7 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
             history,
             sessionId: sessionIdChip || undefined,
             userPreferences: userPrefs,
+            prefs: unifiedPrefs,
           }),
           signal: controller.signal,
         });
@@ -1149,7 +1244,11 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
   const linkHelp = Boolean(
     currentEje === EjeOnda.A_MANO &&
     lastUserMessage &&
-    (hasUrl(lastUserMessage.content) || lastUserMessage.content.includes("Entender una noticia") || lastUserMessage.content.includes("noticia o un texto"))
+    (hasUrl(lastUserMessage.content) ||
+      lastUserMessage.content.includes("Entender una noticia") ||
+      lastUserMessage.content.includes("noticia o un texto") ||
+      lastUserMessage.content.includes("Entender uma notícia") ||
+      lastUserMessage.content.includes("notícia ou um texto"))
   );
   /** Último mensaje son las 3 preguntas del ítem: placeholder vacío y mostrar "O pregúntame libremente qué quieres saber". */
   const lastMsg = messages.length > 0 ? messages[messages.length - 1] : null;
@@ -1393,6 +1492,8 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
   const content = (
     <main
       id="onda-chat-main"
+      role="tabpanel"
+      aria-labelledby="onda-eje-tablist"
       aria-label={mc.conversationAria}
       style={{
         display: "flex",
@@ -1659,26 +1760,28 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
         {/* Menu options */}
         {currentEje !== null && showMenu && !showIASubmenu && (
           <div className="onda-menu-list" style={{ ...menuList, position: "relative", zIndex: 2 }}>
-            {EJE_MENU_OPTIONS[currentEje].map((opt) => (
+            {EJE_MENU_OPTIONS[currentEje].map((opt) => {
+              const optLabel = displayMenuOptionLabel(opt, userPrefs.locale);
+              return (
               <button
                 key={opt.id}
                 type="button"
                 className="onda-menu-btn"
                 data-onda-menu-id={opt.id}
-                data-onda-menu-label={opt.label}
+                data-onda-menu-label={optLabel}
                 data-onda-menu-intro={opt.intro}
                 data-onda-menu-sub={opt.isSubmenu ? "1" : undefined}
-                onClick={() => handleMenuOption(opt.id, opt.label, opt.intro, opt.isSubmenu)}
+                onClick={() => handleMenuOption(opt.id, optLabel, opt.intro, opt.isSubmenu)}
                 disabled={loading}
                 style={menuBtnStyle}
                 {...S.lift.menu}
               >
-                {opt.label}
+                {optLabel}
               </button>
-            ))}
+            );})}
             {currentEje === EjeOnda.A_MANO && (
               <button type="button" className="onda-menu-btn" data-onda-action="close-menu" onClick={() => setShowMenu(false)} style={menuSec} {...S.lift.menu}>
-                ✏️ Escribe lo que quieras
+                {mc.menuWriteFreely}
               </button>
             )}
             <button type="button" className="onda-menu-btn" data-onda-action="go-inicio" onClick={goToInicio} disabled={false} style={menuSec} title="Reiniciar y elegir otra Onda (A Mano, Civita, Profes)" {...S.lift.menu}>
@@ -1690,25 +1793,27 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
         {/* IA submenu */}
         {currentEje !== null && showIASubmenu && (
           <div className="onda-menu-list" style={{ ...menuList, position: "relative", zIndex: 2 }}>
-            {IA_SUBMENU_OPTIONS.map((opt) => (
+            {IA_SUBMENU_OPTIONS.map((opt) => {
+              const optLabel = displayMenuOptionLabel(opt, userPrefs.locale);
+              return (
               <button
                 key={opt.id}
                 type="button"
                 className="onda-menu-btn"
                 data-onda-menu-id={opt.id}
-                data-onda-menu-label={opt.label}
+                data-onda-menu-label={optLabel}
                 data-onda-menu-intro={opt.intro}
                 data-onda-menu-sub="0"
-                onClick={() => handleMenuOption(opt.id, opt.label, opt.intro)}
+                onClick={() => handleMenuOption(opt.id, optLabel, opt.intro)}
                 disabled={loading}
                 style={menuBtnStyle}
                 {...S.lift.menu}
               >
-                {opt.label}
+                {optLabel}
               </button>
-            ))}
+            );})}
             <button type="button" className="onda-menu-btn" data-onda-action="show-menu" onClick={() => setShowIASubmenu(false)} style={menuSec} title="Ver de nuevo las opciones de esta Onda" {...S.lift.menu}>
-              ↩️ Volver al menú
+              {mc.menuBackToMenu}
             </button>
             <button type="button" className="onda-menu-btn" data-onda-action="go-inicio" onClick={goToInicio} disabled={false} style={menuSec} title="Reiniciar y elegir otra Onda" {...S.lift.menu}>
               🏠 Volver al inicio
@@ -1725,7 +1830,7 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
               onClick={() => { setShowMenu(true); setShowIASubmenu(false); }}
               style={chipMuted}
             >
-              📋 Ver menú
+              {mc.menuViewMenu}
             </button>
           </div>
         )}
@@ -1933,6 +2038,20 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
             </div>
           )}
 
+          {currentEje !== null && (
+            <p
+              style={{
+                fontSize: "0.8125rem",
+                color: t.c.muted,
+                margin: "0 0 8px",
+                padding: "0 2px",
+                lineHeight: 1.35,
+              }}
+            >
+              {mc.prefsCommandsTip}
+            </p>
+          )}
+
           {/* Input row */}
           <form
             aria-label={mc.formComposerAria}
@@ -1940,8 +2059,8 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
             style={{ display: "flex", gap: 10, alignItems: "center" }}
           >
             <input type="file" accept="image/*" onChange={handleImageFile} style={{ display: "none" }} id="onda-image-upload" />
-            <label htmlFor="onda-image-upload" style={iconStyle} title={mc.imageUploadTitle}>
-              🖼️
+            <label htmlFor="onda-image-upload" style={iconStyle} title={mc.imageUploadTitle} aria-label={mc.imageUploadTitle}>
+              <span aria-hidden="true">🖼️</span>
             </label>
 
             {recording ? (
@@ -2019,6 +2138,7 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
                 type="button"
                 data-onda-send
                 disabled={!canClickEnviar}
+                aria-label={hasContent && currentEje === null ? mc.chooseOndaSendTitle : mc.send}
                 title={hasContent && currentEje === null ? mc.chooseOndaSendTitle : undefined}
                 style={sendStyle}
                 {...S.lift.send}

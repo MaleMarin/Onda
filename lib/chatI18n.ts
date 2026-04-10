@@ -243,6 +243,14 @@ export type ChatUiMicrocopy = {
   chooseOndaSendTitle: string;
   inputAriaNeedEje: string;
   conversationAria: string;
+  /** Confirmación al guardar solo comandos de preferencia (sin llamar al modelo). */
+  prefsSavedAck: string;
+  /** Tip breve cerca del input: comandos de preferencia (sin panel). */
+  prefsCommandsTip: string;
+  /** Botones del menú por eje (lista / submenú IA). */
+  menuWriteFreely: string;
+  menuBackToMenu: string;
+  menuViewMenu: string;
 };
 
 const CHAT_UI_ES: ChatUiMicrocopy = {
@@ -285,6 +293,11 @@ const CHAT_UI_ES: ChatUiMicrocopy = {
   chooseOndaSendTitle: "¡Casi listo! Elige una Onda arriba para enviar tu pregunta.",
   inputAriaNeedEje: "Escribe tu mensaje (elige una Onda arriba para enviar)",
   conversationAria: "Conversación con Onda",
+  prefsSavedAck: "Listo: guardé tus preferencias para esta conversación.",
+  prefsCommandsTip: "Tip: escribe ‘pt’, ‘es’, ‘curto’, ‘infografía’, ‘con fuentes’.",
+  menuWriteFreely: "✏️ Escribe lo que quieras",
+  menuBackToMenu: "↩️ Volver al menú",
+  menuViewMenu: "📋 Ver menú",
 };
 
 const CHAT_UI_PT: ChatUiMicrocopy = {
@@ -327,6 +340,11 @@ const CHAT_UI_PT: ChatUiMicrocopy = {
   chooseOndaSendTitle: "Quase lá! Escolha uma Onda acima para enviar sua pergunta.",
   inputAriaNeedEje: "Escreva sua mensagem (escolha uma Onda acima para enviar)",
   conversationAria: "Conversa com a Onda",
+  prefsSavedAck: "Pronto: salvei suas preferências para esta conversa.",
+  prefsCommandsTip: "Dica: escreva ‘pt’, ‘es’, ‘curto’, ‘infográfico’, ‘com fontes’.",
+  menuWriteFreely: "✏️ Escreva o que quiser",
+  menuBackToMenu: "↩️ Voltar ao menu",
+  menuViewMenu: "📋 Ver menu",
 };
 
 export function getChatMicrocopy(locale: OndaChatLocale): ChatUiMicrocopy {

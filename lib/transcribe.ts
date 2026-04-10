@@ -102,7 +102,15 @@ function needsFfmpegConversion(mime: string, ext: string): boolean {
  * Transcribe audio desde data URL (base64), Buffer o Uint8Array.
  * webm/ogg: conversión obligatoria a WAV 16k mono con ffmpeg-static (sin fallback a webm crudo).
  */
-export async function transcribeAudio(audioInput: AudioInput): Promise<string> {
+export type TranscribeOptions = {
+  /** Whisper aceita ISO-639-1; alinhado a pt-BR / es-LATAM do produto */
+  language?: "es" | "pt";
+};
+
+export async function transcribeAudio(
+  audioInput: AudioInput,
+  options?: TranscribeOptions
+): Promise<string> {
   const openai = getOpenAI();
   const { buffer, mime, ext } = toBuffer(audioInput);
 
@@ -152,7 +160,7 @@ export async function transcribeAudio(audioInput: AudioInput): Promise<string> {
       const transcription = await openai.audio.transcriptions.create({
         file: stream,
         model: "whisper-1",
-        language: "es",
+        language: options?.language === "pt" ? "pt" : "es",
       });
       return (transcription as { text?: string }).text?.trim() ?? "";
     } catch (whisperErr) {

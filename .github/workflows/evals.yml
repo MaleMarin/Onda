@@ -1,0 +1,30 @@
+name: Evals gate
+
+on:
+  pull_request:
+
+jobs:
+  evals:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Evals CI (fixtures + baseline)
+        env:
+          EVALS_MODE: deterministic
+          EVALS_DATASET_MODE: ci
+          EVALS_FIXTURE_REPLY: "1"
+          EVALS_COMPARE_BASELINE: "1"
+          EVALS_FAIL_ON_REGRESSION: "1"
+        run: npm run evals:ci
+
+      - name: Unit tests
+        run: npm test

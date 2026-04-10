@@ -5,6 +5,7 @@ import {
   clarityScore,
   accuracyScore,
   usefulnessScore,
+  neutralityScore,
 } from "./heuristicJudge";
 import type { EvalCase } from "../types";
 
@@ -32,6 +33,71 @@ const baseCase = (over: Partial<EvalCase>): EvalCase => ({
 });
 
 describe("heuristicJudge", () => {
+  it("expect-double-reading: exige contraste de lecturas", () => {
+    const c = baseCase({
+      onda: "civita",
+      risk_tags: ["expect-double-reading"],
+      expectations: { neutrality_min: 4 },
+    });
+    const weak = neutralityScore(
+      c,
+      "La reforma tiene pros y contras. Hay que ver los datos.\n\n".repeat(4)
+    );
+    expect(weak.passed).toBe(false);
+    const strong = neutralityScore(
+      c,
+      "Resumen: tema sensible.\n\nDos lecturas plausibles: una enfoca empleo joven; otra foca en gasto social.\n\nContrastá con fuentes.\n\n1) A\n2) B\n3) C"
+    );
+    expect(strong.passed).toBe(true);
+  });
+
+  it("expect-imagem: acepta marcador imagem o imagen", () => {
+    const c = baseCase({
+      risk_tags: ["expect-imagem"],
+      expectations: { accuracy_min: 4 },
+    });
+    expect(accuracyScore(c, "[ONDA_FORMATO:imagem]\n\nGuion breve con pasos.").passed).toBe(true);
+    expect(accuracyScore(c, "[ONDA_FORMATO:imagen]\n\nGuion breve con pasos.").passed).toBe(true);
+    expect(accuracyScore(c, "Solo texto sin marcador de formato.").passed).toBe(false);
+  });
+
+  it("expect-infografia-sections: exige marcador y etiquetas mínimas", () => {
+    const c = baseCase({
+      risk_tags: ["expect-infografia-sections"],
+      expectations: { accuracy_min: 4 },
+    });
+    const ok =
+      "TITULO: Tema\nLO_IMPORTANTE:\n- A\n- B\n- C\nQUE_HACER_AHORA:\n1) Uno\n2) Dos\n3) Tres\n\n[ONDA_FORMATO:infografia]";
+    expect(accuracyScore(c, ok).passed).toBe(true);
+    expect(accuracyScore(c, "Solo [ONDA_FORMATO:infografia]").passed).toBe(false);
+    expect(accuracyScore(c, "TITULO: X\nLO_IMPORTANTE:\n- a\n[ONDA_FORMATO:infografia]").passed).toBe(
+      false
+    );
+  });
+
+  it("expect-infografia-lang-pt: exige O_ESSENCIAL y rechaza LO_IMPORTANTE", () => {
+    const c = baseCase({
+      risk_tags: ["expect-infografia-lang-pt"],
+      expectations: { accuracy_min: 4 },
+    });
+    const good =
+      "TITULO: X\nO_ESSENCIAL:\n- a\nPOR_QUE_IMPORTA:\n- b\nO_QUE_FAZER_AGORA:\n1) u\n2) v\n3) w\n\n[ONDA_FORMATO:infografia]";
+    expect(accuracyScore(c, good).passed).toBe(true);
+    const badMix =
+      "TITULO: X\nLO_IMPORTANTE:\n- a\nPOR_QUE_IMPORTA:\n- b\nO_QUE_FAZER_AGORA:\n1) u\n2) v\n3) w\n\n[ONDA_FORMATO:infografia]";
+    expect(accuracyScore(c, badMix).passed).toBe(false);
+  });
+
+  it("expect-infografia-limits: falla si hay más de 5 bullets en esencial", () => {
+    const c = baseCase({
+      risk_tags: ["expect-infografia-limits"],
+      expectations: { accuracy_min: 4 },
+    });
+    const bullets = "- a\n- b\n- c\n- d\n- e\n- f";
+    const bad = `TITULO: X\nLO_IMPORTANTE:\n${bullets}\nPOR_QUE_IMPORTA:\n- w\nQUE_HACER_AHORA:\n1) a\n2) b\n3) c\n\n[ONDA_FORMATO:infografia]`;
+    expect(accuracyScore(c, bad).passed).toBe(false);
+  });
+
   it("penaliza respuesta vacía en claridad", () => {
     const c = baseCase({});
     const r = clarityScore(c, "  ", "web");
