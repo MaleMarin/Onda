@@ -229,9 +229,7 @@ export function InclusionSettingsPanel({ open, onClose, prefs, setPrefs, strings
         </fieldset>
 
         <p style={{ margin: 0, fontSize: "0.8125rem", color: t.c.muted, lineHeight: 1.5 }}>
-          {prefs.locale === "pt-BR"
-            ? "As preferências são guardadas neste dispositivo e enviadas junto com cada mensagem."
-            : "Las preferencias se guardan en este dispositivo y se envían con cada mensaje."}
+          Las preferencias se guardan en este dispositivo y se envían con cada mensaje.
         </p>
       </aside>
     </div>

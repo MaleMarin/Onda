@@ -35,14 +35,12 @@ import { ChatBubble } from "./components/ChatBubble";
 import { EjeSelector } from "./components/EjeSelector";
 import { OfflineBanner, type HealthBannerStatus } from "./components/OfflineBanner";
 import { InclusionSettingsPanel } from "./components/InclusionSettingsPanel";
-import { GuidedRoutesBar, type GuidedRouteItem } from "./components/GuidedRoutesBar";
 import {
   buildEjePickerAriaLabel,
   getChatMicrocopy,
   getChatInputAriaLabel,
   getEjeCardSubtitle,
   getEjePlaceholder,
-  getGuidedPrompts,
   getInclusionUiStrings,
 } from "@/lib/chatI18n";
 import { mergeOndaUserPreferences } from "@/lib/userPreferences";
@@ -57,7 +55,6 @@ import {
   parsePreferenceCommand,
   persistAutoInferredUnifiedLocale,
   pickPreferenceAck,
-  readEffectiveChatLocaleFromStorage,
   saveUnifiedPrefsToStorage,
   unifiedLocaleToOndaLocale,
   type UserPrefs,
@@ -72,6 +69,11 @@ import {
 import { useOndaUserPreferences } from "@/lib/useOndaUserPreferences";
 import { PRECISAR_PUBLIC_SITE_URL } from "@/lib/precisarPublicSite";
 import { warnLocaleMixInDev } from "@/lib/localeMixGuard";
+
+/** Textos de la superficie del chat siempre en español neutro (respuestas del modelo siguen la preferencia guardada). */
+const CHAT_UI_LOCALE: OndaChatLocale = "es-LATAM";
+
+const VOLVER_AL_INICIO = "Volver al inicio";
 
 function newMessage(role: "user" | "model", content: string, extra?: Partial<Message>): Message {
   return {
@@ -207,7 +209,7 @@ function useUserCheck(): UserCheckResult | null {
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    const locale = readEffectiveChatLocaleFromStorage();
+    const locale = CHAT_UI_LOCALE;
     const visited = localStorage.getItem(STORAGE_KEY_VISITED) === "1";
     const raw = localStorage.getItem(STORAGE_KEY_RESTORE);
 
@@ -410,58 +412,13 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
     [setUserPrefs]
   );
 
-  const mc = useMemo(() => getChatMicrocopy(effectiveChatLocale), [effectiveChatLocale]);
-  const inclusionStrings = useMemo(() => getInclusionUiStrings(effectiveChatLocale), [effectiveChatLocale]);
-  const guidedPrompts = useMemo(() => getGuidedPrompts(effectiveChatLocale), [effectiveChatLocale]);
-  const guidedRouteItems: GuidedRouteItem[] = useMemo(
-    () => [
-      { id: "gr-weird", eje: EjeOnda.A_MANO, label: inclusionStrings.routeWeirdMsg, prompt: guidedPrompts.weirdMsg },
-      { id: "gr-news", eje: EjeOnda.A_MANO, label: inclusionStrings.routeNews, prompt: guidedPrompts.news },
-      { id: "gr-scam", eje: EjeOnda.A_MANO, label: inclusionStrings.routeScam, prompt: guidedPrompts.scam },
-      { id: "gr-pub", eje: EjeOnda.CIVITA, label: inclusionStrings.routePublic, prompt: guidedPrompts.publicTopic },
-      { id: "gr-teach", eje: EjeOnda.PROFES, label: inclusionStrings.routeTeacher, prompt: guidedPrompts.teacher },
-      { id: "gr-ia", eje: EjeOnda.A_MANO, label: inclusionStrings.routeIa, prompt: guidedPrompts.iaCriteria },
-    ],
-    [inclusionStrings, guidedPrompts]
-  );
-  const orgRouteItems = useMemo(
-    () => [
-      {
-        id: "org-w",
-        label: inclusionStrings.orgWorkshop,
-        eje: EjeOnda.CIVITA,
-        audience: "community_mediator" as const,
-        prompt: guidedPrompts.orgWorkshop,
-      },
-      {
-        id: "org-c",
-        label: inclusionStrings.orgClassroom,
-        eje: EjeOnda.PROFES,
-        audience: "teacher" as const,
-        prompt: guidedPrompts.orgClassroom,
-      },
-      {
-        id: "org-com",
-        label: inclusionStrings.orgCommunity,
-        eje: EjeOnda.CIVITA,
-        audience: "community_mediator" as const,
-        prompt: guidedPrompts.orgCommunity,
-      },
-      {
-        id: "org-g",
-        label: inclusionStrings.orgGroup,
-        eje: EjeOnda.CIVITA,
-        audience: "community_mediator" as const,
-        prompt: guidedPrompts.orgGroup,
-      },
-    ],
-    [inclusionStrings, guidedPrompts]
-  );
+  const mc = useMemo(() => getChatMicrocopy(CHAT_UI_LOCALE), []);
+  const inclusionStrings = useMemo(() => getInclusionUiStrings(CHAT_UI_LOCALE), []);
 
   useEffect(() => {
-    const snippets = ORDERED_EJES.map((eje) => getEjeCardSubtitle(effectiveChatLocale, eje)).concat([
+    const snippets = ORDERED_EJES.map((eje) => getEjeCardSubtitle(CHAT_UI_LOCALE, eje)).concat([
       mc.placeholderGeneric,
-      getLocalizedGreetingNewDay(null, effectiveChatLocale),
+      getLocalizedGreetingNewDay(null, CHAT_UI_LOCALE),
     ]);
     warnLocaleMixInDev(effectiveChatLocale, snippets, "chat-ui-static");
   }, [effectiveChatLocale, mc.placeholderGeneric]);
@@ -493,11 +450,10 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
     const { eje: ejeFromQuery, hadInSearch } = peekEjeQueryParamWithStrictRecovery();
     if (ejeFromQuery) {
       const eje = ejeFromQuery;
-      const loc = readEffectiveChatLocaleFromStorage();
       localStorage.setItem(STORAGE_KEY_PREFERRED, eje);
       setPreferredEjeForDisplay(eje);
       setCurrentEje(eje);
-      setMessages((prev) => syncFirstBubbleAfterEjeChoice(prev, eje, loc));
+      setMessages((prev) => syncFirstBubbleAfterEjeChoice(prev, eje, CHAT_UI_LOCALE));
       trackUsage("eje_select", eje);
       params.delete("eje");
       const newSearch = params.toString();
@@ -579,8 +535,8 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
 
   useEffect(() => {
     if (typeof document === "undefined") return;
-    document.documentElement.lang = effectiveChatLocale === "pt-BR" ? "pt-BR" : "es";
-  }, [effectiveChatLocale]);
+    document.documentElement.lang = "es";
+  }, []);
 
   useEffect(() => {
     const checkHealth = async () => {
@@ -705,7 +661,7 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
     setHighlightOndaButtons(false);
     setShowEnviarTooltip(false);
     confirmEjeSwitch(eje);
-    setMessages((prev) => syncFirstBubbleAfterEjeChoice(prev, eje, effectiveChatLocale));
+    setMessages((prev) => syncFirstBubbleAfterEjeChoice(prev, eje, CHAT_UI_LOCALE));
     setShowMenu(true);
     setShowIASubmenu(false);
     const hasPending = !!(
@@ -720,7 +676,7 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
 
   /** Reiniciar el bot: conversación nueva, elegir Onda de nuevo. Siempre disponible (no se deshabilita con loading). */
   function goToInicio(): void {
-    setMessages([newMessage("model", getLocalizedMainWelcome(effectiveChatLocale))]);
+    setMessages([newMessage("model", getLocalizedMainWelcome(CHAT_UI_LOCALE))]);
     setCurrentEje(null);
     setShowMenu(true);
     setShowIASubmenu(false);
@@ -959,7 +915,7 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
   function handleClearConversation() {
     if (typeof window === "undefined") return;
     localStorage.removeItem(STORAGE_KEY_RESTORE);
-    setMessages([newMessage("model", getLocalizedMainWelcome(effectiveChatLocale))]);
+    setMessages([newMessage("model", getLocalizedMainWelcome(CHAT_UI_LOCALE))]);
     setCurrentEje(null);
     setShowMenu(false);
     setShowIASubmenu(false);
@@ -1136,22 +1092,6 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
         setLoading(false);
       }
     })();
-  }
-
-  function handleGuidedRoutePick(eje: EjeOnda, prompt: string) {
-    if (loading) return;
-    confirmEjeSwitch(eje);
-    setMessages((prev) => syncFirstBubbleAfterEjeChoice(prev, eje, effectiveChatLocale));
-    window.setTimeout(() => sendChipText(prompt, eje), 0);
-  }
-
-  function handleOrgRoutePick(
-    eje: EjeOnda,
-    audience: "teacher" | "community_mediator",
-    prompt: string
-  ) {
-    setUserPrefs((p) => ({ ...p, audienceProfile: audience }));
-    handleGuidedRoutePick(eje, prompt);
   }
 
   function handleImageFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -1706,11 +1646,103 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
                     color={ejeColor}
                     compact={compact}
                     theme={t}
-                    uiLocale={effectiveChatLocale}
+                    uiLocale={CHAT_UI_LOCALE}
                     onMenuIntroChipClick={handleMenuIntroChipClick}
                     hideActions={true}
                     lowBandwidth={userPrefs.bandwidthMode === "low"}
                   />
+                </div>
+              )}
+              <div
+                style={{
+                  width: "100%",
+                  maxWidth: 560,
+                  alignSelf: "center",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 14,
+                  marginTop: 4,
+                  marginBottom: 8,
+                  position: "relative",
+                  zIndex: 11,
+                  boxSizing: "border-box",
+                  padding: "0 2px",
+                }}
+                className={highlightOndaButtons ? "onda-picker-highlight" : undefined}
+              >
+                {ORDERED_EJES.map((eje, idx) => {
+                  const config = EJE_CONFIGS[eje];
+                  const cardSubtitle = getEjeCardSubtitle(CHAT_UI_LOCALE, eje);
+                  const isPreferred = eje === preferredEjeForDisplay;
+                  return (
+                    <button
+                      key={eje}
+                      type="button"
+                      data-onda-picker-main
+                      data-onda-eje={eje}
+                      aria-label={buildEjePickerAriaLabel(CHAT_UI_LOCALE, config.name, cardSubtitle, isPreferred)}
+                      onClick={() => pickEje(eje)}
+                      style={{
+                        padding: "22px 24px",
+                        borderRadius: 24,
+                        border: isPreferred ? "3px solid rgba(255,255,255,0.95)" : "none",
+                        outline: isPreferred ? `3px solid ${neuPickerColorMap[eje]}` : "none",
+                        outlineOffset: 3,
+                        background: neuPickerColorMap[eje],
+                        color: "#fff",
+                        cursor: "pointer",
+                        touchAction: "manipulation",
+                        boxShadow: t.shadow.neuRaisedColoredSolid(neuPickerColorMap[eje]),
+                        textAlign: "left",
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 10,
+                        width: "100%",
+                        position: "relative",
+                        zIndex: 11 + idx,
+                        fontFamily: "inherit",
+                      }}
+                    >
+                      <span style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                        <span style={{ fontSize: "1.375rem", fontWeight: 700, lineHeight: 1.2 }}>{config.name}</span>
+                        {isPreferred && (
+                          <span
+                            style={{
+                              fontSize: "0.8125rem",
+                              fontWeight: 600,
+                              background: "rgba(255,255,255,0.22)",
+                              padding: "4px 10px",
+                              borderRadius: 12,
+                            }}
+                          >
+                            {mc.pickerContinueBadge}
+                          </span>
+                        )}
+                      </span>
+                      <span style={{ fontSize: "1.0625rem", fontWeight: 400, lineHeight: 1.45, color: "rgba(255,255,255,0.94)" }}>
+                        {cardSubtitle}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+              {showPickOndaNotice && (
+                <div className="bubble-in" style={S.row(false)}>
+                  <div style={noticeStyle}>
+                    <span>{mc.pickOndaFirst}</span>
+                    <button
+                      type="button"
+                      data-onda-action="dismiss-notice"
+                      onClick={() => {
+                        setShowPickOndaNotice(false);
+                        setHighlightOndaButtons(false);
+                        setShowEnviarTooltip(false);
+                      }}
+                      style={noticeBtnStyle}
+                    >
+                      {mc.pickOndaDismiss}
+                    </button>
+                  </div>
                 </div>
               )}
             </>
@@ -1727,7 +1759,7 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
                 message={msg}
                 color={ejeColor}
                 compact={compact}
-                uiLocale={effectiveChatLocale}
+                uiLocale={CHAT_UI_LOCALE}
                 onPlayTTS={msg.role === "model" && msg.content?.trim() ? playTTS : undefined}
                 onStopTTS={stopTTS}
                 isTTSPlaying={ttsPlaying}
@@ -1793,19 +1825,6 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
             ) : null;
           })()}
 
-          {/* Pick onda notice */}
-          {showPickOndaNotice && (
-            <div className="bubble-in" style={S.row(false)}>
-              <div style={noticeStyle}>
-                <span>{mc.pickOndaFirst}</span>
-                <button type="button" data-onda-action="dismiss-notice" onClick={() => { setShowPickOndaNotice(false); setHighlightOndaButtons(false); setShowEnviarTooltip(false); }} style={noticeBtnStyle}>
-                  {mc.pickOndaDismiss}
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Onda picker: no se muestra cuando ya hay onda elegida */}
             </>
           )}
 
@@ -1815,19 +1834,6 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
 
         {/* Tabs, menu, chips, composer: capa con z-index alto para que todos los botones reciban clics */}
         <div className="onda-composer-layer" style={{ flexShrink: 0, display: "flex", flexDirection: "column", minHeight: 0 }}>
-        {currentEje !== null && prefsHydrated && (
-          <GuidedRoutesBar
-            title={inclusionStrings.guidedTitle}
-            routes={guidedRouteItems}
-            orgTitle={inclusionStrings.orgTitle}
-            orgRoutes={orgRouteItems}
-            onRoute={handleGuidedRoutePick}
-            onOrgRoute={handleOrgRoutePick}
-            disabled={loading}
-            theme={t}
-            lowBandwidth={userPrefs.bandwidthMode === "low"}
-          />
-        )}
         {/* Tabs + Volver al inicio siempre visible cuando hay Onda elegida */}
         {currentEje !== null && (
           <>
@@ -1838,7 +1844,7 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
                   onSelect={confirmEjeSwitch}
                   compact={compact}
                   theme={t}
-                  locale={effectiveChatLocale}
+                  locale={CHAT_UI_LOCALE}
                 />
                 {justSwitchedEje !== null && (
                   <p style={{ margin: 0, fontSize: compact ? "0.8125rem" : "0.875rem", color: neuPickerColorDarkMap[justSwitchedEje], fontWeight: 600 }}>
@@ -1863,7 +1869,7 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
                   boxShadow: t.shadow?.neuRaised ?? "none",
                 }}
               >
-                {mc.backHome}
+                {VOLVER_AL_INICIO}
               </button>
             </div>
           </>
@@ -1873,7 +1879,7 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
         {currentEje !== null && showMenu && !showIASubmenu && (
           <div className="onda-menu-list" style={{ ...menuList, position: "relative", zIndex: 2 }}>
             {EJE_MENU_OPTIONS[currentEje].map((opt) => {
-              const optLabel = displayMenuOptionLabel(opt, effectiveChatLocale);
+              const optLabel = displayMenuOptionLabel(opt, CHAT_UI_LOCALE);
               return (
               <button
                 key={opt.id}
@@ -1897,7 +1903,7 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
               </button>
             )}
             <button type="button" className="onda-menu-btn" data-onda-action="go-inicio" onClick={goToInicio} disabled={false} style={menuSec} title={mc.menuMainGoInicioLongTitle} {...S.lift.menu}>
-              {mc.backHome}
+              {VOLVER_AL_INICIO}
             </button>
           </div>
         )}
@@ -1906,7 +1912,7 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
         {currentEje !== null && showIASubmenu && (
           <div className="onda-menu-list" style={{ ...menuList, position: "relative", zIndex: 2 }}>
             {IA_SUBMENU_OPTIONS.map((opt) => {
-              const optLabel = displayMenuOptionLabel(opt, effectiveChatLocale);
+              const optLabel = displayMenuOptionLabel(opt, CHAT_UI_LOCALE);
               return (
               <button
                 key={opt.id}
@@ -1928,7 +1934,7 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
               {mc.menuBackToMenu}
             </button>
             <button type="button" className="onda-menu-btn" data-onda-action="go-inicio" onClick={goToInicio} disabled={false} style={menuSec} title={mc.backHomeTitle} {...S.lift.menu}>
-              {mc.backHome}
+              {VOLVER_AL_INICIO}
             </button>
           </div>
         )}
@@ -1949,82 +1955,6 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
 
         {/* Composer */}
         <div style={S.composer}>
-          {/* Sin Onda elegida: indicar que debe elegir para enviar + botones aquí por si los de arriba no responden (embed/iframe) */}
-          {currentEje === null && (
-            <div style={{ marginBottom: 10 }} className={highlightOndaButtons ? "onda-picker-highlight" : ""}>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8, maxWidth: "min(88%, 320px)", position: "relative", zIndex: 11 }}>
-                {ORDERED_EJES.map((eje, idx) => {
-                  const config = EJE_CONFIGS[eje];
-                  const cardSubtitle = getEjeCardSubtitle(effectiveChatLocale, eje);
-                  const href = `?eje=${eje}`;
-                  const isPreferred = eje === preferredEjeForDisplay;
-                  return (
-                    <a
-                      key={eje}
-                      href={href}
-                      data-onda-picker-composer
-                      data-onda-eje={eje}
-                      aria-label={buildEjePickerAriaLabel(effectiveChatLocale, config.name, cardSubtitle, isPreferred)}
-                      role="button"
-                      tabIndex={0}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        pickEje(eje);
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                          e.preventDefault();
-                          pickEje(eje);
-                        }
-                      }}
-                      style={{
-                        padding: "12px 16px",
-                        borderRadius: 22,
-                        border: isPreferred ? "2px solid rgba(255,255,255,0.95)" : "none",
-                        outline: isPreferred ? `2px solid ${neuPickerColorMap[eje]}` : "none",
-                        outlineOffset: 2,
-                        background: neuPickerColorMap[eje],
-                        color: "#fff",
-                        fontSize: "1.0625rem",
-                        fontWeight: 600,
-                        cursor: "pointer",
-                        touchAction: "manipulation",
-                        boxShadow: t.shadow.neuRaisedColoredSolid(neuPickerColorMap[eje]),
-                        textAlign: "left",
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: 4,
-                        width: "100%",
-                        position: "relative",
-                        zIndex: 11 + idx,
-                        textDecoration: "none",
-                      }}
-                    >
-                      <span style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                        <span className="onda-picker-btn-inner">{config.name}</span>
-                        {isPreferred && (
-                          <span
-                            style={{
-                              fontSize: "0.75rem",
-                              fontWeight: 600,
-                              background: "rgba(255,255,255,0.25)",
-                              padding: "2px 8px",
-                              borderRadius: 10,
-                            }}
-                          >
-                            {mc.pickerContinueBadge}
-                          </span>
-                        )}
-                      </span>
-                      <span className="onda-picker-btn-inner" style={{ fontSize: "0.875rem", fontWeight: 400, color: "rgba(255,255,255,0.92)" }}>
-                        {cardSubtitle}
-                      </span>
-                    </a>
-                  );
-                })}
-              </div>
-            </div>
-          )}
           {/* Volver al menú / Volver al inicio (cuando no estás en el menú) */}
           {currentEje !== null && !showMenu && (
             <div style={{ marginBottom: 10, display: "flex", flexWrap: "wrap", gap: "12px 16px", alignItems: "center" }}>
@@ -2064,7 +1994,7 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
                   textUnderlineOffset: 3,
                 }}
               >
-                {mc.backHome}
+                {VOLVER_AL_INICIO}
               </button>
             </div>
           )}
@@ -2194,7 +2124,7 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
               id="onda-main-input"
               ref={inputRef}
               type="text"
-              aria-label={getChatInputAriaLabel(effectiveChatLocale, currentEje ? EJE_CONFIGS[currentEje].name : null)}
+              aria-label={getChatInputAriaLabel(CHAT_UI_LOCALE, currentEje ? EJE_CONFIGS[currentEje].name : null)}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => {
@@ -2210,7 +2140,7 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
                     ? mc.linkHelpPlaceholder
                     : currentEje
                       ? showMenu
-                        ? getEjePlaceholder(effectiveChatLocale, currentEje)
+                        ? getEjePlaceholder(CHAT_UI_LOCALE, currentEje)
                         : ""
                       : mc.placeholderGeneric
               }
