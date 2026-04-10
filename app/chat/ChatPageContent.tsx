@@ -40,7 +40,6 @@ import {
   getChatMicrocopy,
   getChatInputAriaLabel,
   getEjeCardSubtitle,
-  getEjePlaceholder,
   getInclusionUiStrings,
 } from "@/lib/chatI18n";
 import { mergeOndaUserPreferences } from "@/lib/userPreferences";
@@ -72,6 +71,8 @@ import { warnLocaleMixInDev } from "@/lib/localeMixGuard";
 
 /** Textos de la superficie del chat siempre en español neutro (respuestas del modelo siguen la preferencia guardada). */
 const CHAT_UI_LOCALE: OndaChatLocale = "es-LATAM";
+
+const CHAT_INPUT_PLACEHOLDER = "Escribe tu pregunta o pega un link...";
 
 const VOLVER_AL_INICIO = "Volver al inicio";
 
@@ -417,11 +418,11 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
 
   useEffect(() => {
     const snippets = ORDERED_EJES.map((eje) => getEjeCardSubtitle(CHAT_UI_LOCALE, eje)).concat([
-      mc.placeholderGeneric,
+      CHAT_INPUT_PLACEHOLDER,
       getLocalizedGreetingNewDay(null, CHAT_UI_LOCALE),
     ]);
     warnLocaleMixInDev(effectiveChatLocale, snippets, "chat-ui-static");
-  }, [effectiveChatLocale, mc.placeholderGeneric]);
+  }, [effectiveChatLocale]);
 
   const [embed, setEmbed] = useState(false);
   useEffect(() => {
@@ -2078,20 +2079,6 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
             </div>
           )}
 
-          {currentEje !== null && (
-            <p
-              style={{
-                fontSize: "0.8125rem",
-                color: t.c.muted,
-                margin: "0 0 8px",
-                padding: "0 2px",
-                lineHeight: 1.35,
-              }}
-            >
-              {mc.prefsCommandsTip}
-            </p>
-          )}
-
           {/* Input row */}
           <form
             aria-label={mc.formComposerAria}
@@ -2133,17 +2120,7 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
                   handleSend(e as unknown as React.FormEvent);
                 }
               }}
-              placeholder={
-                isMenuIntroActive
-                  ? ""
-                  : linkHelp
-                    ? mc.linkHelpPlaceholder
-                    : currentEje
-                      ? showMenu
-                        ? getEjePlaceholder(CHAT_UI_LOCALE, currentEje)
-                        : ""
-                      : mc.placeholderGeneric
-              }
+              placeholder={isMenuIntroActive ? "" : CHAT_INPUT_PLACEHOLDER}
               disabled={loading}
               style={inpStyle}
               onFocus={() => setInputFocused(true)}
