@@ -1569,10 +1569,10 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
             aria-label={mc.precisarSiteLinkAria}
           >
             <img
-              src="/logo-onda.png?v=5"
+              src="/favicon-onda.png?v=7"
               alt=""
-              width={compact ? 46 : 56}
-              height={compact ? 46 : 56}
+              width={compact ? 52 : 64}
+              height={compact ? 52 : 64}
               style={{ display: "block", objectFit: "contain" }}
             />
             <div aria-hidden="true" style={{ fontWeight: 600, fontSize: compact ? "1.0625rem" : "1.25rem", letterSpacing: ".04em", color: t.c.ink }}>
