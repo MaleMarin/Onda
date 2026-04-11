@@ -69,6 +69,9 @@ import { useOndaUserPreferences } from "@/lib/useOndaUserPreferences";
 import { PRECISAR_PUBLIC_SITE_URL } from "@/lib/precisarPublicSite";
 import { warnLocaleMixInDev } from "@/lib/localeMixGuard";
 
+/** Marca Precisar (misma ruta que el sitio institucional). */
+const PRECISAR_LOGO_MARK_URL = `${PRECISAR_PUBLIC_SITE_URL.replace(/\/$/, "")}/logo-precisar/logo-precisar.png`;
+
 /** Textos de la superficie del chat siempre en español neutro (respuestas del modelo siguen la preferencia guardada). */
 const CHAT_UI_LOCALE: OndaChatLocale = "es-LATAM";
 
@@ -2169,6 +2172,40 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
               </button>
             </span>
           </form>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              marginTop: 12,
+              paddingTop: 12,
+              borderTop: `1px solid ${t.glass.borderSoft}`,
+            }}
+          >
+            <a
+              href={PRECISAR_PUBLIC_SITE_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={mc.precisarSiteLinkAria}
+              style={{ display: "block", lineHeight: 0 }}
+            >
+              <img
+                src={PRECISAR_LOGO_MARK_URL}
+                alt=""
+                width={200}
+                height={50}
+                style={{
+                  display: "block",
+                  height: compact ? 26 : 30,
+                  width: "auto",
+                  maxWidth: "min(220px, 88%)",
+                  objectFit: "contain",
+                }}
+                loading="lazy"
+                decoding="async"
+              />
+            </a>
+          </div>
         </div>
         </div>
       </div>
