@@ -1569,7 +1569,7 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
             aria-label={mc.precisarSiteLinkAria}
           >
             <img
-              src="/logo%20onda%20O%20ok.png?v=3"
+              src="/logo-onda.png?v=4"
               alt=""
               width={40}
               height={40}

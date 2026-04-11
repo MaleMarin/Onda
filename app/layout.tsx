@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { resolveOndaMetadataBaseUrl } from "@/lib/ondaPublicBaseUrl";
 
-/** Favicon / Apple: `app/icon.png` y `app/apple-icon.png` (mismo origen; evita iconos rotos en previews de Vercel). */
+/** Favicon / Apple: copia de `public/favicon-onda.png` en `app/icon.png` y `app/apple-icon.png`. */
 export const metadata: Metadata = {
   metadataBase: new URL(resolveOndaMetadataBaseUrl()),
   title: "Onda - Asistente Digital Precisar",
