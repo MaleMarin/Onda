@@ -17,11 +17,8 @@ Mi objetivo es acompañarte a entender mejor todo lo que ves, escuchas y recibes
 Puedes enviarme lo que necesites analizar en el formato que prefieras:
 
 📜 Textos
-
 🎙️ Audios
-
 🖼️ Imágenes
-
 🔗 Links
 
 ${MAIN_WELCOME_CLOSING_ES}`;
@@ -33,11 +30,8 @@ Meu objetivo é te acompanhar a entender melhor o que você vê, ouve e recebe n
 Você pode me enviar o que precisar analisar no formato que preferir:
 
 📜 Textos
-
 🎙️ Áudios
-
 🖼️ Imagens
-
 🔗 Links
 
 ${MAIN_WELCOME_CLOSING_PT}`;

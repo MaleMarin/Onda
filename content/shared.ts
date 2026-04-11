@@ -299,11 +299,8 @@ Mi objetivo es acompañarte a entender mejor todo lo que ves, escuchas y recibes
 Puedes enviarme lo que necesites analizar en el formato que prefieras:
 
 📜 Textos
-
 🎙️ Audios
-
 🖼️ Imágenes
-
 🔗 Links
 
 ${MAIN_WELCOME_CLOSING}`;
@@ -322,11 +319,8 @@ Mi objetivo es acompañarte a entender mejor todo lo que ves, escuchas y recibes
 Puedes enviarme lo que necesites analizar en el formato que prefieras:
 
 📜 Textos
-
 🎙️ Audios
-
 🖼️ Imágenes
-
 🔗 Links
 
 ${MAIN_WELCOME_CLOSING}`;
