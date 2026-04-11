@@ -1,12 +1,23 @@
 import type { Metadata, Viewport } from "next";
 import { resolveOndaMetadataBaseUrl } from "@/lib/ondaPublicBaseUrl";
 
-/** Favicon / Apple: copia de `public/favicon-onda.png` en `app/icon.png` y `app/apple-icon.png`. */
+/**
+ * Favicon: `app/icon.png` / `app/apple-icon.png` (copia de `public/favicon-onda.png`) + enlaces explícitos
+ * en tamaños grandes para marcadores / inicio; la pestaña del navegador sigue usando el tamaño del sistema.
+ */
 export const metadata: Metadata = {
   metadataBase: new URL(resolveOndaMetadataBaseUrl()),
   title: "Onda - Asistente Digital Precisar",
   description:
     "Webhook WhatsApp para ONDA. Asistente de Alfabetización Mediática e Informacional (AMI).",
+  icons: {
+    icon: [
+      { url: "/favicon-onda.png", type: "image/png", sizes: "512x512" },
+      { url: "/favicon-onda.png", type: "image/png", sizes: "192x192" },
+      { url: "/favicon-onda.png", type: "image/png", sizes: "32x32" },
+    ],
+    apple: [{ url: "/favicon-onda.png", sizes: "512x512", type: "image/png" }],
+  },
 };
 
 export const viewport: Viewport = {
