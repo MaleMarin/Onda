@@ -1,18 +1,12 @@
 import type { Metadata, Viewport } from "next";
-import { ONDA_PUBLIC_BASE_URL } from "@/lib/ondaPublicBaseUrl";
+import { resolveOndaMetadataBaseUrl } from "@/lib/ondaPublicBaseUrl";
 
+/** Favicon / Apple: `app/icon.png` y `app/apple-icon.png` (mismo origen; evita iconos rotos en previews de Vercel). */
 export const metadata: Metadata = {
-  metadataBase: new URL(ONDA_PUBLIC_BASE_URL),
+  metadataBase: new URL(resolveOndaMetadataBaseUrl()),
   title: "Onda - Asistente Digital Precisar",
   description:
     "Webhook WhatsApp para ONDA. Asistente de Alfabetización Mediática e Informacional (AMI).",
-  icons: {
-    icon: [
-      { url: "/onda-favicon.png", type: "image/png", sizes: "64x64" },
-      { url: "/favicon.ico", sizes: "any" },
-    ],
-    apple: "/onda-favicon.png",
-  },
 };
 
 export const viewport: Viewport = {

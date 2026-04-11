@@ -11,3 +11,16 @@ function resolveOndaPublicBaseUrl(): string {
 }
 
 export const ONDA_PUBLIC_BASE_URL = resolveOndaPublicBaseUrl();
+
+/**
+ * Base URL para `metadataBase` (Open Graph, etc.): en previews de Vercel usa el propio deploy
+ * para que recursos resueltos contra `metadataBase` no apunten a otro host.
+ */
+export function resolveOndaMetadataBaseUrl(): string {
+  const vercel = process.env.VERCEL_URL?.trim();
+  if (vercel) {
+    const host = vercel.replace(/^https?:\/\//, "").replace(/\/$/, "");
+    return `https://${host}`;
+  }
+  return ONDA_PUBLIC_BASE_URL;
+}
