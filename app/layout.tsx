@@ -34,8 +34,8 @@ export const viewport: Viewport = {
  */
 const FONT_ONDA_STACK = String.raw`"Avenir Next", Avenir, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Helvetica, Arial, sans-serif`;
 
-/** Naranja del botón Enviar (neumórfico). Env NEXT_PUBLIC_ONDA_ORANGE o naranja oscuro #C43E00 por defecto. */
-const SEND_ORANGE = (typeof process !== "undefined" && process.env.NEXT_PUBLIC_ONDA_ORANGE) || "#C43E00";
+/** Naranja del botón Enviar: alineado al logo Onda (#FF4500). Env NEXT_PUBLIC_ONDA_ORANGE para otro hex. */
+const SEND_ORANGE = (typeof process !== "undefined" && process.env.NEXT_PUBLIC_ONDA_ORANGE) || "#FF4500";
 
 const GLOBAL_CSS = `
 :root{--font-onda:${FONT_ONDA_STACK}}
@@ -47,7 +47,7 @@ body{-webkit-font-smoothing:antialiased;font-family:var(--font-onda);line-height
 .onda-shell *{pointer-events:auto}
 .onda-page-wrap,.onda-page-wrap *{pointer-events:auto !important}
 button,label,input,a,[role="button"]{cursor:pointer;touch-action:manipulation}
-/* Botón Enviar: naranja oscuro sólido (NEXT_PUBLIC_ONDA_ORANGE o #C43E00), neumorphism, siempre */
+/* Botón Enviar: naranja logo (#FF4500 o NEXT_PUBLIC_ONDA_ORANGE), neumorphism, siempre */
 button[data-onda-send],
 button[data-onda-send]:hover,
 button[data-onda-send]:focus{background:${SEND_ORANGE} !important;color:#fff !important}

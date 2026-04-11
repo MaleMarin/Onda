@@ -4,8 +4,8 @@ export type OndaMode = "light" | "dark";
 
 export type OndaTheme = ReturnType<typeof createOndaTheme>;
 
-/** Naranja del botón Enviar (neumórfico): desde env o naranja oscuro por defecto. Siempre sólido, 100% neumorphism. */
-const DEFAULT_ORANGE = "#C43E00";
+/** Naranja del botón Enviar (neumórfico): mismo tono que el logo Onda / A Mano (#FF4500). Override con NEXT_PUBLIC_ONDA_ORANGE. */
+const DEFAULT_ORANGE = "#FF4500";
 function getSendOrange(): string {
   if (typeof process === "undefined") return DEFAULT_ORANGE;
   const v = process.env.NEXT_PUBLIC_ONDA_ORANGE;

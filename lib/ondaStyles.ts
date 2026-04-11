@@ -283,10 +283,10 @@ export function ondaStyles(t: OndaTheme) {
 
     inputFocusRing: {
       boxShadow: `${neuInsetSoft}, 0 0 0 3px ${t.c.ring}`,
-      borderColor: t.neuColors.red,
+      borderColor: t.c.orange,
     } satisfies CSSProperties,
 
-    /** Enviar: naranja sólido (NEXT_PUBLIC_ONDA_ORANGE o #FB5002), 100% neumorphism. */
+    /** Enviar: naranja logo (t.c.orange / NEXT_PUBLIC_ONDA_ORANGE), 100% neumorphism. */
     send: {
       height: 46,
       padding: "0 24px",

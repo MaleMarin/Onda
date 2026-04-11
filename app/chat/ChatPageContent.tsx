@@ -1262,7 +1262,8 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
     [EjeOnda.CIVITA]: "#0F5A4A",
     [EjeOnda.PROFES]: "#4A2655",
   };
-  const ejeColor = currentEje ? neuPickerColorMap[currentEje] : t.neuColors.red;
+  /** Sin Onda elegida: mismo naranja que el logo (#FF4500 vía A Mano). */
+  const ejeColor = currentEje ? neuPickerColorMap[currentEje] : neuPickerColorMap[EjeOnda.A_MANO];
 
   const lastUserMessage = [...messages].reverse().find((m) => m.role === "user");
   /** Modo "pega noticia/link y te lo explico" solo en Onda A Mano; en Civita la persona hace preguntas, no envía noticias. */
