@@ -438,15 +438,15 @@ export function getEjePlaceholder(locale: OndaChatLocale, eje: EjeOnda): string 
 }
 
 const EJE_CARD_SUBTITLE_ES: Record<EjeOnda, string> = {
-  [EjeOnda.A_MANO]: "Vida digital cotidiana, criterio e IA.",
-  [EjeOnda.CIVITA]: "Vida pública, instituciones y ciudadanía.",
-  [EjeOnda.PROFES]: "Docencia y proyectos educativos con IA.",
+  [EjeOnda.A_MANO]: "Mensajes, noticias y apps del día a día, en simple.",
+  [EjeOnda.CIVITA]: "Instituciones y temas públicos, con lenguaje claro y neutro.",
+  [EjeOnda.PROFES]: "Ideas para clase y buen uso de la IA con alumnos.",
 };
 
 const EJE_CARD_SUBTITLE_PT: Record<EjeOnda, string> = {
-  [EjeOnda.A_MANO]: "Vida digital do dia a dia, critério e IA.",
-  [EjeOnda.CIVITA]: "Vida pública, instituições e cidadania.",
-  [EjeOnda.PROFES]: "Docência e projetos educativos com IA.",
+  [EjeOnda.A_MANO]: "Mensagens, notícias e apps do cotidiano, em linguagem simples.",
+  [EjeOnda.CIVITA]: "Instituições e temas públicos, com linguagem clara e neutra.",
+  [EjeOnda.PROFES]: "Ideias para aula e bom uso da IA com alunos.",
 };
 
 /** Subtítulo de tarjeta Onda (picker / tabs): siempre según locale efectivo. */

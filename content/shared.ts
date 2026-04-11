@@ -23,7 +23,7 @@ export const EJE_CONFIGS: Record<EjeOnda, EjeConfig> = {
     color: "#FF4500",
     bgColor: "bg-orange-50",
     icon: "",
-    description: "Vida digital cotidiana, criterio e IA.",
+    description: "Mensajes, noticias y apps del día a día, en simple.",
     placeholder:
       "Pregúntame sobre una noticia, un link o cómo usar IA hoy...",
   },
@@ -33,7 +33,7 @@ export const EJE_CONFIGS: Record<EjeOnda, EjeConfig> = {
     color: "#2E7D32",
     bgColor: "bg-green-50",
     icon: "",
-    description: "Vida pública, instituciones y ciudadanía.",
+    description: "Instituciones y temas públicos, con lenguaje claro y neutro.",
     placeholder:
       "Exploremos cómo funcionan las instituciones o conceptos de economía...",
   },
@@ -43,7 +43,7 @@ export const EJE_CONFIGS: Record<EjeOnda, EjeConfig> = {
     color: "#7C4DFF",
     bgColor: "bg-blue-50",
     icon: "",
-    description: "Docencia y proyectos educativos con IA.",
+    description: "Ideas para clase y buen uso de la IA con alumnos.",
     placeholder: "Diseñemos una actividad educativa crítica con IA...",
   },
 };
@@ -296,12 +296,7 @@ const MAIN_WELCOME_BODY = `Te doy la bienvenida a Onda 🌊, un espacio diseñad
 
 Mi objetivo es acompañarte a entender mejor todo lo que ves, escuchas y recibes a diario. Aquí exploramos la información de forma simple y objetiva, siempre bajo el rigor de fuentes confiables y sin sesgos personales.
 
-Puedes enviarme lo que necesites analizar en el formato que prefieras:
-
-📜 Textos
-🎙️ Audios
-🖼️ Imágenes
-🔗 Links
+Puedes enviarme lo que necesites analizar en el formato que prefieras: 📜 Textos · 🎙️ Audios · 🖼️ Imágenes · 🔗 Links
 
 ${MAIN_WELCOME_CLOSING}`;
 
@@ -316,12 +311,7 @@ export const MAIN_WELCOME = `¡Hola! Te doy la bienvenida a Onda 🌊, un espaci
 
 Mi objetivo es acompañarte a entender mejor todo lo que ves, escuchas y recibes a diario. Aquí exploramos la información de forma simple y objetiva, siempre bajo el rigor de fuentes confiables y sin sesgos personales.
 
-Puedes enviarme lo que necesites analizar en el formato que prefieras:
-
-📜 Textos
-🎙️ Audios
-🖼️ Imágenes
-🔗 Links
+Puedes enviarme lo que necesites analizar en el formato que prefieras: 📜 Textos · 🎙️ Audios · 🖼️ Imágenes · 🔗 Links
 
 ${MAIN_WELCOME_CLOSING}`;
 
@@ -659,9 +649,9 @@ export const WA_PROMPT_CHOOSE_ONDA_SHORT = `
 Sin problema.
 Responde solo con una palabra:
 
-*Mão* = Vida digital cotidiana, criterio e IA
-*Cívita* = Vida pública, instituciones y ciudadanía
-*Professores* = Docencia y proyectos educativos con IA
+*Mão* = Mensajes, noticias y apps del día a día, en simple
+*Cívita* = Instituciones y temas públicos, con lenguaje claro y neutro
+*Professores* = Ideas para clase y buen uso de la IA con alumnos
 
 ¿Cuál eliges?
 `.trim();

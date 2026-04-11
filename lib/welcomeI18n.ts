@@ -14,12 +14,7 @@ const MAIN_WELCOME_BODY_ES = `Te doy la bienvenida a Onda 🌊, un espacio dise�
 
 Mi objetivo es acompañarte a entender mejor todo lo que ves, escuchas y recibes a diario. Aquí exploramos la información de forma simple y objetiva, siempre bajo el rigor de fuentes confiables y sin sesgos personales.
 
-Puedes enviarme lo que necesites analizar en el formato que prefieras:
-
-📜 Textos
-🎙️ Audios
-🖼️ Imágenes
-🔗 Links
+Puedes enviarme lo que necesites analizar en el formato que prefieras: 📜 Textos · 🎙️ Audios · 🖼️ Imágenes · 🔗 Links
 
 ${MAIN_WELCOME_CLOSING_ES}`;
 
@@ -27,12 +22,7 @@ const MAIN_WELCOME_BODY_PT = `Dou as boas-vindas à Onda 🌊, um espaço para n
 
 Meu objetivo é te acompanhar a entender melhor o que você vê, ouve e recebe no dia a dia. Aqui exploramos a informação de forma simples e objetiva, com rigor de fontes confiáveis e sem viés pessoal.
 
-Você pode me enviar o que precisar analisar no formato que preferir:
-
-📜 Textos
-🎙️ Áudios
-🖼️ Imagens
-🔗 Links
+Você pode me enviar o que precisar analisar no formato que preferir: 📜 Textos · 🎙️ Áudios · 🖼️ Imagens · 🔗 Links
 
 ${MAIN_WELCOME_CLOSING_PT}`;
 
@@ -43,20 +33,20 @@ const EJE_PRESENTATION: Record<
   [EjeOnda.A_MANO]: {
     nameEs: "Onda A Mano",
     namePt: "Onda A Mano",
-    descriptionEs: "Vida digital cotidiana, criterio e IA.",
-    descriptionPt: "Vida digital do dia a dia, critério e IA.",
+    descriptionEs: "Mensajes, noticias y apps del día a día, en simple.",
+    descriptionPt: "Mensagens, notícias e apps do cotidiano, em linguagem simples.",
   },
   [EjeOnda.CIVITA]: {
     nameEs: "Onda Civita",
     namePt: "Onda Civita",
-    descriptionEs: "Vida pública, instituciones y ciudadanía.",
-    descriptionPt: "Vida pública, instituições e cidadania.",
+    descriptionEs: "Instituciones y temas públicos, con lenguaje claro y neutro.",
+    descriptionPt: "Instituições e temas públicos, com linguagem clara e neutra.",
   },
   [EjeOnda.PROFES]: {
     nameEs: "Onda Profes",
     namePt: "Onda Profes",
-    descriptionEs: "Docencia y proyectos educativos con IA.",
-    descriptionPt: "Docência e projetos educativos com IA.",
+    descriptionEs: "Ideas para clase y buen uso de la IA con alumnos.",
+    descriptionPt: "Ideias para aula e bom uso da IA com alunos.",
   },
 };
 

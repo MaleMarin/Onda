@@ -27,9 +27,9 @@ describe("detectEmotionalLoad", () => {
 });
 
 describe("buildVoiceBlock", () => {
-  it("A_MANO menciona WhatsApp o cotidiano", () => {
+  it("A_MANO menciona WhatsApp, cotidiano o foco en mensajes/noticias", () => {
     const block = buildVoiceBlock(EjeOnda.A_MANO);
-    expect(block.toLowerCase()).toMatch(/whatsapp|cotidian|familiar|sencill/);
+    expect(block.toLowerCase()).toMatch(/whatsapp|cotidian|familiar|sencill|noticia|mensaj/);
   });
   it("CIVITA menciona rigor cívico o institucional", () => {
     const block = buildVoiceBlock(EjeOnda.CIVITA);

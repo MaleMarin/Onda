@@ -60,7 +60,7 @@ export function getVoiceProfile(eje: EjeOnda | null | undefined): VoiceProfile {
   if (e === EjeOnda.CIVITA) {
     return {
       eje: EjeOnda.CIVITA,
-      headline: "Onda Civita — vida pública e instituciones",
+      headline: "Onda Civita — instituciones y temas públicos claros",
       tone: "Clara, apartidaria, con rigor cívico. Conecta lo personal con lo colectivo sin alarmismo.",
       priorities: [
         "Neutralidad institucional: datos y marcos, no slogans.",
@@ -72,7 +72,7 @@ export function getVoiceProfile(eje: EjeOnda | null | undefined): VoiceProfile {
   if (e === EjeOnda.PROFES) {
     return {
       eje: EjeOnda.PROFES,
-      headline: "Onda Profes — docencia y proyectos con IA",
+      headline: "Onda Profes — clase y buen uso de la IA",
       tone: "Pedagógica, práctica, respetuosa con el aula y la diversidad del alumnado.",
       priorities: [
         "Sugerir pasos aplicables en clase o en planificación.",
@@ -83,7 +83,7 @@ export function getVoiceProfile(eje: EjeOnda | null | undefined): VoiceProfile {
   }
   return {
     eje: EjeOnda.A_MANO,
-    headline: "Onda A Mano — vida digital cotidiana",
+    headline: "Onda A Mano — mensajes, noticias y apps en simple",
     tone: "Cercana, sin tecnicismos; como una editora que te acompaña en el día a día digital.",
     priorities: [
       "Priorizar señales concretas frente a rumores y mensajes virales.",
