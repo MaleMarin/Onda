@@ -23,7 +23,8 @@ export const EJE_CONFIGS: Record<EjeOnda, EjeConfig> = {
     color: "#FF4500",
     bgColor: "bg-orange-50",
     icon: "",
-    description: "Mensajes, noticias y apps del día a día, en simple.",
+    description:
+      "Para aterrizar lo digital sin enredos: mensajes, noticias, audios y dudas del día a día.",
     placeholder:
       "Pregúntame sobre una noticia, un link o cómo usar IA hoy...",
   },
@@ -33,7 +34,8 @@ export const EJE_CONFIGS: Record<EjeOnda, EjeConfig> = {
     color: "#2E7D32",
     bgColor: "bg-green-50",
     icon: "",
-    description: "Instituciones y temas públicos, con lenguaje claro y neutro.",
+    description:
+      "Para entender la vida pública sin sesgos: instituciones, decisiones y contexto en lenguaje claro.",
     placeholder:
       "Exploremos cómo funcionan las instituciones o conceptos de economía...",
   },
@@ -43,7 +45,8 @@ export const EJE_CONFIGS: Record<EjeOnda, EjeConfig> = {
     color: "#7C4DFF",
     bgColor: "bg-blue-50",
     icon: "",
-    description: "Ideas para clase y buen uso de la IA con alumnos.",
+    description:
+      "Para enseñar con IA crítica: actividades, rúbricas y herramientas sin perder el criterio.",
     placeholder: "Diseñemos una actividad educativa crítica con IA...",
   },
 };
@@ -316,11 +319,11 @@ Puedes enviarme lo que necesites analizar en el formato que prefieras: 📜 Text
 ${MAIN_WELCOME_CLOSING}`;
 
 /** Cuando la persona ya conoce Onda: ir directo a las tres Ondas (bienvenida ágil). */
-export const SHORT_WELCOME = `Hola de nuevo. ¿Con qué Onda arrancamos hoy?`;
+export const SHORT_WELCOME = `¡Hola! Me alegra verte 😊 ¿Qué Onda activamos hoy? 👇`;
 
 /** Bienvenida para quien ya conoce Onda: frase ágil. Sin repetir las 3 Ondas. */
 export function getShortWelcome(): string {
-  return "Hola de nuevo. ¿Con qué Onda arrancamos hoy?";
+  return "¡Hola! Me alegra verte 😊 ¿Qué Onda activamos hoy? 👇";
 }
 
 /** Bienvenida cuando existe un tema guardado (Memoria Temática): prioridad 1 en jerarquía de saludos. */
@@ -350,6 +353,8 @@ export function isStalePickerGreeting(content: string): boolean {
   if (c.includes("¡Hola de nuevo hoy!") && c.includes("¿Qué onda activamos")) return true;
   if (c.includes("Olá de novo hoje!") && c.includes("Qual onda ativamos")) return true;
   if (c.includes("Olá! Que bom te ver de novo") && c.includes("Qual Onda vamos ativar")) return true;
+  if (c.includes("Me alegra verte") && c.includes("¿Qué Onda activamos hoy?")) return true;
+  if (c.includes("¿Qué Onda activamos para tu día?")) return true;
   if (c.includes("Hola de nuevo. Hoy es") && c.includes("¿Con qué Onda arrancamos hoy?")) return true;
   if (c.includes("¿Con qué Onda arrancamos hoy?")) return true;
   if (c.includes("¿En qué onda trabajamos hoy?")) return true;
@@ -369,8 +374,8 @@ export function getMessageAfterPickerChoice(eje: EjeOnda): string {
 /** Saludo cuando es nuevo día calendarizado (o tras más de 12 h): prioridad 3. Mantiene onda_preferida y onda_ultimo_tema para el mensaje; solo se borra onda_chat_restore. */
 export function getGreetingNewDay(_lastEje?: EjeOnda | null): string {
   const dayName = new Date().toLocaleDateString("es-419", { weekday: "long" });
-  const dayCapitalized = dayName.charAt(0).toUpperCase() + dayName.slice(1);
-  return `Hola de nuevo. Hoy es ${dayCapitalized}. ¿Con qué Onda arrancamos hoy?`;
+  const dayLower = dayName.toLowerCase();
+  return `¡Hola! Hoy es ${dayLower}. ¿Qué Onda activamos para tu día? 👇`;
 }
 
 /** Chips de pregunta relacionada después de una respuesta del bot (fallback genérico). */

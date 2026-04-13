@@ -75,7 +75,7 @@ const PRECISAR_LOGO_MARK_URL = `${PRECISAR_PUBLIC_SITE_URL.replace(/\/$/, "")}/l
 /** Textos de la superficie del chat siempre en español neutro (respuestas del modelo siguen la preferencia guardada). */
 const CHAT_UI_LOCALE: OndaChatLocale = "es-LATAM";
 
-const CHAT_INPUT_PLACEHOLDER = "Escribe tu pregunta o pega un link...";
+const CHAT_INPUT_PLACEHOLDER = "¿Cómo te ayudo?";
 
 const VOLVER_AL_INICIO = "Volver al inicio";
 
@@ -203,7 +203,7 @@ type UserCheckResult = {
  * Jerarquía de saludos (useUserCheck):
  * 1. Tema guardado (onda_ultimo_tema) → "¿Seguimos trabajando en [tema] o buscamos nuevas evidencias hoy?"
  * 2. Onda preferida (onda_preferida) → "¿Quieres continuar ahí o exploramos una nueva hoy?"
- * 3. Nuevo día → "¡Hola de nuevo hoy! Qué bueno verte este [Día]. ¿Qué onda activamos hoy?"
+ * 3. Nuevo día → "¡Hola! Hoy es [día en minúscula]. ¿Qué Onda activamos para tu día? 👇"
  * 4. Usuario nuevo → bienvenida larga con las 3 Ondas.
  * Regla 12 h: si última actividad > 12 h, se borra onda_chat_restore pero se MANTIENEN onda_preferida y onda_ultimo_tema para el saludo.
  */

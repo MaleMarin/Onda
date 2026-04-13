@@ -33,19 +33,22 @@ const EJE_PRESENTATION: Record<
   [EjeOnda.A_MANO]: {
     nameEs: "Onda A Mano",
     namePt: "Onda A Mano",
-    descriptionEs: "Mensajes, noticias y apps del día a día, en simple.",
+    descriptionEs:
+      "Para aterrizar lo digital sin enredos: mensajes, noticias, audios y dudas del día a día.",
     descriptionPt: "Mensagens, notícias e apps do cotidiano, em linguagem simples.",
   },
   [EjeOnda.CIVITA]: {
     nameEs: "Onda Civita",
     namePt: "Onda Civita",
-    descriptionEs: "Instituciones y temas públicos, con lenguaje claro y neutro.",
+    descriptionEs:
+      "Para entender la vida pública sin sesgos: instituciones, decisiones y contexto en lenguaje claro.",
     descriptionPt: "Instituições e temas públicos, com linguagem clara e neutra.",
   },
   [EjeOnda.PROFES]: {
     nameEs: "Onda Profes",
     namePt: "Onda Profes",
-    descriptionEs: "Ideas para clase y buen uso de la IA con alumnos.",
+    descriptionEs:
+      "Para enseñar con IA crítica: actividades, rúbricas y herramientas sin perder el criterio.",
     descriptionPt: "Ideias para aula e bom uso da IA com alunos.",
   },
 };
@@ -88,7 +91,7 @@ export function getLocalizedShortWelcome(locale: OndaChatLocale): string {
   if (locale === "pt-BR") {
     return `${open} ${greeting}\n\nEm qual onda trabalhamos hoje? Estou aqui para o que precisar — escolha uma e seguimos.`;
   }
-  return "Hola de nuevo. ¿Con qué Onda arrancamos hoy?";
+  return "¡Hola! Me alegra verte 😊 ¿Qué Onda activamos hoy? 👇";
 }
 
 function shortWelcomeOpen(locale: OndaChatLocale): string {
@@ -121,8 +124,8 @@ export function getLocalizedGreetingNewDay(_lastEje: EjeOnda | null | undefined,
     return `Olá! Que bom te ver de novo — hoje é ${weekday}. Qual Onda vamos ativar hoje?`;
   }
   const dayName = new Date().toLocaleDateString("es-419", { weekday: "long" });
-  const dayCapitalized = dayName.charAt(0).toUpperCase() + dayName.slice(1);
-  return `Hola de nuevo. Hoy es ${dayCapitalized}. ¿Con qué Onda arrancamos hoy?`;
+  const dayLower = dayName.toLowerCase();
+  return `¡Hola! Hoy es ${dayLower}. ¿Qué Onda activamos para tu día? 👇`;
 }
 
 export function getLocalizedMessageAfterPickerChoice(eje: EjeOnda, locale: OndaChatLocale): string {

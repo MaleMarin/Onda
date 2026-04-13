@@ -438,9 +438,12 @@ export function getEjePlaceholder(locale: OndaChatLocale, eje: EjeOnda): string 
 }
 
 const EJE_CARD_SUBTITLE_ES: Record<EjeOnda, string> = {
-  [EjeOnda.A_MANO]: "Mensajes, noticias y apps del día a día, en simple.",
-  [EjeOnda.CIVITA]: "Instituciones y temas públicos, con lenguaje claro y neutro.",
-  [EjeOnda.PROFES]: "Ideas para clase y buen uso de la IA con alumnos.",
+  [EjeOnda.A_MANO]:
+    "Para aterrizar lo digital sin enredos: mensajes, noticias, audios y dudas del día a día.",
+  [EjeOnda.CIVITA]:
+    "Para entender la vida pública sin sesgos: instituciones, decisiones y contexto en lenguaje claro.",
+  [EjeOnda.PROFES]:
+    "Para enseñar con IA crítica: actividades, rúbricas y herramientas sin perder el criterio.",
 };
 
 const EJE_CARD_SUBTITLE_PT: Record<EjeOnda, string> = {
