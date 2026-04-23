@@ -33,7 +33,7 @@ import {
 } from "../../../../lib/validateMedia";
 import { randomUUID } from "crypto";
 import { generateRequestId } from "../../../../lib/telemetry";
-import { recordEvent } from "../../../../lib/insightsTelemetry";
+import { recordEvent } from "@/lib/insightsTelemetry";
 import {
   buildHeuristicSummarySafe,
   buildRiskFlagsForTelemetry,
@@ -46,7 +46,7 @@ import {
   localeBucketFromUnified,
   mapFormatoToOutputFormat,
   verbosityFromUnified,
-} from "../../../../lib/insightsTurnHelpers";
+} from "@/lib/insightsTurnHelpers";
 import { recordConversation } from "../../../../lib/auditStore";
 import { recordConversationImpact } from "../../../../lib/impactMetrics";
 import { getCachedResponse } from "../../../../lib/responseCache";

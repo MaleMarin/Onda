@@ -64,7 +64,7 @@ import {
 } from "../../../lib/waCompliance";
 import { generateRequestId } from "../../../lib/telemetry";
 import { randomUUID } from "crypto";
-import { recordEvent } from "../../../lib/insightsTelemetry";
+import { recordEvent } from "@/lib/insightsTelemetry";
 import {
   buildHeuristicSummarySafe,
   buildRiskFlagsForTelemetry,
@@ -77,7 +77,7 @@ import {
   localeBucketFromUnified,
   mapFormatoToOutputFormat,
   verbosityFromUnified,
-} from "../../../lib/insightsTurnHelpers";
+} from "@/lib/insightsTurnHelpers";
 import { buildListeningInvitePayload } from "../../../lib/onda/contributions/web";
 import { ejeOndaToContributionSlug } from "../../../lib/onda/contributions/types";
 import { saveOndaContribution } from "../../../lib/onda/contributions/saveContribution";
