@@ -1412,6 +1412,14 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
   /** Último mensaje son las 3 preguntas del ítem: placeholder vacío y mostrar "O pregúntame libremente qué quieres saber". */
   const lastMsg = messages.length > 0 ? messages[messages.length - 1] : null;
   const isMenuIntroActive = lastMsg?.role === "model" && (lastMsg as Message).isMenuIntro;
+  /** Durante respuesta del modelo (stream o ya mostrada): menos cromo abajo para priorizar la lectura; no aplica en intro de menú ni con menú abierto. */
+  const hasStreamedOrPendingModel = loading || messages.some((m) => m.role === "model" && m.isGenerated === true);
+  const stripBottomChrome =
+    currentEje !== null &&
+    !showMenu &&
+    !showIASubmenu &&
+    !isMenuIntroActive &&
+    hasStreamedOrPendingModel;
   /** Mismo shell en local y en embed: altura acotada para que el área de mensajes haga scroll (no se quede pegado). */
   const shellStyle: CSSProperties =
     currentEje === null
@@ -1970,7 +1978,7 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
         {/* Tabs, menu, chips, composer: capa con z-index alto para que todos los botones reciban clics */}
         <div className="onda-composer-layer" style={{ flexShrink: 0, display: "flex", flexDirection: "column", minHeight: 0 }}>
         {/* Tabs + Volver al inicio siempre visible cuando hay Onda elegida */}
-        {currentEje !== null && (
+        {currentEje !== null && !stripBottomChrome && (
           <>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 4 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
@@ -2075,7 +2083,7 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
         )}
 
         {/* Regla 3 Ondas: no mostrar preguntas de otros temas (Congreso, diputado, inflación, etc.) — provocan ruido informacional. Solo "Ver menú". */}
-        {currentEje !== null && !showMenu && !showIASubmenu && (
+        {currentEje !== null && !showMenu && !showIASubmenu && !stripBottomChrome && (
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 6, padding: "0 4px", alignItems: "center" }}>
             <button
               type="button"
@@ -2090,8 +2098,60 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
 
         {/* Composer */}
         <div style={S.composer}>
+          {stripBottomChrome && (
+            <div
+              style={{
+                marginBottom: 8,
+                display: "flex",
+                flexWrap: "wrap",
+                gap: "10px 16px",
+                alignItems: "center",
+                fontSize: "0.875rem",
+              }}
+            >
+              <button
+                type="button"
+                data-onda-action="show-menu"
+                onClick={() => {
+                  setShowMenu(true);
+                  setShowIASubmenu(false);
+                }}
+                title={mc.composerShowMenuTitle}
+                style={{
+                  color: ejeColor,
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  padding: "4px 0",
+                  fontWeight: 600,
+                  textDecoration: "underline",
+                  textUnderlineOffset: 3,
+                }}
+              >
+                {mc.menuViewMenu}
+              </button>
+              <button
+                type="button"
+                data-onda-action="go-inicio"
+                onClick={goToInicio}
+                title={mc.composerGoInicioTitle}
+                style={{
+                  color: t.c.muted,
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  padding: "4px 0",
+                  fontWeight: 500,
+                  textDecoration: "underline",
+                  textUnderlineOffset: 3,
+                }}
+              >
+                {VOLVER_AL_INICIO}
+              </button>
+            </div>
+          )}
           {/* Volver al menú / Volver al inicio (cuando no estás en el menú) */}
-          {currentEje !== null && !showMenu && (
+          {currentEje !== null && !showMenu && !stripBottomChrome && (
             <div style={{ marginBottom: 10, display: "flex", flexWrap: "wrap", gap: "12px 16px", alignItems: "center" }}>
               <button
                 type="button"
