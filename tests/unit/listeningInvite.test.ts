@@ -1,54 +1,87 @@
 import { describe, it, expect } from "vitest";
 import { EjeOnda } from "@/content/types";
-import { buildListeningStreamPayload, shouldOfferStructuredListening } from "@/lib/listeningInvite";
+import { shouldInviteContribution } from "@/lib/onda/contributions/shouldInviteContribution";
+import { buildListeningInvitePayload } from "@/lib/onda/contributions/web";
 
-describe("shouldOfferStructuredListening", () => {
+describe("shouldInviteContribution", () => {
   it("no invita en emergencia", () => {
-    expect(
-      shouldOfferStructuredListening({
-        userText: "me hackearon la cuenta del banco ayuda",
-        conversationIntent: "fact_check",
-        detectedIntent: "estafa",
-        riskPipeline: { emergency: true, sensitive: false, pantallazoDetective: false },
-        riskScamTelemetry: true,
-        riskSensitiveTelemetry: false,
-        eje: EjeOnda.A_MANO,
-      })
-    ).toBe(false);
+    const r = shouldInviteContribution({
+      channel: "web",
+      userText: "me hackearon la cuenta del banco ayuda",
+      conversationIntent: "fact_check",
+      detectedIntent: "estafa",
+      riskPipeline: { emergency: true, sensitive: false, pantallazoDetective: false },
+      riskScamTelemetry: true,
+      riskSensitiveTelemetry: false,
+      eje: EjeOnda.A_MANO,
+      assistantResponseChars: 200,
+      alreadyInvitedInConversation: false,
+      locale: "es-LATAM",
+      promptSeed: "x",
+    });
+    expect(r.shouldInvite).toBe(false);
   });
 
   it("invita en estafa / scam telemetry", () => {
-    expect(
-      shouldOfferStructuredListening({
-        userText: "me llegó un mensaje del banco con un link raro",
-        conversationIntent: "fact_check",
-        detectedIntent: "estafa",
-        riskPipeline: { emergency: false, sensitive: false, pantallazoDetective: false },
-        riskScamTelemetry: true,
-        riskSensitiveTelemetry: false,
-        eje: EjeOnda.A_MANO,
-      })
-    ).toBe(true);
+    const r = shouldInviteContribution({
+      channel: "web",
+      userText: "me llegó un mensaje del banco con un link raro",
+      conversationIntent: "fact_check",
+      detectedIntent: "estafa",
+      riskPipeline: { emergency: false, sensitive: false, pantallazoDetective: false },
+      riskScamTelemetry: true,
+      riskSensitiveTelemetry: false,
+      eje: EjeOnda.A_MANO,
+      assistantResponseChars: 200,
+      alreadyInvitedInConversation: false,
+      locale: "es-LATAM",
+      promptSeed: "x",
+    });
+    expect(r.shouldInvite).toBe(true);
+    expect(r.suggestedPrompt?.length).toBeGreaterThan(10);
   });
 
   it("no invita con mensaje muy corto", () => {
-    expect(
-      shouldOfferStructuredListening({
-        userText: "hola",
-        conversationIntent: "explanation",
-        detectedIntent: "general",
-        riskPipeline: { emergency: false, sensitive: false, pantallazoDetective: false },
-        riskScamTelemetry: false,
-        riskSensitiveTelemetry: false,
-        eje: EjeOnda.CIVITA,
-      })
-    ).toBe(false);
+    const r = shouldInviteContribution({
+      channel: "web",
+      userText: "hola",
+      conversationIntent: "explanation",
+      detectedIntent: "general",
+      riskPipeline: { emergency: false, sensitive: false, pantallazoDetective: false },
+      riskScamTelemetry: false,
+      riskSensitiveTelemetry: false,
+      eje: EjeOnda.CIVITA,
+      assistantResponseChars: 200,
+      alreadyInvitedInConversation: false,
+      locale: "es-LATAM",
+      promptSeed: "x",
+    });
+    expect(r.shouldInvite).toBe(false);
+  });
+
+  it("no invita si ya hubo invitación en la conversación", () => {
+    const r = shouldInviteContribution({
+      channel: "web",
+      userText: "¿Es verdad que esta cadena de WhatsApp sobre el banco es phishing?",
+      conversationIntent: "fact_check",
+      detectedIntent: "estafa",
+      riskPipeline: { emergency: false, sensitive: false, pantallazoDetective: false },
+      riskScamTelemetry: true,
+      riskSensitiveTelemetry: false,
+      eje: EjeOnda.A_MANO,
+      assistantResponseChars: 200,
+      alreadyInvitedInConversation: true,
+      locale: "es-LATAM",
+      promptSeed: "x",
+    });
+    expect(r.shouldInvite).toBe(false);
   });
 });
 
-describe("buildListeningStreamPayload", () => {
+describe("buildListeningInvitePayload", () => {
   it("devuelve payload cuando aplica", () => {
-    const p = buildListeningStreamPayload({
+    const p = buildListeningInvitePayload({
+      channel: "web",
       locale: "es-LATAM",
       userText: "¿Es verdad que esta cadena de WhatsApp sobre el banco es phishing?",
       assistantText: "Aquí va una respuesta modelo sobre phishing y pasos a seguir.",
@@ -59,6 +92,7 @@ describe("buildListeningStreamPayload", () => {
       riskSensitiveTelemetry: false,
       eje: EjeOnda.A_MANO,
       turnToken: "11111111-1111-4111-8111-111111111111",
+      alreadyInvitedInConversation: false,
     });
     expect(p).not.toBeNull();
     expect(p?.show).toBe(true);

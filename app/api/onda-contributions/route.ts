@@ -1,7 +1,12 @@
+/**
+ * POST público (rate-limited): alta de contribución comunitaria.
+ * Consistente con el resto de APIs en `app/api/*` (Route Handlers).
+ */
 import { checkRateLimit } from "@/lib/rateLimiter";
-import { createCommunityContribution, isValidTurnToken } from "@/lib/communityContributionsFirestore";
-import type { ContributionChannel, ContributionEjeSlug } from "@/lib/communityContributionTypes";
-import { CONTRIBUTION_TYPES, normalizeContributionType } from "@/lib/communityContributionTypes";
+import { saveOndaContribution, isValidTurnToken } from "@/lib/onda/contributions/saveContribution";
+import type { ContributionChannel, ContributionEjeSlug } from "@/lib/onda/contributions/types";
+import { normalizeContributionType } from "@/lib/onda/contributions/types";
+import { CONTRIBUTION_TYPES } from "@/lib/onda/contributions/constants";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -18,10 +23,6 @@ function parseEje(s: unknown): ContributionEjeSlug | null {
   return EJE_SLUGS.has(s as ContributionEjeSlug) ? (s as ContributionEjeSlug) : null;
 }
 
-/**
- * POST público (rate-limited): guarda un aporte de comunidad para revisión humana.
- * No incorpora contenido como verdad: sourceRisk y flujo quedan en needs_review / new.
- */
 export async function POST(req: Request) {
   try {
     const ip =
@@ -36,33 +37,38 @@ export async function POST(req: Request) {
     const body = await req.json().catch(() => ({}));
     const channel = parseChannel(body?.channel);
     const eje = parseEje(body?.eje);
-    const conversationId = typeof body?.conversationId === "string" ? body.conversationId.trim() : "";
+    const conversationId = typeof body?.conversationId === "string" ? body.conversationId.trim() : undefined;
+    const messageId = typeof body?.messageId === "string" ? body.messageId.trim() : undefined;
     const turnToken = typeof body?.turnToken === "string" ? body.turnToken.trim() : "";
-    const userMessage = typeof body?.userMessage === "string" ? body.userMessage : "";
+    const userQuestion = typeof body?.userQuestion === "string" ? body.userQuestion : "";
     const assistantResponseSummary =
       typeof body?.assistantResponseSummary === "string" ? body.assistantResponseSummary.trim() : undefined;
     const contributionText = typeof body?.contributionText === "string" ? body.contributionText.trim() : "";
     const contributionTypeRaw = typeof body?.contributionType === "string" ? body.contributionType : "";
     const topic = typeof body?.topic === "string" ? body.topic.trim() : undefined;
     const tags = Array.isArray(body?.tags) ? body.tags.filter((x: unknown) => typeof x === "string") : [];
+    const sentiment =
+      body?.sentiment === "negative" ||
+      body?.sentiment === "neutral" ||
+      body?.sentiment === "positive" ||
+      body?.sentiment === "mixed"
+        ? body.sentiment
+        : undefined;
     const optionalContactAllowed = Boolean(body?.optionalContactAllowed);
     const locale = typeof body?.locale === "string" ? body.locale.trim() : undefined;
 
     if (!channel || !eje) {
       return Response.json({ error: "channel o eje inválido" }, { status: 400 });
     }
-    if (!conversationId || conversationId.length > 512) {
-      return Response.json({ error: "conversationId requerido" }, { status: 400 });
+    if (!userQuestion.trim()) {
+      return Response.json({ error: "userQuestion requerido" }, { status: 400 });
     }
-    if (!isValidTurnToken(turnToken)) {
+    if (turnToken && !isValidTurnToken(turnToken)) {
       return Response.json({ error: "turnToken inválido" }, { status: 400 });
     }
     const contributionType = normalizeContributionType(contributionTypeRaw);
     if (!contributionType) {
-      return Response.json(
-        { error: "contributionType inválido", allowed: CONTRIBUTION_TYPES },
-        { status: 400 }
-      );
+      return Response.json({ error: "contributionType inválido", allowed: CONTRIBUTION_TYPES }, { status: 400 });
     }
     if (contributionText.length < 3) {
       return Response.json({ error: "El aporte es demasiado corto." }, { status: 400 });
@@ -71,29 +77,26 @@ export async function POST(req: Request) {
       return Response.json({ error: "El aporte supera el límite de caracteres." }, { status: 400 });
     }
 
-    const result = await createCommunityContribution({
+    const result = await saveOndaContribution({
       channel,
       eje,
       conversationId,
-      turnToken,
-      userMessage: userMessage.slice(0, 8000),
-      ...(assistantResponseSummary
-        ? { assistantResponseSummary: assistantResponseSummary.slice(0, 2000) }
-        : {}),
+      messageId,
+      turnToken: turnToken || undefined,
+      userQuestion: userQuestion.slice(0, 8000),
+      assistantResponseSummary: assistantResponseSummary?.slice(0, 2000),
       contributionText,
       contributionType,
-      ...(topic ? { topic } : {}),
-      ...(tags.length ? { tags } : {}),
+      topic,
+      tags: tags.length ? tags : undefined,
+      sentiment,
       optionalContactAllowed,
-      ...(locale ? { locale } : {}),
+      locale,
     });
 
     if ("error" in result) {
       if (result.error === "firestore_unavailable") {
-        return Response.json(
-          { error: "El servicio de guardado no está disponible ahora. Intenta más tarde." },
-          { status: 503 }
-        );
+        return Response.json({ error: "El servicio de guardado no está disponible ahora." }, { status: 503 });
       }
       if (result.error === "duplicate_turn") {
         return Response.json({ error: "Ya registramos un aporte para este turno." }, { status: 409 });
@@ -103,7 +106,7 @@ export async function POST(req: Request) {
 
     return Response.json({ ok: true, id: result.id }, { status: 201 });
   } catch (e) {
-    console.error("[community-contribution]", e);
+    console.error("[onda-contributions]", e);
     return Response.json({ error: "Error interno" }, { status: 500 });
   }
 }

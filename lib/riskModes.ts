@@ -98,7 +98,7 @@ export function detectSensitiveData(text: string): boolean {
   );
 }
 
-function detectScamQuestion(text: string): boolean {
+export function detectScamQuestion(text: string): boolean {
   const t = normText(text);
   return (
     /\b[eéh]\s+golpe\b|\bes\s+estafa\b|\bes\s+phishing\b|\bser[aá]\s+golpe\b|\bes\s+fraude\b/.test(t) ||

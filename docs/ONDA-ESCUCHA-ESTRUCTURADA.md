@@ -2,35 +2,50 @@
 
 ## Qué es
 
-Capa de producto para invitar, de forma breve y conversacional, a que la persona comparta **contexto opcional** (experiencia, duda persistente, corrección, caso similar, etc.). Esos textos se guardan como **contribuciones de comunidad** en **Firestore** (`onda_community_contributions`) para **revisión humana**. No se tratan como evidencias verificadas ni se inyectan solos en las respuestas del asistente.
+Capa de producto para invitar, de forma breve y conversacional, a que la persona comparta **contexto opcional** (experiencia, duda persistente, corrección, caso similar, etc.). Esos textos se guardan como **contribuciones de comunidad** en **Firestore** (`onda_contributions`) para **revisión humana**. No se tratan como evidencias verificadas ni se inyectan solos en las respuestas del asistente ni en RAG productivo.
+
+## Activar o desactivar invitaciones
+
+- La decisión está centralizada en `lib/onda/contributions/shouldInviteContribution.ts` y el builder `lib/onda/contributions/web.ts` (`buildListeningInvitePayload`).
+- El cliente web envía `alreadyInvitedInConversation: true` cuando en los últimos mensajes ya hubo una burbuja con `listeningInvite` (evita spam en la misma ventana de conversación).
+- WhatsApp usa `contributionInviteContext` en la sesión KV (`src/lib/waSession.ts`): si hay invitación pendiente reciente, no se emite otra hasta que caduque (30 min), se consuma como aporte o se limpie.
 
 ## Flujo web
 
 1. `POST /api/chat/stream` genera la respuesta habitual (NDJSON).
-2. Si las heurísticas lo permiten, el servidor emite una línea extra: `{ "listeningInvite": { "show": true, "prompt", "turnToken", "userEcho", "assistantSummary", "topicHint", "locale" } }` **antes** de `{ "done": true }`.
-3. El cliente (`lib/chatStreamClient.ts`) captura `listeningInvite` y la UI (`ListeningInviteForm` dentro de `ChatBubble`) muestra el texto de invitación y un formulario colapsable.
-4. El envío va a `POST /api/community-contribution` (rate limit por IP). El servidor fuerza `sourceRisk: needs_review` y `reviewStatus: new`. `turnToken` evita duplicados por turno.
+2. Si las heurísticas lo permiten, el servidor emite una línea extra: `{ "listeningInvite": { "show", "prompt", "turnToken", "userEcho", "assistantSummary", "topicHint", "locale", "suggestedContributionType?" } }` **antes** de `{ "done": true }`.
+3. `lib/chatStreamClient.ts` captura `listeningInvite`. `ChatBubble` muestra `ContributionPrompt` (texto breve; **sin** formulario aparte).
+4. El usuario puede responder en el **mismo input** del chat. Si el texto califica como seguimiento sustancial, el cliente envía `POST /api/onda-contributions` y marca la burbuja de usuario con `interpretedAsCommunityContribution`.
+5. El servidor fuerza `sourceRisk: needs_review` y `reviewStatus: new`. `turnToken` evita duplicados por turno.
 
 ## Flujo WhatsApp
 
-Tras enviar la respuesta principal (texto / medios), si aplica la misma heurística, Onda envía **un segundo mensaje** con el texto de invitación. La persona puede contestar en libre forma; **no** se parsea automáticamente en este MVP (el aporte formal sigue siendo vía web; en WA el equipo puede copiar manualmente desde conversación si se habilita flujo futuro).
+1. Tras la respuesta principal, si aplica, se envía un **segundo mensaje** con la invitación.
+2. Se guarda `contributionInviteContext` en la sesión WA (KV).
+3. En el siguiente mensaje de texto, si encaja la heurística (`looksLikeContributionFollowUp`, sin “pregunta nueva” evidente ni ack corto), se llama a `saveOndaContribution` y se limpia el contexto. Si no aplica, el mensaje sigue el flujo normal del bot.
 
 ## Panel interno
 
-- Ruta: `/admin/onda-contribuciones` (lista y filtros) y `/admin/onda-contribuciones/[id]` (detalle y acciones).
+- Ruta canónica: `/admin/onda-contributions` (lista, filtros por canal/eje/estado/tipo/topic/urgencia/fecha) y `/admin/onda-contributions/[id]` (detalle y acciones).
+- Redirección desde `/admin/onda-contribuciones` (configurada en `next.config.mjs`).
 - Auth: misma cookie / `ADMIN_SECRET` que el resto del admin (`lib/adminAuth.ts`).
-- Acciones: cambiar `reviewStatus`, notas internas, `tags`, `topic`, `urgency`.
+- APIs: `GET/PATCH /api/admin/onda-contributions` y `GET/PATCH /api/admin/onda-contributions/[id]`.
 
-## Reglas de producto y seguridad
+## Cómo revisar una contribución
 
-- Nada de lo que envía el público entra como **verdad** en el modelo de producción de forma automática.
-- Solo el equipo, vía panel, puede marcar `verified` o `incorporated` (y aun así el uso en contenido vivo debe ser por **curaduría** explícita).
-- Preparado para futuro dashboard de métricas (temas, dudas recurrentes) leyendo la misma colección.
+1. Entrá al panel con usuario interno autorizado.
+2. Filtrá por estado (`new`, `triaged`, `in_review`, …).
+3. Abrí el detalle, leé pregunta eco, resumen de Onda y aporte.
+4. Usá acciones rápidas o guardá notas/tags/topic. Solo humanos con acceso admin pueden cambiar estados.
+
+## Métricas preparadas
+
+Los documentos incluyen `statsBucketDay` y `statsBucketMonth` (UTC) para agregaciones futuras por día, eje, tipo, topic y estado de revisión.
 
 ## Variables de entorno
 
-Requiere Firebase Admin configurado (`FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`) como el resto del proyecto. Sin Firestore, `POST /api/community-contribution` responde `503`.
+Requiere Firebase Admin configurado (`FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`) como el resto del proyecto. Sin Firestore, `POST /api/onda-contributions` responde `503`.
 
-## Tipo de datos (`CommunityContribution`)
+## Tipos
 
-El contrato TypeScript vive en `lib/communityContributionTypes.ts` (`CommunityContribution`). Incluye `contributionType: … | "senal_comunitaria"` (ASCII, sin tilde en la clave). Los documentos antiguos con `señal_comunitaria` se normalizan al leer. El persistido en Firestore añade `turnToken` para dedupe (`CommunityContributionRecord`).
+Contrato principal: `lib/onda/contributions/types.ts` (`CommunityContribution`, `OndaContributionRecord`, `ListeningInviteStreamPayload`).

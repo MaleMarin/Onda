@@ -2,7 +2,7 @@
  * Consumo del stream NDJSON de POST /api/chat/stream (cliente).
  */
 
-import type { ListeningInviteStreamPayload } from "./communityContributionTypes";
+import type { ListeningInviteStreamPayload, ContributionType } from "./onda/contributions/types";
 import { STORAGE_KEY_ONDA_ULTIMO_TEMA } from "./userPreferences";
 
 export type ChatStreamMeta = {
@@ -64,6 +64,16 @@ export async function consumeChatNdjsonStream(
         if (obj.listeningInvite && typeof obj.listeningInvite === "object") {
           const li = obj.listeningInvite as Record<string, unknown>;
           if (li.show === true && typeof li.prompt === "string" && typeof li.turnToken === "string") {
+            const st = li.suggestedContributionType;
+            const suggestedContributionType =
+              st === "experiencia" ||
+              st === "duda_persistente" ||
+              st === "correccion" ||
+              st === "sugerencia" ||
+              st === "caso_reportado" ||
+              st === "senal_comunitaria"
+                ? (st as ContributionType)
+                : undefined;
             listeningInvite = {
               show: true,
               prompt: li.prompt,
@@ -72,6 +82,7 @@ export async function consumeChatNdjsonStream(
               assistantSummary: typeof li.assistantSummary === "string" ? li.assistantSummary : "",
               topicHint: typeof li.topicHint === "string" ? li.topicHint : "comunidad",
               locale: typeof li.locale === "string" ? li.locale : "es-LATAM",
+              ...(suggestedContributionType ? { suggestedContributionType } : {}),
             };
           }
         }

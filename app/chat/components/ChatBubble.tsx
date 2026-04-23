@@ -3,8 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import type { CSSProperties } from "react";
 import type { Message } from "@/content/types";
-import type { ContributionEjeSlug } from "@/lib/communityContributionTypes";
-import { ListeningInviteForm } from "./ListeningInviteForm";
+import { ContributionPrompt } from "@/components/onda/contributions/ContributionPrompt";
 import { MENU_QUESTIONS } from "@/content/menuQuestions";
 import type { OndaChatLocale } from "@/lib/userPreferences";
 import { getChatMicrocopy } from "@/lib/chatI18n";
@@ -59,10 +58,6 @@ interface ChatBubbleProps {
   hideActions?: boolean;
   /** No cargar PNG de guía; solo enlace liviano (modo bajo consumo). */
   lowBandwidth?: boolean;
-  /** Sesión web para enviar aporte opcional (escucha estructurada). */
-  contributionSessionId?: string | null;
-  /** Eje actual en formato slug Firestore. */
-  contributionEjeSlug?: ContributionEjeSlug | null;
 }
 
 const LINK_REGEX = /\[([^\]]*)\]\((https?:\/\/[^)\s]+)\)/g;
@@ -153,8 +148,6 @@ export function ChatBubble({
   onFeedback,
   hideActions,
   lowBandwidth,
-  contributionSessionId = null,
-  contributionEjeSlug = null,
 }: ChatBubbleProps) {
   const S = ondaStyles(t);
   const mc = getChatMicrocopy(uiLocale);
@@ -243,6 +236,9 @@ export function ChatBubble({
       ? `0 8px 24px ${color}55, inset 0 1px 0 rgba(255,255,255,0.25)`
       : "0 8px 24px rgba(255,109,77,0.2), inset 0 1px 0 rgba(255,255,255,0.25)",
     borderTopRightRadius: 22,
+    ...(isUser && message.interpretedAsCommunityContribution
+      ? { borderLeft: "3px solid rgba(255,255,255,0.65)", paddingLeft: 13 }
+      : {}),
   };
 
   const imgWrapStyle: CSSProperties = {
@@ -395,19 +391,9 @@ export function ChatBubble({
             </button>
           </div>
         )}
-        {message.role === "model" &&
-          message.listeningInvite?.show &&
-          contributionSessionId &&
-          contributionEjeSlug &&
-          !showAsMenuIntroButtons &&
-          !isEmpty && (
-            <ListeningInviteForm
-              invite={message.listeningInvite}
-              sessionId={contributionSessionId}
-              ejeSlug={contributionEjeSlug}
-              theme={t}
-            />
-          )}
+        {message.role === "model" && message.listeningInvite?.show && !showAsMenuIntroButtons && !isEmpty && (
+          <ContributionPrompt invite={message.listeningInvite} theme={t} />
+        )}
         {onFeedback && message.role === "model" && message.isGenerated && message.content?.trim() && !showAsMenuIntroButtons && !isEmpty && (
           <div style={{ marginTop: 10, paddingTop: 8, borderTop: `1px solid ${t.c.border}`, display: "flex", alignItems: "center", gap: 8 }}>
             <span style={{ fontSize: "0.875rem", color: t.c.muted }}>¿Te sirvió?</span>

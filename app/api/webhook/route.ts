@@ -78,7 +78,15 @@ import {
   mapFormatoToOutputFormat,
   verbosityFromUnified,
 } from "../../../lib/insightsTurnHelpers";
-import { buildListeningStreamPayload } from "../../../lib/listeningInvite";
+import { buildListeningInvitePayload } from "../../../lib/onda/contributions/web";
+import { ejeOndaToContributionSlug } from "../../../lib/onda/contributions/types";
+import { saveOndaContribution } from "../../../lib/onda/contributions/saveContribution";
+import {
+  isShortAcknowledgement,
+  looksLikeContributionFollowUp,
+  looksLikeNewStandaloneQuestion,
+  suggestContributionTypeFromText,
+} from "../../../lib/onda/contributions/extractContributionMetadata";
 import type { OndaChatLocale } from "../../../lib/userPreferences";
 import { DEFAULT_USER_PREFS } from "../../../lib/userPrefs";
 import { parseWaInclusiveCommand } from "../../../lib/waInclusivePreferences";
@@ -393,6 +401,42 @@ export async function POST(req: Request) {
             nextWaState: WaSession | null;
           }>(from, async () => {
             let session = await getSession(from);
+            if (session.contributionInviteContext) {
+              const sent = session.contributionInviteContext.sentAt;
+              if (Date.now() - sent > 30 * 60 * 1000) {
+                session = { ...session, contributionInviteContext: undefined };
+              }
+            }
+            if (textBody && (type === "text" || !type)) {
+              const ctx0 = session.contributionInviteContext;
+              if (ctx0) {
+                if (isShortAcknowledgement(textBody)) {
+                  session = { ...session, contributionInviteContext: undefined };
+                } else if (looksLikeNewStandaloneQuestion(textBody)) {
+                  session = { ...session, contributionInviteContext: undefined };
+                } else if (looksLikeContributionFollowUp(textBody)) {
+                  const ctype = ctx0.suggestedContributionType ?? suggestContributionTypeFromText(textBody);
+                  try {
+                    await saveOndaContribution({
+                      channel: "whatsapp",
+                      eje: ctx0.ejeSlug,
+                      conversationId: from,
+                      turnToken: ctx0.turnToken,
+                      userQuestion: ctx0.userEcho,
+                      assistantResponseSummary: ctx0.assistantSummary,
+                      contributionText: textBody.trim(),
+                      contributionType: ctype,
+                      topic: ctx0.topicHint || undefined,
+                      tags: ctx0.topicHint ? [ctx0.topicHint] : undefined,
+                      locale: ctx0.locale,
+                    });
+                  } catch (ce) {
+                    console.warn("[wa/contribution] save failed:", ce);
+                  }
+                  session = { ...session, contributionInviteContext: undefined };
+                }
+              }
+            }
             let response: string | null = null;
             let waUserTurn = "";
             let nextWaState: WaSession | null = null;
@@ -882,7 +926,16 @@ export async function POST(req: Request) {
                 locale: ondaLoc,
               });
               const rfL = buildRiskFlagsForTelemetry(riskListen, waUserTurn, ondaLoc);
-              const inviteWa = buildListeningStreamPayload({
+              let sInvite: WaSession | null = nextWaState;
+              if (from && from !== "unknown") {
+                sInvite = await getSession(from);
+              }
+              const rawPending = sInvite?.contributionInviteContext;
+              const pendingFresh =
+                rawPending && Date.now() - rawPending.sentAt <= 30 * 60 * 1000 ? rawPending : undefined;
+              const alreadyInvitedInConversation = Boolean(pendingFresh);
+              const inviteWa = buildListeningInvitePayload({
+                channel: "whatsapp",
                 locale: ondaLoc,
                 userText: waUserTurn,
                 assistantText: parsed.text.trim(),
@@ -893,6 +946,7 @@ export async function POST(req: Request) {
                 riskSensitiveTelemetry: rfL.sensitive,
                 eje: impactEje,
                 turnToken: randomUUID(),
+                alreadyInvitedInConversation,
               });
               if (inviteWa?.show) {
                 await new Promise((r) => setTimeout(r, 450));
@@ -903,6 +957,28 @@ export async function POST(req: Request) {
                   if (ii < inviteParts.length - 1) {
                     await new Promise((r) => setTimeout(r, 320));
                   }
+                }
+              }
+              if (from && from !== "unknown") {
+                const cur = await getSession(from);
+                if (inviteWa?.show) {
+                  await setSession(from, {
+                    ...cur,
+                    contributionInviteContext: {
+                      turnToken: inviteWa.turnToken,
+                      userEcho: inviteWa.userEcho,
+                      assistantSummary: inviteWa.assistantSummary,
+                      topicHint: inviteWa.topicHint,
+                      locale: inviteWa.locale,
+                      sentAt: Date.now(),
+                      ejeSlug: ejeOndaToContributionSlug(impactEje),
+                      ...(inviteWa.suggestedContributionType
+                        ? { suggestedContributionType: inviteWa.suggestedContributionType }
+                        : {}),
+                    },
+                  });
+                } else if (cur.contributionInviteContext) {
+                  await setSession(from, { ...cur, contributionInviteContext: undefined });
                 }
               }
             }

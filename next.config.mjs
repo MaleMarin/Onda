@@ -11,6 +11,12 @@ const nextConfig = {
       { source: "/onda/", destination: "/chat" },
     ];
   },
+  async redirects() {
+    return [
+      { source: "/admin/onda-contribuciones", destination: "/admin/onda-contributions", permanent: false },
+      { source: "/admin/onda-contribuciones/:id", destination: "/admin/onda-contributions/:id", permanent: false },
+    ];
+  },
   /** Evita que `/`, `/chat` y el alias queden “pegados” a un deploy viejo en navegador o iframe (p. ej. Wix). */
   async headers() {
     return [

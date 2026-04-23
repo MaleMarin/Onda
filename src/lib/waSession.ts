@@ -21,6 +21,11 @@ import {
   type OndaUserPreferences,
 } from "@/lib/userPreferences";
 import {
+  normalizeContributionType,
+  type ContributionEjeSlug,
+  type ContributionType,
+} from "@/lib/onda/contributions/types";
+import {
   buildOndaPreferencesForRequest,
   DEFAULT_USER_PREFS,
   mergePrefs,
@@ -44,6 +49,18 @@ export type WaSessionMessage = {
 
 export type WaEjeKey = "A_MANO" | "CIVITA" | "PROFES";
 
+/** Tras enviar invitación a aporte; el siguiente texto puede persistirse como contribución (KV). */
+export type WaContributionInviteContext = {
+  turnToken: string;
+  userEcho: string;
+  assistantSummary: string;
+  topicHint: string;
+  locale: string;
+  sentAt: number;
+  ejeSlug: ContributionEjeSlug;
+  suggestedContributionType?: ContributionType;
+};
+
 export type WaSession = {
   eje: WaEjeKey | null;
   prefs: WaPrefs;
@@ -60,6 +77,8 @@ export type WaSession = {
    * En cada guardado se alinea con lo enviado al modelo; `prefs` (WaPrefs) se deriva para API explícita.
    */
   ondaMerged?: OndaUserPreferences | null;
+  /** Invitación de escucha estructurada pendiente (evita bucles y enlaza el guardado). */
+  contributionInviteContext?: WaContributionInviteContext;
 };
 
 function kvConfigured(): boolean {
@@ -184,6 +203,38 @@ function parseSession(raw: unknown): WaSession | null {
   }
   const summary =
     typeof o.summary === "string" && o.summary.trim() ? o.summary.trim().slice(0, 400) : undefined;
+
+  let contributionInviteContext: WaContributionInviteContext | undefined;
+  const ctxRaw = o.contributionInviteContext;
+  if (ctxRaw && typeof ctxRaw === "object") {
+    const c = ctxRaw as Record<string, unknown>;
+    const turnToken = typeof c.turnToken === "string" ? c.turnToken.trim() : "";
+    const userEcho = typeof c.userEcho === "string" ? c.userEcho : "";
+    const assistantSummary = typeof c.assistantSummary === "string" ? c.assistantSummary : "";
+    const topicHint = typeof c.topicHint === "string" ? c.topicHint : "";
+    const locale = typeof c.locale === "string" ? c.locale : "es-LATAM";
+    const sentAt = typeof c.sentAt === "number" ? c.sentAt : 0;
+    const slug = c.ejeSlug;
+    const ejeSlug: ContributionEjeSlug | null =
+      slug === "onda_a_mano" || slug === "onda_civita" || slug === "onda_profes" ? slug : null;
+    const st =
+      typeof c.suggestedContributionType === "string"
+        ? normalizeContributionType(c.suggestedContributionType)
+        : undefined;
+    if (turnToken && userEcho && ejeSlug && sentAt > 0) {
+      contributionInviteContext = {
+        turnToken,
+        userEcho,
+        assistantSummary,
+        topicHint,
+        locale,
+        sentAt,
+        ejeSlug,
+        ...(st ? { suggestedContributionType: st } : {}),
+      };
+    }
+  }
+
   const base: WaSession = {
     eje,
     prefs,
@@ -192,6 +243,7 @@ function parseSession(raw: unknown): WaSession | null {
     ejePromptShown: Boolean(o.ejePromptShown),
     ondaMerged,
     summary,
+    ...(contributionInviteContext ? { contributionInviteContext } : {}),
   };
   return applyHistoryCap(base, history);
 }
@@ -237,7 +289,7 @@ export async function saveWaSession(phone: string, session: WaSession): Promise<
 
 export async function patchWaSession(
   phone: string,
-  patch: Partial<Pick<WaSession, "eje" | "ejePromptShown" | "ondaMerged">> & {
+  patch: Partial<Pick<WaSession, "eje" | "ejePromptShown" | "ondaMerged" | "contributionInviteContext">> & {
     prefs?: Partial<WaPrefs>;
     history?: WaSessionMessage[];
   }
@@ -254,6 +306,8 @@ export async function patchWaSession(
     ejePromptShown: patch.ejePromptShown !== undefined ? patch.ejePromptShown : cur.ejePromptShown,
     ondaMerged: patch.ondaMerged !== undefined ? patch.ondaMerged : cur.ondaMerged,
     summary: cur.summary,
+    contributionInviteContext:
+      patch.contributionInviteContext !== undefined ? patch.contributionInviteContext : cur.contributionInviteContext,
   };
   next = applyHistoryCap(next, next.history);
   await saveWaSession(phone, next);

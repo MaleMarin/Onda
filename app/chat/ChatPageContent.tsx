@@ -28,7 +28,15 @@ import { displayMenuOptionLabel, userPickedMenuOption } from "@/content/menus";
 import { EjeOnda, type Message } from "@/content/types";
 import { parseResponseFormat } from "@/lib/responseFormat";
 import { consumeChatNdjsonStream, type ChatStreamMeta } from "@/lib/chatStreamClient";
-import { ejeOndaToContributionSlug } from "@/lib/communityContributionTypes";
+import {
+  ejeOndaToContributionSlug,
+  type ContributionType,
+} from "@/lib/onda/contributions/types";
+import {
+  isShortAcknowledgement,
+  looksLikeContributionFollowUp,
+  looksLikeNewStandaloneQuestion,
+} from "@/lib/onda/contributions/extractContributionMetadata";
 import { computeWebPlayAudioDecision } from "@/lib/playAudioContract";
 import { useOndaTheme } from "@/lib/useOndaTheme";
 import { ondaStyles } from "@/lib/ondaStyles";
@@ -343,6 +351,12 @@ function getOrCreateSessionId(): string {
 }
 
 /** Métricas de uso anónimas (fire-and-forget). */
+/** Evita repetir invitación de escucha en pocos turnos (el servidor también filtra). */
+function hasRecentListeningInvite(msgs: Message[], maxMessages = 12): boolean {
+  const tail = msgs.slice(-maxMessages);
+  return tail.some((m) => m.role === "model" && m.listeningInvite?.show === true);
+}
+
 function trackUsage(
   event: "eje_select" | "message_sent" | "session_start",
   eje?: EjeOnda | null,
@@ -377,6 +391,15 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
   const [messages, setMessages] = useState<Message[]>(() => [HYDRATION_SAFE_INITIAL_MESSAGE]);
   const [currentEje, setCurrentEje] = useState<EjeOnda | null>(initialEje);
   const [preferredEjeForDisplay, setPreferredEjeForDisplay] = useState<EjeOnda | null>(null);
+
+  const contributionPendingRef = useRef<{
+    turnToken: string;
+    userEcho: string;
+    assistantSummary: string;
+    topicHint: string;
+    locale: string;
+    suggestedContributionType?: ContributionType;
+  } | null>(null);
 
   /** Último mensaje de usuario con texto: inferencia de idioma cuando unified.locale === "auto". */
   const lastUserTextForLocale = useMemo(() => {
@@ -773,9 +796,22 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
     setAttachmentAudio(null);
 
     const history = messages.map((m) => ({ role: m.role, content: m.content }));
+    const pendingSnap = contributionPendingRef.current;
+    let userContributionInterpreted = false;
+    if (pendingSnap && text.trim() && !imageToSend && !audioToSend) {
+      if (isShortAcknowledgement(text)) {
+        contributionPendingRef.current = null;
+      } else if (looksLikeNewStandaloneQuestion(text)) {
+        contributionPendingRef.current = null;
+      } else if (looksLikeContributionFollowUp(text)) {
+        userContributionInterpreted = true;
+        contributionPendingRef.current = null;
+      }
+    }
     const userMsg = newMessage("user", text || (audioToSend ? mc.attachmentVoiceLabel : mc.attachmentImageLabel), {
       image: imageToSend ?? undefined,
       audio: !!audioToSend,
+      ...(userContributionInterpreted ? { interpretedAsCommunityContribution: true } : {}),
     });
     const placeholderMsg = newMessage("model", "", { isGenerated: true });
     setMessages((m) => [...m, userMsg, placeholderMsg]);
@@ -786,6 +822,26 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
 
     try {
       const sessionId = getOrCreateSessionId();
+      if (userContributionInterpreted && pendingSnap) {
+        void fetch("/api/onda-contributions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            channel: "web",
+            eje: ejeOndaToContributionSlug(ejeToUse),
+            conversationId: sessionId || undefined,
+            messageId: userMsg.id,
+            turnToken: pendingSnap.turnToken,
+            userQuestion: pendingSnap.userEcho,
+            assistantResponseSummary: pendingSnap.assistantSummary,
+            contributionText: text.trim(),
+            contributionType: pendingSnap.suggestedContributionType ?? "experiencia",
+            topic: pendingSnap.topicHint,
+            tags: pendingSnap.topicHint ? [pendingSnap.topicHint] : undefined,
+            locale: pendingSnap.locale,
+          }),
+        }).catch(() => {});
+      }
       const res = await fetch("/api/chat/stream", {
         method: "POST",
         headers: {
@@ -801,6 +857,7 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
           sessionId: sessionId || undefined,
           userPreferences: userPreferencesForApi,
           prefs: unifiedForSend,
+          alreadyInvitedInConversation: hasRecentListeningInvite(messages),
         }),
         signal: controller.signal,
       });
@@ -865,6 +922,18 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
               : msg
           )
         );
+        if (streamMeta.listeningInvite?.show) {
+          contributionPendingRef.current = {
+            turnToken: streamMeta.listeningInvite.turnToken,
+            userEcho: streamMeta.listeningInvite.userEcho,
+            assistantSummary: streamMeta.listeningInvite.assistantSummary,
+            topicHint: streamMeta.listeningInvite.topicHint,
+            locale: streamMeta.listeningInvite.locale,
+            suggestedContributionType: streamMeta.listeningInvite.suggestedContributionType,
+          };
+        } else {
+          contributionPendingRef.current = null;
+        }
         const fallbackAudio = computeWebPlayAudioDecision({
           outputMode: userPrefs.outputMode,
           userMessage: text,
@@ -921,6 +990,7 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
   /** Borrar conversación: limpia localStorage y reinicia el chat (privacidad). */
   function handleClearConversation() {
     if (typeof window === "undefined") return;
+    contributionPendingRef.current = null;
     localStorage.removeItem(STORAGE_KEY_RESTORE);
     setMessages([newMessage("model", getLocalizedMainWelcome(CHAT_UI_LOCALE))]);
     setCurrentEje(null);
@@ -996,7 +1066,21 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
     const userPreferencesChipApi = mergeOndaUserPreferences(userPrefs, { locale: requestLocaleChip });
 
     const history = messages.map((m) => ({ role: m.role, content: m.content }));
-    const userMsg = newMessage("user", t);
+    const pendingChip = contributionPendingRef.current;
+    let chipContributionInterpreted = false;
+    if (pendingChip && t.trim()) {
+      if (isShortAcknowledgement(t)) {
+        contributionPendingRef.current = null;
+      } else if (looksLikeNewStandaloneQuestion(t)) {
+        contributionPendingRef.current = null;
+      } else if (looksLikeContributionFollowUp(t)) {
+        chipContributionInterpreted = true;
+        contributionPendingRef.current = null;
+      }
+    }
+    const userMsg = newMessage("user", t, {
+      ...(chipContributionInterpreted ? { interpretedAsCommunityContribution: true } : {}),
+    });
     const placeholderMsg = newMessage("model", "", { isGenerated: true });
     setMessages((m) => [...m, userMsg, placeholderMsg]);
     setLoading(true);
@@ -1005,6 +1089,26 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
     (async () => {
       try {
         const sessionIdChip = getOrCreateSessionId();
+        if (chipContributionInterpreted && pendingChip) {
+          void fetch("/api/onda-contributions", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              channel: "web",
+              eje: ejeOndaToContributionSlug(ej),
+              conversationId: sessionIdChip || undefined,
+              messageId: userMsg.id,
+              turnToken: pendingChip.turnToken,
+              userQuestion: pendingChip.userEcho,
+              assistantResponseSummary: pendingChip.assistantSummary,
+              contributionText: t.trim(),
+              contributionType: pendingChip.suggestedContributionType ?? "experiencia",
+              topic: pendingChip.topicHint,
+              tags: pendingChip.topicHint ? [pendingChip.topicHint] : undefined,
+              locale: pendingChip.locale,
+            }),
+          }).catch(() => {});
+        }
         const res = await fetch("/api/chat/stream", {
           method: "POST",
           headers: {
@@ -1018,6 +1122,7 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
             sessionId: sessionIdChip || undefined,
             userPreferences: userPreferencesChipApi,
             prefs: unifiedChip,
+            alreadyInvitedInConversation: hasRecentListeningInvite(messages),
           }),
           signal: controller.signal,
         });
@@ -1075,6 +1180,18 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
                 : msg
             )
           );
+          if (streamMetaChip.listeningInvite?.show) {
+            contributionPendingRef.current = {
+              turnToken: streamMetaChip.listeningInvite.turnToken,
+              userEcho: streamMetaChip.listeningInvite.userEcho,
+              assistantSummary: streamMetaChip.listeningInvite.assistantSummary,
+              topicHint: streamMetaChip.listeningInvite.topicHint,
+              locale: streamMetaChip.listeningInvite.locale,
+              suggestedContributionType: streamMetaChip.listeningInvite.suggestedContributionType,
+            };
+          } else {
+            contributionPendingRef.current = null;
+          }
           const fallbackAudio = computeWebPlayAudioDecision({
             outputMode: userPrefs.outputMode,
             userMessage: t,
@@ -1783,8 +1900,6 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
                 onFeedback={handleFeedback}
                 hideActions={isWelcomeOrError(msg)}
                 lowBandwidth={userPrefs.bandwidthMode === "low"}
-                contributionSessionId={getOrCreateSessionId()}
-                contributionEjeSlug={ejeOndaToContributionSlug(currentEje)}
               />
             </div>
           ))}

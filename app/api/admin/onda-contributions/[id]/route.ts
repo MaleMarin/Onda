@@ -1,32 +1,23 @@
 import { verifyAdminAuth } from "@/lib/adminAuth";
-import {
-  getCommunityContribution,
-  patchCommunityContribution,
-} from "@/lib/communityContributionsFirestore";
-import type { ContributionUrgency, ReviewStatus } from "@/lib/communityContributionTypes";
-import { REVIEW_STATUSES } from "@/lib/communityContributionTypes";
+import { getOndaContributionById } from "@/lib/onda/contributions/getContributionById";
+import { updateOndaContributionReview } from "@/lib/onda/contributions/updateContributionReview";
+import type { ContributionUrgency, ReviewStatus } from "@/lib/onda/contributions/types";
+import { REVIEW_STATUSES } from "@/lib/onda/contributions/constants";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-/**
- * GET: detalle de una contribución.
- */
 export async function GET(req: Request, ctx: { params: { id: string } }) {
   if (!verifyAdminAuth(req)) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
   const { id } = ctx.params;
   if (!id) return Response.json({ error: "Not found" }, { status: 404 });
-  const row = await getCommunityContribution(id);
+  const row = await getOndaContributionById(id);
   if (!row) return Response.json({ error: "Not found" }, { status: 404 });
   return Response.json(row);
 }
 
-/**
- * PATCH: actualizar estado de revisión, notas, tags, topic, urgencia.
- * Solo personal interno autenticado (misma cookie/Bearer que el resto del admin).
- */
 export async function PATCH(req: Request, ctx: { params: { id: string } }) {
   if (!verifyAdminAuth(req)) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
@@ -35,7 +26,7 @@ export async function PATCH(req: Request, ctx: { params: { id: string } }) {
   if (!id) return Response.json({ error: "Not found" }, { status: 404 });
 
   const body = await req.json().catch(() => ({}));
-  const patch: Parameters<typeof patchCommunityContribution>[1] = {};
+  const patch: Parameters<typeof updateOndaContributionReview>[1] = {};
 
   if (typeof body.reviewStatus === "string" && REVIEW_STATUSES.includes(body.reviewStatus as ReviewStatus)) {
     patch.reviewStatus = body.reviewStatus as ReviewStatus;
@@ -56,11 +47,11 @@ export async function PATCH(req: Request, ctx: { params: { id: string } }) {
     patch.reviewedBy = body.reviewedBy;
   }
 
-  const result = await patchCommunityContribution(id, patch);
+  const result = await updateOndaContributionReview(id, patch);
   if ("error" in result) {
     const status = result.error === "empty_patch" ? 400 : 500;
     return Response.json({ error: result.error }, { status });
   }
-  const row = await getCommunityContribution(id);
+  const row = await getOndaContributionById(id);
   return Response.json(row);
 }

@@ -1,7 +1,10 @@
-/** Canal de origen del aporte (persistencia y panel). */
+/**
+ * Tipos del dominio de contribuciones comunitarias (escucha estructurada).
+ * Constantes/catálogos en `lib/onda/contributions/constants.ts`.
+ */
+
 export type ContributionChannel = "web" | "whatsapp";
 
-/** Eje en formato estable para Firestore y filtros del panel. */
 export type ContributionEjeSlug = "onda_a_mano" | "onda_civita" | "onda_profes";
 
 export type ContributionType =
@@ -14,10 +17,8 @@ export type ContributionType =
 
 export type ContributionUrgency = "low" | "medium" | "high";
 
-/**
- * Riesgo de la fuente del contenido aportado.
- * Regla de producto: todo ingreso público arranca en `needs_review` (nunca verdad automática).
- */
+export type ContributionSentiment = "negative" | "neutral" | "positive" | "mixed";
+
 export type SourceRisk = "unknown" | "needs_review" | "verified" | "rejected";
 
 export type ReviewStatus =
@@ -28,19 +29,22 @@ export type ReviewStatus =
   | "incorporated"
   | "rejected";
 
-/** Documento de aporte de comunidad (API y panel). */
+/** Documento público/admin (sin `turnToken` en el contrato principal; ver `OndaContributionRecord`). */
 export type CommunityContribution = {
   id: string;
   createdAt: string;
+  updatedAt?: string;
   channel: ContributionChannel;
   eje: ContributionEjeSlug;
-  conversationId: string;
-  userMessage: string;
+  conversationId?: string;
+  messageId?: string;
+  userQuestion: string;
   assistantResponseSummary?: string;
   contributionText: string;
   contributionType: ContributionType;
   topic?: string;
   tags?: string[];
+  sentiment?: ContributionSentiment;
   urgency: ContributionUrgency;
   sourceRisk: SourceRisk;
   reviewStatus: ReviewStatus;
@@ -49,50 +53,51 @@ export type CommunityContribution = {
   reviewedAt?: string;
   locale?: string;
   optionalContactAllowed?: boolean;
+  /** Cubos UTC para agregaciones futuras (dashboard). */
+  statsBucketDay?: string;
+  statsBucketMonth?: string;
 };
 
-/** Payload opcional al final del NDJSON del chat (una línea JSON). */
+/** Fila persistida: dedupe por turno en web. */
+export type OndaContributionRecord = CommunityContribution & { turnToken?: string };
+
 export type ListeningInviteStreamPayload = {
   show: boolean;
-  /** Texto breve para UI o segundo mensaje en WhatsApp. */
   prompt: string;
-  /** Idempotencia y trazabilidad por turno (no es secreto). */
   turnToken: string;
-  /** Eco seguro del mensaje de usuario (truncado en servidor). */
   userEcho: string;
   assistantSummary: string;
   topicHint: string;
   locale: string;
+  suggestedContributionType?: ContributionType;
 };
 
-/** Alineado con valores de `EjeOnda` en `content/types`. */
 export function ejeOndaToContributionSlug(eje: string | null | undefined): ContributionEjeSlug {
   if (eje === "CIVITA") return "onda_civita";
   if (eje === "PROFES") return "onda_profes";
   return "onda_a_mano";
 }
 
-export const CONTRIBUTION_TYPES: ContributionType[] = [
-  "experiencia",
-  "duda_persistente",
-  "correccion",
-  "sugerencia",
-  "caso_reportado",
-  "senal_comunitaria",
-];
-
-export const REVIEW_STATUSES: ReviewStatus[] = [
-  "new",
-  "triaged",
-  "in_review",
-  "verified",
-  "incorporated",
-  "rejected",
-];
-
-/** Normaliza tipo almacenado legacy (`señal_comunitaria` con tilde). */
 export function normalizeContributionType(raw: string): ContributionType | null {
   const t = raw.trim();
   if (t === "señal_comunitaria") return "senal_comunitaria";
-  return CONTRIBUTION_TYPES.includes(t as ContributionType) ? (t as ContributionType) : null;
+  switch (t) {
+    case "experiencia":
+    case "duda_persistente":
+    case "correccion":
+    case "sugerencia":
+    case "caso_reportado":
+    case "senal_comunitaria":
+      return t;
+    default:
+      return null;
+  }
+}
+
+export function utcDayBucket(d = new Date()): string {
+  return d.toISOString().slice(0, 10);
+}
+
+export function utcMonthBucket(d = new Date()): string {
+  return d.toISOString().slice(0, 7);
 }

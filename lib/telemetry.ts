@@ -213,3 +213,17 @@ export async function checkKvConnectivity(): Promise<"ok" | "error"> {
     return "error";
   }
 }
+
+/** ONDA Insights: eventos agregados sin PII (KV o memoria en dev). */
+export {
+  recordEvent,
+  fetchEventsBetween,
+  buildInsightsSummary,
+  buildInsightsCsvRows,
+  __resetInsightsMemoryForTests,
+} from "./insightsTelemetry";
+export type {
+  TelemetryEvent,
+  InsightsSummaryJson,
+  CsvAggregateRow,
+} from "./insightsTelemetry";

@@ -1281,3 +1281,14 @@ export async function getOndaReplyWithImage(
     }
   }
 }
+
+/** Re-export para telemetría / informes (clasificación local sin PII). */
+export {
+  buildHeuristicSummarySafe,
+  buildRiskFlagsForTelemetry,
+  detectIntentType,
+  detectTopicTags,
+  sanitizeTextForTelemetry,
+  userRequestedTelemetryOptOut,
+} from "./insightsTagger";
+export type { DetectedIntent } from "./insightsTagger";

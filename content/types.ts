@@ -1,4 +1,4 @@
-import type { ListeningInviteStreamPayload } from "@/lib/communityContributionTypes";
+import type { ListeningInviteStreamPayload } from "@/lib/onda/contributions/types";
 
 export enum EjeOnda {
   A_MANO = "A_MANO",
@@ -36,6 +36,8 @@ export interface Message {
   suggestions?: string[];
   /** Invitación a escucha estructurada (contribución para revisión humana; no es verdad automática). */
   listeningInvite?: ListeningInviteStreamPayload;
+  /** Marca visual cuando el texto se envió también como aporte comunitario opcional. */
+  interpretedAsCommunityContribution?: boolean;
 }
 
 export interface EjeConfig {

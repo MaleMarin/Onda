@@ -61,7 +61,7 @@ import {
 import { computeWebPlayAudioDecision } from "../../../../lib/playAudioContract";
 import { computeRiskPipelineFlags, riskPipelineSkipsCache } from "../../../../lib/riskModes";
 import { detectTransparencyRequest } from "../../../../lib/transparencyMode";
-import { buildListeningStreamPayload } from "../../../../lib/listeningInvite";
+import { buildListeningInvitePayload } from "../../../../lib/onda/contributions/web";
 
 /** Tiempo máximo de ejecución del handler (Vercel: 60 en Hobby, hasta 300 en Pro). */
 export const maxDuration = 60;
@@ -188,6 +188,7 @@ export async function POST(req: Request) {
 
     const inclusiveFromApi = parseUserPreferencesFromApi(body?.userPreferences);
     const unified = normalizePrefs(parseUserPrefsFromApi(body?.prefs));
+    const alreadyInvitedInConversation = body?.alreadyInvitedInConversation === true;
 
     let memoryBlock = "";
     if (sessionId !== "anonymous") {
@@ -734,7 +735,8 @@ export async function POST(req: Request) {
               risk: riskPipeline,
               locale: userPreferences.locale,
             });
-            const invite = buildListeningStreamPayload({
+            const invite = buildListeningInvitePayload({
+              channel: "web",
               locale: userPreferences.locale,
               userText: query,
               assistantText: assistantTextForMemory,
@@ -745,6 +747,7 @@ export async function POST(req: Request) {
               riskSensitiveTelemetry: invRf.sensitive,
               eje: ejeForModel,
               turnToken: randomUUID(),
+              alreadyInvitedInConversation,
             });
             if (invite) {
               controller.enqueue(
