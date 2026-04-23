@@ -777,6 +777,9 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
     }
     setShowEnviarTooltip(false);
     setHighlightOndaButtons(false);
+    // Mientras Onda responde, cerramos el menú/acordeón para dejar espacio de lectura.
+    setShowMenu(false);
+    setShowIASubmenu(false);
     const sendStartMs = Date.now();
 
     const pinUnified = persistAutoInferredUnifiedLocale(unifiedPrefs, text);
