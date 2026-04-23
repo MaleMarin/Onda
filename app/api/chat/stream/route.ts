@@ -31,7 +31,22 @@ import {
   bufferFromDataUrl,
   validateImage,
 } from "../../../../lib/validateMedia";
+import { randomUUID } from "crypto";
 import { generateRequestId } from "../../../../lib/telemetry";
+import { recordEvent } from "../../../../lib/insightsTelemetry";
+import {
+  buildHeuristicSummarySafe,
+  buildRiskFlagsForTelemetry,
+  detectIntentType,
+  detectTopicTags,
+  userRequestedTelemetryOptOut,
+} from "../../../../lib/insightsTagger";
+import {
+  inferContentType,
+  localeBucketFromUnified,
+  mapFormatoToOutputFormat,
+  verbosityFromUnified,
+} from "../../../../lib/insightsTurnHelpers";
 import { recordConversation } from "../../../../lib/auditStore";
 import { recordConversationImpact } from "../../../../lib/impactMetrics";
 import { getCachedResponse } from "../../../../lib/responseCache";
@@ -46,6 +61,7 @@ import {
 import { computeWebPlayAudioDecision } from "../../../../lib/playAudioContract";
 import { computeRiskPipelineFlags, riskPipelineSkipsCache } from "../../../../lib/riskModes";
 import { detectTransparencyRequest } from "../../../../lib/transparencyMode";
+import { buildListeningStreamPayload } from "../../../../lib/listeningInvite";
 
 /** Tiempo máximo de ejecución del handler (Vercel: 60 en Hobby, hasta 300 en Pro). */
 export const maxDuration = 60;
@@ -367,6 +383,10 @@ export async function POST(req: Request) {
 
     const encoder = new TextEncoder();
     const query = message ?? "";
+    const telemetryOptOut =
+      body?.insightsOptOut === true ||
+      body?.telemetry === false ||
+      userRequestedTelemetryOptOut(message);
     const riskPre = computeRiskPipelineFlags(query, Boolean(image), eje, userPreferences.locale);
     const ejeForModel = riskPre.emergency ? EjeOnda.A_MANO : eje;
     const riskPipeline = computeRiskPipelineFlags(query, Boolean(image), ejeForModel, userPreferences.locale);
@@ -377,6 +397,51 @@ export async function POST(req: Request) {
     const intentResultForLog = classifyIntent(query || " ");
     console.info(`[${requestId}] chat/stream START intent=${intentResultForLog.intent}`);
     const telemetryCtx = { requestId, canal: "web" as const };
+
+    if (!telemetryOptOut) {
+      const rfStart = buildRiskFlagsForTelemetry(riskPipeline, query, userPreferences.locale);
+      const contentTypeStart = inferContentType(query, Boolean(image), Boolean(audio));
+      const dtStart = detectIntentType({
+        userText: query,
+        conversationIntent: intentResultForLog.intent,
+        hasLink: Boolean(firstUrl),
+        hasImage: Boolean(image),
+        hasAudio: Boolean(audio),
+        transparency: Boolean(transparencyExplicit),
+        risk: riskPipeline,
+        locale: userPreferences.locale,
+      });
+      const tagsStart = detectTopicTags(
+        query,
+        eje,
+        rfStart,
+        Boolean(firstUrl),
+        Boolean(image),
+        Boolean(audio)
+      );
+      void recordEvent({
+        timestamp: new Date().toISOString(),
+        channel: "web",
+        locale: localeBucketFromUnified(unified),
+        eje: ejeForModel,
+        detected_intent: dtStart,
+        content_type: contentTypeStart,
+        output_format: "texto",
+        verbosity: verbosityFromUnified(unified),
+        sources_requested: Boolean(unified.sources || wantsSources(message)),
+        risk_flags: rfStart,
+        outcome: "ok",
+        turn_stats: { user_chars: query.length, assistant_chars: 0 },
+        tags: tagsStart,
+        summary_safe: buildHeuristicSummarySafe({
+          detectedIntent: dtStart,
+          contentType: contentTypeStart,
+          eje: ejeForModel,
+        }),
+        lifecycle: "start",
+        request_id: requestId,
+      }).catch(() => {});
+    }
 
     type StreamContextBundle = {
       extraContext: string | undefined;
@@ -657,6 +722,36 @@ export async function POST(req: Request) {
               // ignore
             }
           }
+          if (streamOk && assistantTextForMemory) {
+            const invRf = buildRiskFlagsForTelemetry(riskPipeline, query, userPreferences.locale);
+            const invDt = detectIntentType({
+              userText: query,
+              conversationIntent: intentResultForLog.intent,
+              hasLink: Boolean(firstUrl),
+              hasImage: Boolean(image),
+              hasAudio: Boolean(audio),
+              transparency: Boolean(transparencyExplicit),
+              risk: riskPipeline,
+              locale: userPreferences.locale,
+            });
+            const invite = buildListeningStreamPayload({
+              locale: userPreferences.locale,
+              userText: query,
+              assistantText: assistantTextForMemory,
+              conversationIntent: intentResultForLog.intent,
+              detectedIntent: invDt,
+              riskPipeline,
+              riskScamTelemetry: invRf.scam,
+              riskSensitiveTelemetry: invRf.sensitive,
+              eje: ejeForModel,
+              turnToken: randomUUID(),
+            });
+            if (invite) {
+              controller.enqueue(
+                encoder.encode(JSON.stringify({ listeningInvite: invite }) + "\n")
+              );
+            }
+          }
           controller.enqueue(encoder.encode(JSON.stringify({ done: true }) + "\n"));
         } catch (err) {
           streamOk = false;
@@ -718,6 +813,66 @@ export async function POST(req: Request) {
             void recordConversation({
               sessionId: sessionId !== "anonymous" ? sessionId : undefined,
               excerpt: `intent=${intentResultForLog.intent};eje=${ejeForModel ?? "none"};canal=web`,
+            }).catch(() => {});
+          }
+          if (!telemetryOptOut) {
+            const rfEnd = buildRiskFlagsForTelemetry(riskPipeline, query, userPreferences.locale);
+            const convEnd = classifyIntent(query || " ");
+            const dtEnd = detectIntentType({
+              userText: query,
+              conversationIntent: convEnd.intent,
+              hasLink: Boolean(firstUrl),
+              hasImage: Boolean(image),
+              hasAudio: Boolean(audio),
+              transparency: Boolean(transparencyExplicit),
+              risk: riskPipeline,
+              locale: userPreferences.locale,
+            });
+            const tagsEnd = detectTopicTags(
+              query,
+              eje,
+              rfEnd,
+              Boolean(firstUrl),
+              Boolean(image),
+              Boolean(audio)
+            );
+            const imgOptsEnd = infographicParseOptions(userPreferences, messageForModel || message, ejeForModel);
+            const parsedEnd = assistantTextForMemory
+              ? parseResponseFormat(assistantTextForMemory, imgOptsEnd)
+              : null;
+            const outF = parsedEnd ? mapFormatoToOutputFormat(parsedEnd.formato) : "texto";
+            const outcome: "ok" | "fallback" | "error" = streamOk
+              ? "ok"
+              : partialSoFar.trim().length > 0
+                ? "fallback"
+                : "error";
+            void recordEvent({
+              timestamp: new Date().toISOString(),
+              channel: "web",
+              locale: localeBucketFromUnified(unified),
+              eje: ejeForModel,
+              detected_intent: dtEnd,
+              content_type: inferContentType(query, Boolean(image), Boolean(audio)),
+              output_format: outF,
+              verbosity: verbosityFromUnified(unified),
+              sources_requested: Boolean(unified.sources || wantsSources(message)),
+              risk_flags: rfEnd,
+              outcome,
+              error_code:
+                outcome === "ok" ? undefined : outcome === "fallback" ? "stream_partial" : "stream_failed",
+              turn_stats: {
+                user_chars: query.length,
+                assistant_chars: assistantTextForMemory.length,
+                latency_ms: Date.now() - requestStart,
+              },
+              tags: tagsEnd,
+              summary_safe: buildHeuristicSummarySafe({
+                detectedIntent: dtEnd,
+                contentType: inferContentType(query, Boolean(image), Boolean(audio)),
+                eje: ejeForModel,
+              }),
+              lifecycle: "end",
+              request_id: requestId,
             }).catch(() => {});
           }
           controller.close();

@@ -1,3 +1,5 @@
+import type { ListeningInviteStreamPayload } from "@/lib/communityContributionTypes";
+
 export enum EjeOnda {
   A_MANO = "A_MANO",
   CIVITA = "CIVITA",
@@ -32,6 +34,8 @@ export interface Message {
   menuOptionId?: string;
   /** Preguntas de seguimiento relacionadas con la respuesta (2–4), redactadas como la usuaria preguntaría. Si existen, se muestran como chips en lugar de las genéricas. */
   suggestions?: string[];
+  /** Invitación a escucha estructurada (contribución para revisión humana; no es verdad automática). */
+  listeningInvite?: ListeningInviteStreamPayload;
 }
 
 export interface EjeConfig {

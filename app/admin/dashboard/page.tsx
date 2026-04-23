@@ -221,7 +221,13 @@ export default function AdminDashboardPage() {
           }}
         >
           <h1 style={{ margin: 0, fontSize: "1.35rem", color: DARK }}>ONDA IMPACT DASHBOARD</h1>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+            <a
+              href="/admin/onda-contribuciones"
+              style={{ fontSize: "0.875rem", color: BLUE, fontWeight: 600 }}
+            >
+              Contribuciones comunidad
+            </a>
             <label style={{ fontSize: "0.875rem" }}>
               Periodo{" "}
               <select

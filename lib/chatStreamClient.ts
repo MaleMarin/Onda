@@ -2,6 +2,7 @@
  * Consumo del stream NDJSON de POST /api/chat/stream (cliente).
  */
 
+import type { ListeningInviteStreamPayload } from "./communityContributionTypes";
 import { STORAGE_KEY_ONDA_ULTIMO_TEMA } from "./userPreferences";
 
 export type ChatStreamMeta = {
@@ -10,6 +11,8 @@ export type ChatStreamMeta = {
   /** Definido por el servidor cuando envía la línea `playAudio` (contrato de producto). */
   serverPlayAudio?: boolean;
   serverPlayAudioReason?: string;
+  /** Escucha estructurada: invitación opcional al final del turno. */
+  listeningInvite?: ListeningInviteStreamPayload;
 };
 
 /**
@@ -26,6 +29,7 @@ export async function consumeChatNdjsonStream(
   let receivedAnyText = false;
   let serverPlayAudio: boolean | undefined;
   let serverPlayAudioReason: string | undefined;
+  let listeningInvite: ListeningInviteStreamPayload | undefined;
 
   while (true) {
     const { done, value } = await reader.read();
@@ -57,6 +61,20 @@ export async function consumeChatNdjsonStream(
         if (typeof obj.playAudioReason === "string") {
           serverPlayAudioReason = obj.playAudioReason;
         }
+        if (obj.listeningInvite && typeof obj.listeningInvite === "object") {
+          const li = obj.listeningInvite as Record<string, unknown>;
+          if (li.show === true && typeof li.prompt === "string" && typeof li.turnToken === "string") {
+            listeningInvite = {
+              show: true,
+              prompt: li.prompt,
+              turnToken: li.turnToken,
+              userEcho: typeof li.userEcho === "string" ? li.userEcho : "",
+              assistantSummary: typeof li.assistantSummary === "string" ? li.assistantSummary : "",
+              topicHint: typeof li.topicHint === "string" ? li.topicHint : "comunidad",
+              locale: typeof li.locale === "string" ? li.locale : "es-LATAM",
+            };
+          }
+        }
       } catch {
         /* ignore malformed line */
       }
@@ -68,5 +86,6 @@ export async function consumeChatNdjsonStream(
     receivedAnyText,
     serverPlayAudio,
     serverPlayAudioReason,
+    listeningInvite,
   };
 }

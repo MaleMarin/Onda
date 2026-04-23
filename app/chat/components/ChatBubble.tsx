@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback } from "react";
 import type { CSSProperties } from "react";
 import type { Message } from "@/content/types";
+import type { ContributionEjeSlug } from "@/lib/communityContributionTypes";
+import { ListeningInviteForm } from "./ListeningInviteForm";
 import { MENU_QUESTIONS } from "@/content/menuQuestions";
 import type { OndaChatLocale } from "@/lib/userPreferences";
 import { getChatMicrocopy } from "@/lib/chatI18n";
@@ -57,6 +59,10 @@ interface ChatBubbleProps {
   hideActions?: boolean;
   /** No cargar PNG de guía; solo enlace liviano (modo bajo consumo). */
   lowBandwidth?: boolean;
+  /** Sesión web para enviar aporte opcional (escucha estructurada). */
+  contributionSessionId?: string | null;
+  /** Eje actual en formato slug Firestore. */
+  contributionEjeSlug?: ContributionEjeSlug | null;
 }
 
 const LINK_REGEX = /\[([^\]]*)\]\((https?:\/\/[^)\s]+)\)/g;
@@ -147,6 +153,8 @@ export function ChatBubble({
   onFeedback,
   hideActions,
   lowBandwidth,
+  contributionSessionId = null,
+  contributionEjeSlug = null,
 }: ChatBubbleProps) {
   const S = ondaStyles(t);
   const mc = getChatMicrocopy(uiLocale);
@@ -387,6 +395,19 @@ export function ChatBubble({
             </button>
           </div>
         )}
+        {message.role === "model" &&
+          message.listeningInvite?.show &&
+          contributionSessionId &&
+          contributionEjeSlug &&
+          !showAsMenuIntroButtons &&
+          !isEmpty && (
+            <ListeningInviteForm
+              invite={message.listeningInvite}
+              sessionId={contributionSessionId}
+              ejeSlug={contributionEjeSlug}
+              theme={t}
+            />
+          )}
         {onFeedback && message.role === "model" && message.isGenerated && message.content?.trim() && !showAsMenuIntroButtons && !isEmpty && (
           <div style={{ marginTop: 10, paddingTop: 8, borderTop: `1px solid ${t.c.border}`, display: "flex", alignItems: "center", gap: 8 }}>
             <span style={{ fontSize: "0.875rem", color: t.c.muted }}>¿Te sirvió?</span>

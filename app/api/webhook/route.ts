@@ -63,6 +63,24 @@ import {
   WA_OPT_OUT_ACK,
 } from "../../../lib/waCompliance";
 import { generateRequestId } from "../../../lib/telemetry";
+import { randomUUID } from "crypto";
+import { recordEvent } from "../../../lib/insightsTelemetry";
+import {
+  buildHeuristicSummarySafe,
+  buildRiskFlagsForTelemetry,
+  detectIntentType,
+  detectTopicTags,
+  userRequestedTelemetryOptOut,
+} from "../../../lib/insightsTagger";
+import {
+  inferContentType,
+  localeBucketFromUnified,
+  mapFormatoToOutputFormat,
+  verbosityFromUnified,
+} from "../../../lib/insightsTurnHelpers";
+import { buildListeningStreamPayload } from "../../../lib/listeningInvite";
+import type { OndaChatLocale } from "../../../lib/userPreferences";
+import { DEFAULT_USER_PREFS } from "../../../lib/userPrefs";
 import { parseWaInclusiveCommand } from "../../../lib/waInclusivePreferences";
 import { formatWebhookPostBlockedMessage, getWhatsAppEnvReport } from "../../../lib/waWebhookEnv";
 import { WA_AUDIO_TRANSCRIBING_ACK } from "../../../content/shared";
@@ -772,6 +790,123 @@ export async function POST(req: Request) {
 
             const waIntentRecorded = classifyIntent(waUserTurn || textBody || " ");
             const impactEje = impactEjeFromSession(nextWaState);
+            const p = nextWaState?.prefs ?? DEFAULT_USER_PREFS;
+            const ondaLoc: OndaChatLocale =
+              (nextWaState?.ondaMerged?.locale as OndaChatLocale | undefined) ??
+              (p.locale === "pt" ? "pt-BR" : "es-LATAM");
+            const waTelemetrySkip =
+              (await isOptedOut(from)) ||
+              !waUserTurn.trim() ||
+              userRequestedTelemetryOptOut(waUserTurn) ||
+              typeof response !== "string";
+            if (!waTelemetrySkip) {
+              const riskWa = computeRiskPipelineFlags(
+                waUserTurn,
+                type === "image",
+                impactEje,
+                ondaLoc
+              );
+              const hasLinkWa = /\bhttps?:\/\//i.test(waUserTurn);
+              const tranWa = detectTransparencyRequest(waUserTurn, ondaLoc);
+              const dtWa = detectIntentType({
+                userText: waUserTurn,
+                conversationIntent: waIntentRecorded.intent,
+                hasLink: hasLinkWa,
+                hasImage: type === "image",
+                hasAudio: type === "audio",
+                transparency: tranWa,
+                risk: riskWa,
+                locale: ondaLoc,
+              });
+              const rfWa = buildRiskFlagsForTelemetry(riskWa, waUserTurn, ondaLoc);
+              const tagsWa = detectTopicTags(
+                waUserTurn,
+                impactEje,
+                rfWa,
+                hasLinkWa,
+                type === "image",
+                type === "audio"
+              );
+              const parsedWa = parseResponseFormat(response);
+              void recordEvent({
+                timestamp: new Date().toISOString(),
+                channel: "whatsapp",
+                locale: localeBucketFromUnified(p),
+                eje: impactEje,
+                detected_intent: dtWa,
+                content_type: inferContentType(waUserTurn, type === "image", type === "audio"),
+                output_format: mapFormatoToOutputFormat(parsedWa.formato),
+                verbosity: verbosityFromUnified(p),
+                sources_requested: Boolean(p.sources || wantsSources(waUserTurn)),
+                risk_flags: rfWa,
+                outcome: "ok",
+                turn_stats: {
+                  user_chars: waUserTurn.length,
+                  assistant_chars: response.length,
+                  latency_ms: Date.now() - messageStart,
+                },
+                tags: tagsWa,
+                summary_safe: buildHeuristicSummarySafe({
+                  detectedIntent: dtWa,
+                  contentType: inferContentType(waUserTurn, type === "image", type === "audio"),
+                  eje: impactEje,
+                }),
+                lifecycle: "end",
+                request_id: requestId,
+              }).catch(() => {});
+            }
+
+            if (
+              typeof response === "string" &&
+              waUserTurn.trim() &&
+              parsed.text.trim() &&
+              !(await isOptedOut(from)) &&
+              !userRequestedTelemetryOptOut(waUserTurn)
+            ) {
+              const riskListen = computeRiskPipelineFlags(
+                waUserTurn,
+                type === "image",
+                impactEje,
+                ondaLoc
+              );
+              const hasLinkL = /\bhttps?:\/\//i.test(waUserTurn);
+              const tranL = detectTransparencyRequest(waUserTurn, ondaLoc);
+              const dtL = detectIntentType({
+                userText: waUserTurn,
+                conversationIntent: waIntentRecorded.intent,
+                hasLink: hasLinkL,
+                hasImage: type === "image",
+                hasAudio: type === "audio",
+                transparency: tranL,
+                risk: riskListen,
+                locale: ondaLoc,
+              });
+              const rfL = buildRiskFlagsForTelemetry(riskListen, waUserTurn, ondaLoc);
+              const inviteWa = buildListeningStreamPayload({
+                locale: ondaLoc,
+                userText: waUserTurn,
+                assistantText: parsed.text.trim(),
+                conversationIntent: waIntentRecorded.intent,
+                detectedIntent: dtL,
+                riskPipeline: riskListen,
+                riskScamTelemetry: rfL.scam,
+                riskSensitiveTelemetry: rfL.sensitive,
+                eje: impactEje,
+                turnToken: randomUUID(),
+              });
+              if (inviteWa?.show) {
+                await new Promise((r) => setTimeout(r, 450));
+                const inviteParts = splitForWhatsApp(inviteWa.prompt);
+                for (let ii = 0; ii < inviteParts.length; ii++) {
+                  const tr = await sendWhatsAppText(from, inviteParts[ii]);
+                  if (!tr.ok) break;
+                  if (ii < inviteParts.length - 1) {
+                    await new Promise((r) => setTimeout(r, 320));
+                  }
+                }
+              }
+            }
+
             void recordConversationImpact({
               eje: impactEje,
               canal: "whatsapp",

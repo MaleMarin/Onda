@@ -27,7 +27,8 @@ import { formatMenuIntro } from "@/content/menuQuestions";
 import { displayMenuOptionLabel, userPickedMenuOption } from "@/content/menus";
 import { EjeOnda, type Message } from "@/content/types";
 import { parseResponseFormat } from "@/lib/responseFormat";
-import { consumeChatNdjsonStream } from "@/lib/chatStreamClient";
+import { consumeChatNdjsonStream, type ChatStreamMeta } from "@/lib/chatStreamClient";
+import { ejeOndaToContributionSlug } from "@/lib/communityContributionTypes";
 import { computeWebPlayAudioDecision } from "@/lib/playAudioContract";
 import { useOndaTheme } from "@/lib/useOndaTheme";
 import { ondaStyles } from "@/lib/ondaStyles";
@@ -825,8 +826,9 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
       let fullContent = "";
       let receivedAnyText = false;
       let serverPlayAudio: boolean | undefined;
+      let streamMeta: ChatStreamMeta = { fullContent: "", receivedAnyText: false };
       if (reader) {
-        const meta = await consumeChatNdjsonStream(
+        streamMeta = await consumeChatNdjsonStream(
           reader,
           (chunk) => {
             receivedAnyText = true;
@@ -844,9 +846,9 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
             );
           }
         );
-        receivedAnyText = receivedAnyText || meta.receivedAnyText;
-        fullContent = meta.fullContent;
-        serverPlayAudio = meta.serverPlayAudio;
+        receivedAnyText = receivedAnyText || streamMeta.receivedAnyText;
+        fullContent = streamMeta.fullContent;
+        serverPlayAudio = streamMeta.serverPlayAudio;
       }
       if (receivedAnyText && fullContent) {
         const parsed = parseResponseFormat(fullContent);
@@ -858,6 +860,7 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
                   content: parsed.text,
                   guideId: parsed.guideId ?? undefined,
                   suggestions: parsed.suggestions?.length ? parsed.suggestions : undefined,
+                  listeningInvite: streamMeta.listeningInvite,
                 }
               : msg
           )
@@ -1033,8 +1036,9 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
         let fullContent = "";
         let receivedAnyText = false;
         let serverPlayAudio: boolean | undefined;
+        let streamMetaChip: ChatStreamMeta = { fullContent: "", receivedAnyText: false };
         if (reader) {
-          const meta = await consumeChatNdjsonStream(
+          streamMetaChip = await consumeChatNdjsonStream(
             reader,
             (chunk) => {
               receivedAnyText = true;
@@ -1052,16 +1056,22 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
               );
             }
           );
-          receivedAnyText = receivedAnyText || meta.receivedAnyText;
-          fullContent = meta.fullContent;
-          serverPlayAudio = meta.serverPlayAudio;
+          receivedAnyText = receivedAnyText || streamMetaChip.receivedAnyText;
+          fullContent = streamMetaChip.fullContent;
+          serverPlayAudio = streamMetaChip.serverPlayAudio;
         }
         if (receivedAnyText && fullContent) {
           const parsed = parseResponseFormat(fullContent);
           setMessages((m) =>
             m.map((msg) =>
               msg.id === placeholderMsg.id
-                ? { ...msg, content: parsed.text, guideId: parsed.guideId ?? undefined, suggestions: parsed.suggestions?.length ? parsed.suggestions : undefined }
+                ? {
+                    ...msg,
+                    content: parsed.text,
+                    guideId: parsed.guideId ?? undefined,
+                    suggestions: parsed.suggestions?.length ? parsed.suggestions : undefined,
+                    listeningInvite: streamMetaChip.listeningInvite,
+                  }
                 : msg
             )
           );
@@ -1773,6 +1783,8 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
                 onFeedback={handleFeedback}
                 hideActions={isWelcomeOrError(msg)}
                 lowBandwidth={userPrefs.bandwidthMode === "low"}
+                contributionSessionId={getOrCreateSessionId()}
+                contributionEjeSlug={ejeOndaToContributionSlug(currentEje)}
               />
             </div>
           ))}
