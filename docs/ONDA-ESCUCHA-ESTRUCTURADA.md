@@ -30,3 +30,7 @@ Tras enviar la respuesta principal (texto / medios), si aplica la misma heuríst
 ## Variables de entorno
 
 Requiere Firebase Admin configurado (`FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`) como el resto del proyecto. Sin Firestore, `POST /api/community-contribution` responde `503`.
+
+## Tipo de datos (`CommunityContribution`)
+
+El contrato TypeScript vive en `lib/communityContributionTypes.ts` (`CommunityContribution`). Incluye `contributionType: … | "senal_comunitaria"` (ASCII, sin tilde en la clave). Los documentos antiguos con `señal_comunitaria` se normalizan al leer. El persistido en Firestore añade `turnToken` para dedupe (`CommunityContributionRecord`).

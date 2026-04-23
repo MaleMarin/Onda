@@ -127,7 +127,7 @@ export default function OndaContribucionDetallePage() {
             <dt style={{ color: "#555" }}>Eje</dt>
             <dd style={{ margin: 0 }}>{row.eje}</dd>
             <dt style={{ color: "#555" }}>Locale</dt>
-            <dd style={{ margin: 0 }}>{row.locale}</dd>
+            <dd style={{ margin: 0 }}>{row.locale ?? "—"}</dd>
             <dt style={{ color: "#555" }}>Conversación</dt>
             <dd style={{ margin: 0, wordBreak: "break-all" }}>{row.conversationId}</dd>
             <dt style={{ color: "#555" }}>Turn token</dt>
@@ -144,8 +144,12 @@ export default function OndaContribucionDetallePage() {
         <section style={{ background: "#fff", borderRadius: 12, padding: 16, marginTop: 12 }}>
           <h2 style={{ fontSize: "1rem", marginTop: 0 }}>Mensaje usuario (eco / turno)</h2>
           <pre style={{ whiteSpace: "pre-wrap", fontSize: "0.875rem", background: "#f8f9fc", padding: 12, borderRadius: 8 }}>{row.userMessage}</pre>
-          <h2 style={{ fontSize: "1rem" }}>Resumen respuesta Onda</h2>
-          <pre style={{ whiteSpace: "pre-wrap", fontSize: "0.875rem", background: "#f8f9fc", padding: 12, borderRadius: 8 }}>{row.assistantResponseSummary}</pre>
+          {row.assistantResponseSummary ? (
+            <>
+              <h2 style={{ fontSize: "1rem" }}>Resumen respuesta Onda</h2>
+              <pre style={{ whiteSpace: "pre-wrap", fontSize: "0.875rem", background: "#f8f9fc", padding: 12, borderRadius: 8 }}>{row.assistantResponseSummary}</pre>
+            </>
+          ) : null}
           <h2 style={{ fontSize: "1rem" }}>Aporte</h2>
           <pre style={{ whiteSpace: "pre-wrap", fontSize: "0.875rem", background: "#f8f9fc", padding: 12, borderRadius: 8 }}>{row.contributionText}</pre>
         </section>

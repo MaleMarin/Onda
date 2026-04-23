@@ -1,11 +1,7 @@
 import { checkRateLimit } from "@/lib/rateLimiter";
-import {
-  createCommunityContribution,
-  isValidContributionType,
-  isValidTurnToken,
-} from "@/lib/communityContributionsFirestore";
+import { createCommunityContribution, isValidTurnToken } from "@/lib/communityContributionsFirestore";
 import type { ContributionChannel, ContributionEjeSlug } from "@/lib/communityContributionTypes";
-import { CONTRIBUTION_TYPES } from "@/lib/communityContributionTypes";
+import { CONTRIBUTION_TYPES, normalizeContributionType } from "@/lib/communityContributionTypes";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -44,14 +40,13 @@ export async function POST(req: Request) {
     const turnToken = typeof body?.turnToken === "string" ? body.turnToken.trim() : "";
     const userMessage = typeof body?.userMessage === "string" ? body.userMessage : "";
     const assistantResponseSummary =
-      typeof body?.assistantResponseSummary === "string" ? body.assistantResponseSummary : "";
+      typeof body?.assistantResponseSummary === "string" ? body.assistantResponseSummary.trim() : undefined;
     const contributionText = typeof body?.contributionText === "string" ? body.contributionText.trim() : "";
     const contributionTypeRaw = typeof body?.contributionType === "string" ? body.contributionType : "";
-    const topic = typeof body?.topic === "string" ? body.topic.trim() : "comunidad";
+    const topic = typeof body?.topic === "string" ? body.topic.trim() : undefined;
     const tags = Array.isArray(body?.tags) ? body.tags.filter((x: unknown) => typeof x === "string") : [];
-    const sentiment = typeof body?.sentiment === "string" ? body.sentiment.trim() : undefined;
     const optionalContactAllowed = Boolean(body?.optionalContactAllowed);
-    const locale = typeof body?.locale === "string" ? body.locale.trim() : "es-LATAM";
+    const locale = typeof body?.locale === "string" ? body.locale.trim() : undefined;
 
     if (!channel || !eje) {
       return Response.json({ error: "channel o eje inválido" }, { status: 400 });
@@ -62,7 +57,8 @@ export async function POST(req: Request) {
     if (!isValidTurnToken(turnToken)) {
       return Response.json({ error: "turnToken inválido" }, { status: 400 });
     }
-    if (!isValidContributionType(contributionTypeRaw)) {
+    const contributionType = normalizeContributionType(contributionTypeRaw);
+    if (!contributionType) {
       return Response.json(
         { error: "contributionType inválido", allowed: CONTRIBUTION_TYPES },
         { status: 400 }
@@ -81,14 +77,15 @@ export async function POST(req: Request) {
       conversationId,
       turnToken,
       userMessage: userMessage.slice(0, 8000),
-      assistantResponseSummary: assistantResponseSummary.slice(0, 2000),
+      ...(assistantResponseSummary
+        ? { assistantResponseSummary: assistantResponseSummary.slice(0, 2000) }
+        : {}),
       contributionText,
-      contributionType: contributionTypeRaw,
-      topic: topic || "comunidad",
-      tags,
-      sentiment: sentiment || null,
+      contributionType,
+      ...(topic ? { topic } : {}),
+      ...(tags.length ? { tags } : {}),
       optionalContactAllowed,
-      locale: locale || "es-LATAM",
+      ...(locale ? { locale } : {}),
     });
 
     if ("error" in result) {

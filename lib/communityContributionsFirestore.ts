@@ -1,41 +1,21 @@
 import { FieldValue, Timestamp, type DocumentData } from "firebase-admin/firestore";
 import { getFirestore } from "@/lib/firebaseConfig";
 import {
+  type CommunityContribution,
   type ContributionChannel,
   type ContributionEjeSlug,
   type ContributionType,
   type ContributionUrgency,
   type ReviewStatus,
   type SourceRisk,
-  CONTRIBUTION_TYPES,
   REVIEW_STATUSES,
+  normalizeContributionType,
 } from "@/lib/communityContributionTypes";
 
 export const COMMUNITY_CONTRIBUTIONS_COLLECTION = "onda_community_contributions";
 
-export type CommunityContributionRecord = {
-  id: string;
-  createdAt: string;
-  channel: ContributionChannel;
-  eje: ContributionEjeSlug;
-  userMessage: string;
-  assistantResponseSummary: string;
-  contributionText: string;
-  contributionType: ContributionType;
-  topic: string;
-  tags: string[];
-  sentiment?: string | null;
-  urgency: ContributionUrgency;
-  sourceRisk: SourceRisk;
-  reviewStatus: ReviewStatus;
-  reviewedBy: string | null;
-  reviewedAt: string | null;
-  internalNotes: string;
-  optionalContactAllowed: boolean;
-  locale: string;
-  conversationId: string;
-  turnToken: string;
-};
+/** Registro persistido: mismo contrato que `CommunityContribution` más `turnToken` para dedupe. */
+export type CommunityContributionRecord = CommunityContribution & { turnToken: string };
 
 function tsToIso(t: Timestamp | null | undefined): string | null {
   if (!t?.toDate) return null;
@@ -48,29 +28,51 @@ function tsToIso(t: Timestamp | null | undefined): string | null {
 
 function docToRecord(id: string, data: DocumentData): CommunityContributionRecord {
   const createdAt = data.createdAt instanceof Timestamp ? tsToIso(data.createdAt) : null;
-  return {
+  const rawType = typeof data.contributionType === "string" ? data.contributionType : "";
+  const contributionType = normalizeContributionType(rawType) ?? ("experiencia" as ContributionType);
+
+  const assistantRaw = data.assistantResponseSummary;
+  const assistantResponseSummary =
+    typeof assistantRaw === "string" && assistantRaw.trim() ? assistantRaw.trim().slice(0, 2000) : undefined;
+
+  const topicRaw = data.topic;
+  const topic = typeof topicRaw === "string" && topicRaw.trim() ? topicRaw.trim().slice(0, 200) : undefined;
+
+  const tags = Array.isArray(data.tags) ? data.tags.map(String).slice(0, 24).map((t) => t.slice(0, 80)) : undefined;
+
+  const internalRaw = data.internalNotes;
+  const internalNotes =
+    typeof internalRaw === "string" && internalRaw.trim() ? internalRaw.trim().slice(0, 8000) : undefined;
+
+  const reviewedBy = typeof data.reviewedBy === "string" && data.reviewedBy.trim() ? data.reviewedBy.trim() : undefined;
+  const reviewedAt =
+    data.reviewedAt instanceof Timestamp ? (tsToIso(data.reviewedAt) ?? undefined) : undefined;
+
+  const locale = typeof data.locale === "string" && data.locale.trim() ? data.locale.trim().slice(0, 32) : undefined;
+
+  const rec: CommunityContributionRecord = {
     id,
     createdAt: createdAt || "",
     channel: data.channel,
     eje: data.eje,
+    conversationId: data.conversationId ?? "",
     userMessage: data.userMessage ?? "",
-    assistantResponseSummary: data.assistantResponseSummary ?? "",
     contributionText: data.contributionText ?? "",
-    contributionType: data.contributionType,
-    topic: data.topic ?? "",
-    tags: Array.isArray(data.tags) ? data.tags.map(String) : [],
-    sentiment: data.sentiment ?? null,
+    contributionType,
     urgency: data.urgency ?? "low",
     sourceRisk: (data.sourceRisk as SourceRisk) || "needs_review",
     reviewStatus: data.reviewStatus ?? "new",
-    reviewedBy: data.reviewedBy ?? null,
-    reviewedAt: data.reviewedAt instanceof Timestamp ? tsToIso(data.reviewedAt) : null,
-    internalNotes: data.internalNotes ?? "",
     optionalContactAllowed: Boolean(data.optionalContactAllowed),
-    locale: data.locale ?? "",
-    conversationId: data.conversationId ?? "",
     turnToken: data.turnToken ?? "",
   };
+  if (assistantResponseSummary !== undefined) rec.assistantResponseSummary = assistantResponseSummary;
+  if (topic !== undefined) rec.topic = topic;
+  if (tags !== undefined && tags.length > 0) rec.tags = tags;
+  if (internalNotes !== undefined) rec.internalNotes = internalNotes;
+  if (reviewedBy !== undefined) rec.reviewedBy = reviewedBy;
+  if (reviewedAt !== undefined) rec.reviewedAt = reviewedAt;
+  if (locale !== undefined) rec.locale = locale;
+  return rec;
 }
 
 const UUID_RE =
@@ -99,18 +101,17 @@ type CreateInput = {
   conversationId: string;
   turnToken: string;
   userMessage: string;
-  assistantResponseSummary: string;
+  assistantResponseSummary?: string;
   contributionText: string;
   contributionType: ContributionType;
-  topic: string;
-  tags: string[];
-  sentiment?: string | null;
-  optionalContactAllowed: boolean;
-  locale: string;
+  topic?: string;
+  tags?: string[];
+  optionalContactAllowed?: boolean;
+  locale?: string;
 };
 
 function urgencyForPublicContribution(type: ContributionType): ContributionUrgency {
-  if (type === "caso_reportado" || type === "correccion" || type === "señal_comunitaria") return "medium";
+  if (type === "caso_reportado" || type === "correccion" || type === "senal_comunitaria") return "medium";
   return "low";
 }
 
@@ -124,28 +125,36 @@ export async function createCommunityContribution(input: CreateInput): Promise<{
   const urgency = urgencyForPublicContribution(input.contributionType);
 
   const ref = db.collection(COMMUNITY_CONTRIBUTIONS_COLLECTION).doc();
-  await ref.set({
+
+  const payload: Record<string, unknown> = {
     channel: input.channel,
     eje: input.eje,
     conversationId: input.conversationId.slice(0, 512),
     turnToken: input.turnToken.trim(),
     userMessage: input.userMessage.slice(0, 8000),
-    assistantResponseSummary: input.assistantResponseSummary.slice(0, 2000),
     contributionText: input.contributionText.slice(0, 4000),
     contributionType: input.contributionType,
-    topic: input.topic.slice(0, 200),
-    tags: input.tags.slice(0, 24).map((t) => t.slice(0, 80)),
-    sentiment: input.sentiment ? input.sentiment.slice(0, 64) : null,
     urgency,
     sourceRisk: "needs_review",
     reviewStatus: "new" as ReviewStatus,
-    reviewedBy: null,
-    reviewedAt: null,
-    internalNotes: "",
     optionalContactAllowed: Boolean(input.optionalContactAllowed),
-    locale: input.locale.slice(0, 32),
     createdAt: FieldValue.serverTimestamp(),
-  });
+  };
+
+  const sum = input.assistantResponseSummary?.trim();
+  if (sum) payload.assistantResponseSummary = sum.slice(0, 2000);
+
+  const top = input.topic?.trim();
+  if (top) payload.topic = top.slice(0, 200);
+
+  if (input.tags?.length) {
+    payload.tags = input.tags.slice(0, 24).map((t) => t.slice(0, 80));
+  }
+
+  const loc = input.locale?.trim();
+  if (loc) payload.locale = loc.slice(0, 32);
+
+  await ref.set(payload);
 
   return { id: ref.id };
 }
@@ -175,8 +184,13 @@ export async function listCommunityContributions(filters: ListFilters): Promise<
 
   if (filters.eje) rows = rows.filter((r) => r.eje === filters.eje);
   if (filters.reviewStatus) rows = rows.filter((r) => r.reviewStatus === filters.reviewStatus);
-  if (filters.contributionType) rows = rows.filter((r) => r.contributionType === filters.contributionType);
-  if (filters.topic) rows = rows.filter((r) => r.topic.toLowerCase().includes(filters.topic!.toLowerCase()));
+  if (filters.contributionType) {
+    rows = rows.filter((r) => r.contributionType === filters.contributionType);
+  }
+  if (filters.topic) {
+    const q = filters.topic.toLowerCase();
+    rows = rows.filter((r) => (r.topic ?? "").toLowerCase().includes(q));
+  }
   if (filters.urgency) rows = rows.filter((r) => r.urgency === filters.urgency);
   if (filters.fromIso) {
     const from = Date.parse(filters.fromIso);
@@ -240,8 +254,4 @@ export async function patchCommunityContribution(
 
   await db.collection(COMMUNITY_CONTRIBUTIONS_COLLECTION).doc(id).update(updates);
   return { ok: true };
-}
-
-export function isValidContributionType(t: string): t is ContributionType {
-  return CONTRIBUTION_TYPES.includes(t as ContributionType);
 }

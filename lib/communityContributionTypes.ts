@@ -10,7 +10,7 @@ export type ContributionType =
   | "correccion"
   | "sugerencia"
   | "caso_reportado"
-  | "señal_comunitaria";
+  | "senal_comunitaria";
 
 export type ContributionUrgency = "low" | "medium" | "high";
 
@@ -27,6 +27,29 @@ export type ReviewStatus =
   | "verified"
   | "incorporated"
   | "rejected";
+
+/** Documento de aporte de comunidad (API y panel). */
+export type CommunityContribution = {
+  id: string;
+  createdAt: string;
+  channel: ContributionChannel;
+  eje: ContributionEjeSlug;
+  conversationId: string;
+  userMessage: string;
+  assistantResponseSummary?: string;
+  contributionText: string;
+  contributionType: ContributionType;
+  topic?: string;
+  tags?: string[];
+  urgency: ContributionUrgency;
+  sourceRisk: SourceRisk;
+  reviewStatus: ReviewStatus;
+  internalNotes?: string;
+  reviewedBy?: string;
+  reviewedAt?: string;
+  locale?: string;
+  optionalContactAllowed?: boolean;
+};
 
 /** Payload opcional al final del NDJSON del chat (una línea JSON). */
 export type ListeningInviteStreamPayload = {
@@ -55,7 +78,7 @@ export const CONTRIBUTION_TYPES: ContributionType[] = [
   "correccion",
   "sugerencia",
   "caso_reportado",
-  "señal_comunitaria",
+  "senal_comunitaria",
 ];
 
 export const REVIEW_STATUSES: ReviewStatus[] = [
@@ -66,3 +89,10 @@ export const REVIEW_STATUSES: ReviewStatus[] = [
   "incorporated",
   "rejected",
 ];
+
+/** Normaliza tipo almacenado legacy (`señal_comunitaria` con tilde). */
+export function normalizeContributionType(raw: string): ContributionType | null {
+  const t = raw.trim();
+  if (t === "señal_comunitaria") return "senal_comunitaria";
+  return CONTRIBUTION_TYPES.includes(t as ContributionType) ? (t as ContributionType) : null;
+}

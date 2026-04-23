@@ -222,7 +222,7 @@ export default function OndaContribucionesAdminPage() {
                   <td style={{ padding: 8 }}>{row.contributionType}</td>
                   <td style={{ padding: 8 }}>{row.reviewStatus}</td>
                   <td style={{ padding: 8 }}>{row.urgency}</td>
-                  <td style={{ padding: 8 }}>{row.topic}</td>
+                  <td style={{ padding: 8 }}>{row.topic ?? "—"}</td>
                   <td style={{ padding: 8 }}>
                     <Link href={`/admin/onda-contribuciones/${row.id}`} style={{ color: BLUE, fontWeight: 600 }}>
                       Ver
