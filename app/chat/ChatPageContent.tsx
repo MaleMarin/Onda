@@ -331,8 +331,14 @@ function inferEjeFromMessagesStatic(messages: Message[]): EjeOnda | null {
 /** Sustituye el saludo “elige Onda” por un texto alineado con la Onda elegida (evita que siga mencionando otra Onda). */
 function syncFirstBubbleAfterEjeChoice(messages: Message[], eje: EjeOnda, locale: OndaChatLocale): Message[] {
   if (messages.length === 0) return messages;
+  const hasUserTurns = messages.some((m) => m.role === "user");
+  if (hasUserTurns) return messages;
   const first = messages[0];
-  if (first.role !== "model" || first.isGenerated || !isStalePickerGreeting(first.content)) {
+  const isPickerOrProfileWelcome =
+    isStalePickerGreeting(first.content) ||
+    first.content.includes("Estamos en **Onda ") ||
+    first.content.includes("Estamos na **Onda ");
+  if (first.role !== "model" || first.isGenerated || !isPickerOrProfileWelcome) {
     return messages;
   }
   return [{ ...first, content: getLocalizedMessageAfterPickerChoice(eje, locale) }, ...messages.slice(1)];
@@ -676,6 +682,7 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
       localStorage.setItem(STORAGE_KEY_PREFERRED, eje);
     }
     setCurrentEje(eje);
+    setMessages((prev) => syncFirstBubbleAfterEjeChoice(prev, eje, CHAT_UI_LOCALE));
     if (switchHintRef.current) clearTimeout(switchHintRef.current);
     setJustSwitchedEje(eje);
     switchHintRef.current = setTimeout(() => {
@@ -689,7 +696,6 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
     setHighlightOndaButtons(false);
     setShowEnviarTooltip(false);
     confirmEjeSwitch(eje);
-    setMessages((prev) => syncFirstBubbleAfterEjeChoice(prev, eje, CHAT_UI_LOCALE));
     setShowMenu(true);
     setShowIASubmenu(false);
     const hasPending = !!(
