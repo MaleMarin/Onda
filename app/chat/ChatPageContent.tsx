@@ -28,9 +28,11 @@ import { displayMenuOptionLabel, userPickedMenuOption } from "@/content/menus";
 import { EjeOnda, type Message } from "@/content/types";
 import { parseResponseFormat } from "@/lib/responseFormat";
 import { consumeChatNdjsonStream, type ChatStreamMeta } from "@/lib/chatStreamClient";
+import { stripListeningInviteEchoFromText } from "@/lib/stripListeningInviteEcho";
 import {
   ejeOndaToContributionSlug,
   type ContributionType,
+  type ListeningInviteStreamPayload,
 } from "@/lib/onda/contributions/types";
 import {
   isShortAcknowledgement,
@@ -407,6 +409,9 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
     suggestedContributionType?: ContributionType;
   } | null>(null);
 
+  /** `window.setTimeout` devuelve `number` en navegador; evita choque con tipos de Node en tsc. */
+  const pendingContributionInviteTimerRef = useRef<number | null>(null);
+
   /** Último mensaje de usuario con texto: inferencia de idioma cuando unified.locale === "auto". */
   const lastUserTextForLocale = useMemo(() => {
     for (let i = messages.length - 1; i >= 0; i--) {
@@ -613,6 +618,38 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
     }
   }, []);
 
+  const clearPendingContributionInviteTimer = useCallback(() => {
+    const id = pendingContributionInviteTimerRef.current;
+    if (id != null) {
+      window.clearTimeout(id);
+      pendingContributionInviteTimerRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => () => clearPendingContributionInviteTimer(), [clearPendingContributionInviteTimer]);
+
+  const removeContributionInviteBubble = useCallback((id: string) => {
+    setMessages((m) => m.filter((x) => x.id !== id));
+  }, []);
+
+  const scheduleContributionInviteBubble = useCallback(
+    (invite: ListeningInviteStreamPayload) => {
+      if (!invite?.show) return;
+      clearPendingContributionInviteTimer();
+      const inviteCopy = { ...invite };
+      pendingContributionInviteTimerRef.current = window.setTimeout(() => {
+        pendingContributionInviteTimerRef.current = null;
+        const bubble = newMessage("model", "\u00a0", {
+          isContributionInviteBubble: true,
+          listeningInvite: inviteCopy,
+          isGenerated: false,
+        });
+        setMessages((m) => [...m, bubble]);
+      }, 1500);
+    },
+    [clearPendingContributionInviteTimer]
+  );
+
   useLayoutEffect(() => {
     scrollToBottom();
   }, [messages, loading, scrollToBottom]);
@@ -710,6 +747,7 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
 
   /** Reiniciar el bot: conversación nueva, elegir Onda de nuevo. Siempre disponible (no se deshabilita con loading). */
   function goToInicio(): void {
+    clearPendingContributionInviteTimer();
     setMessages([newMessage("model", getLocalizedMainWelcome(CHAT_UI_LOCALE))]);
     setCurrentEje(null);
     setShowMenu(true);
@@ -753,6 +791,7 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
     const text = input.trim();
     const hasContent = text || attachmentImage || attachmentAudio || !!audioOverride;
     if (!hasContent || loading) return;
+    clearPendingContributionInviteTimer();
 
     const prefCmd = parsePreferenceCommand(text, unifiedPrefs);
     if (prefCmd && !attachmentImage && !attachmentAudio && !audioOverride) {
@@ -804,7 +843,9 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
     setAttachmentImage(null);
     setAttachmentAudio(null);
 
-    const history = messages.map((m) => ({ role: m.role, content: m.content }));
+    const history = messages
+      .filter((m) => !m.isContributionInviteBubble)
+      .map((m) => ({ role: m.role, content: m.content }));
     const pendingSnap = contributionPendingRef.current;
     let userContributionInterpreted = false;
     if (pendingSnap && text.trim() && !imageToSend && !audioToSend) {
@@ -918,15 +959,15 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
       }
       if (receivedAnyText && fullContent) {
         const parsed = parseResponseFormat(fullContent);
+        const cleaned = stripListeningInviteEchoFromText(parsed.text, streamMeta.listeningInvite);
         setMessages((m) =>
           m.map((msg) =>
             msg.id === placeholderMsg.id
               ? {
                   ...msg,
-                  content: parsed.text,
+                  content: cleaned,
                   guideId: parsed.guideId ?? undefined,
                   suggestions: parsed.suggestions?.length ? parsed.suggestions : undefined,
-                  listeningInvite: streamMeta.listeningInvite,
                 }
               : msg
           )
@@ -940,18 +981,19 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
             locale: streamMeta.listeningInvite.locale,
             suggestedContributionType: streamMeta.listeningInvite.suggestedContributionType,
           };
+          scheduleContributionInviteBubble(streamMeta.listeningInvite);
         } else {
           contributionPendingRef.current = null;
         }
         const fallbackAudio = computeWebPlayAudioDecision({
           outputMode: userPrefs.outputMode,
           userMessage: text,
-          parsed,
+          parsed: { sendAudio: parsed.sendAudio },
         });
         const shouldPlay =
           serverPlayAudio !== undefined ? serverPlayAudio : fallbackAudio.play;
         if (shouldPlay) {
-          window.setTimeout(() => void playTTS(parsed.text), 320);
+          window.setTimeout(() => void playTTS(cleaned), 320);
         }
         trackUsage("message_sent", ejeToUse, { responseTimeMs: Date.now() - sendStartMs });
       } else if (!receivedAnyText) {
@@ -999,6 +1041,7 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
   /** Borrar conversación: limpia localStorage y reinicia el chat (privacidad). */
   function handleClearConversation() {
     if (typeof window === "undefined") return;
+    clearPendingContributionInviteTimer();
     contributionPendingRef.current = null;
     localStorage.removeItem(STORAGE_KEY_RESTORE);
     setMessages([newMessage("model", getLocalizedMainWelcome(CHAT_UI_LOCALE))]);
@@ -1049,6 +1092,7 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
     const ej = ejeForSend ?? currentEje;
     const t = text.trim();
     if (!t || loading || ej === null) return;
+    clearPendingContributionInviteTimer();
     const chipPref = parsePreferenceCommand(t, unifiedPrefs);
     if (chipPref) {
       const merged = mergePrefs(unifiedPrefs, chipPref.patch);
@@ -1074,7 +1118,9 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
     const requestLocaleChip = mapPrefsToOndaChatLocale(normalizePrefs(unifiedChip), t);
     const userPreferencesChipApi = mergeOndaUserPreferences(userPrefs, { locale: requestLocaleChip });
 
-    const history = messages.map((m) => ({ role: m.role, content: m.content }));
+    const history = messages
+      .filter((m) => !m.isContributionInviteBubble)
+      .map((m) => ({ role: m.role, content: m.content }));
     const pendingChip = contributionPendingRef.current;
     let chipContributionInterpreted = false;
     if (pendingChip && t.trim()) {
@@ -1176,15 +1222,15 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
         }
         if (receivedAnyText && fullContent) {
           const parsed = parseResponseFormat(fullContent);
+          const cleaned = stripListeningInviteEchoFromText(parsed.text, streamMetaChip.listeningInvite);
           setMessages((m) =>
             m.map((msg) =>
               msg.id === placeholderMsg.id
                 ? {
                     ...msg,
-                    content: parsed.text,
+                    content: cleaned,
                     guideId: parsed.guideId ?? undefined,
                     suggestions: parsed.suggestions?.length ? parsed.suggestions : undefined,
-                    listeningInvite: streamMetaChip.listeningInvite,
                   }
                 : msg
             )
@@ -1198,18 +1244,19 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
               locale: streamMetaChip.listeningInvite.locale,
               suggestedContributionType: streamMetaChip.listeningInvite.suggestedContributionType,
             };
+            scheduleContributionInviteBubble(streamMetaChip.listeningInvite);
           } else {
             contributionPendingRef.current = null;
           }
           const fallbackAudio = computeWebPlayAudioDecision({
             outputMode: userPrefs.outputMode,
             userMessage: t,
-            parsed,
+            parsed: { sendAudio: parsed.sendAudio },
           });
           const shouldPlay =
             serverPlayAudio !== undefined ? serverPlayAudio : fallbackAudio.play;
           if (shouldPlay) {
-            window.setTimeout(() => void playTTS(parsed.text), 320);
+            window.setTimeout(() => void playTTS(cleaned), 320);
           }
           trackUsage("message_sent", ej, { responseTimeMs: Date.now() - sendStartMs });
         } else if (!receivedAnyText) {
@@ -1909,7 +1956,9 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
                 color={ejeColor}
                 compact={compact}
                 uiLocale={CHAT_UI_LOCALE}
-                onPlayTTS={msg.role === "model" && msg.content?.trim() ? playTTS : undefined}
+                onPlayTTS={
+                  msg.role === "model" && msg.content?.trim() && !msg.isContributionInviteBubble ? playTTS : undefined
+                }
                 onStopTTS={stopTTS}
                 isTTSPlaying={ttsPlaying}
                 theme={t}
@@ -1917,6 +1966,9 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
                 onFeedback={handleFeedback}
                 hideActions={isWelcomeOrError(msg)}
                 lowBandwidth={userPrefs.bandwidthMode === "low"}
+                contributionConversationId={getOrCreateSessionId()}
+                contributionEjeSlug={currentEje != null ? ejeOndaToContributionSlug(currentEje) : undefined}
+                onRemoveContributionInviteBubble={removeContributionInviteBubble}
               />
             </div>
           ))}
@@ -1953,10 +2005,17 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
 
           {/* Preguntas de seguimiento: SOLO si el modelo devolvió [ONDA_SUGERENCIAS] (contextuales). No mostrar nunca píldoras genéricas (Congreso, diputados, Singapur, etc.) porque cambian de tema; regla: solo el usuario cambia de tema. */}
           {!loading && currentEje !== null && !isMenuIntroActive && (() => {
-            const last = messages[messages.length - 1];
+            let last: Message | undefined;
+            for (let i = messages.length - 1; i >= 0; i--) {
+              const m = messages[i];
+              if (m.role === "model" && !m.isContributionInviteBubble) {
+                last = m;
+                break;
+              }
+            }
             const hasUserMessage = messages.some((m) => m.role === "user");
             if (!hasUserMessage || last?.role !== "model" || !last?.content?.trim()) return null;
-            const toShow = (last?.role === "model" && last?.suggestions?.length) ? last.suggestions.slice(0, 4) : [];
+            const toShow = last?.suggestions?.length ? last.suggestions.slice(0, 4) : [];
             return toShow.length > 0 ? (
               <div className="bubble-in" style={{ ...S.row(false), flexWrap: "wrap", gap: 10, marginTop: 6 }}>
                 {toShow.map((texto) => (

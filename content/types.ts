@@ -36,6 +36,8 @@ export interface Message {
   suggestions?: string[];
   /** Invitación a escucha estructurada (contribución para revisión humana; no es verdad automática). */
   listeningInvite?: ListeningInviteStreamPayload;
+  /** Segundo momento conversacional: burbuja aparte (no mezclar con el markdown de la respuesta). */
+  isContributionInviteBubble?: boolean;
   /** Marca visual cuando el texto se envió también como aporte comunitario opcional. */
   interpretedAsCommunityContribution?: boolean;
 }

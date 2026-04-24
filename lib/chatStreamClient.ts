@@ -61,8 +61,9 @@ export async function consumeChatNdjsonStream(
         if (typeof obj.playAudioReason === "string") {
           serverPlayAudioReason = obj.playAudioReason;
         }
-        if (obj.listeningInvite && typeof obj.listeningInvite === "object") {
-          const li = obj.listeningInvite as Record<string, unknown>;
+        const parseListeningInviteObject = (raw: unknown): void => {
+          if (!raw || typeof raw !== "object") return;
+          const li = raw as Record<string, unknown>;
           if (li.show === true && typeof li.prompt === "string" && typeof li.turnToken === "string") {
             const st = li.suggestedContributionType;
             const suggestedContributionType =
@@ -85,6 +86,13 @@ export async function consumeChatNdjsonStream(
               ...(suggestedContributionType ? { suggestedContributionType } : {}),
             };
           }
+        };
+
+        if (obj.type === "listeningInvite") {
+          parseListeningInviteObject(obj);
+        }
+        if (obj.listeningInvite && typeof obj.listeningInvite === "object") {
+          parseListeningInviteObject(obj.listeningInvite);
         }
       } catch {
         /* ignore malformed line */

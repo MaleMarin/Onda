@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import type { CSSProperties } from "react";
 import type { Message } from "@/content/types";
 import { ContributionPrompt } from "@/components/onda/contributions/ContributionPrompt";
+import type { ContributionEjeSlug } from "@/lib/onda/contributions/types";
 import { MENU_QUESTIONS } from "@/content/menuQuestions";
 import type { OndaChatLocale } from "@/lib/userPreferences";
 import { getChatMicrocopy } from "@/lib/chatI18n";
@@ -58,6 +59,10 @@ interface ChatBubbleProps {
   hideActions?: boolean;
   /** No cargar PNG de guía; solo enlace liviano (modo bajo consumo). */
   lowBandwidth?: boolean;
+  /** Sesión anónima para POST de contribución (burbuja de escucha). */
+  contributionConversationId?: string;
+  contributionEjeSlug?: ContributionEjeSlug;
+  onRemoveContributionInviteBubble?: (id: string) => void;
 }
 
 const LINK_REGEX = /\[([^\]]*)\]\((https?:\/\/[^)\s]+)\)/g;
@@ -148,6 +153,9 @@ export function ChatBubble({
   onFeedback,
   hideActions,
   lowBandwidth,
+  contributionConversationId,
+  contributionEjeSlug,
+  onRemoveContributionInviteBubble,
 }: ChatBubbleProps) {
   const S = ondaStyles(t);
   const mc = getChatMicrocopy(uiLocale);
@@ -273,6 +281,32 @@ export function ChatBubble({
     fontWeight: 500,
   };
 
+  if (
+    message.isContributionInviteBubble &&
+    message.listeningInvite?.show &&
+    onRemoveContributionInviteBubble &&
+    contributionConversationId &&
+    contributionEjeSlug
+  ) {
+    return (
+      <div style={wrapStyle}>
+        <ContributionPrompt
+          invite={message.listeningInvite}
+          theme={t}
+          ejeSlug={contributionEjeSlug}
+          conversationId={contributionConversationId}
+          messageId={message.id}
+          onRemove={onRemoveContributionInviteBubble}
+        />
+        {message.timestamp != null && message.timestamp > 0 && (
+          <span style={metaStyle} suppressHydrationWarning>
+            <MessageTime timestamp={message.timestamp} />
+          </span>
+        )}
+      </div>
+    );
+  }
+
   const copyDownloadWrap: CSSProperties = {
     marginTop: 10,
     paddingTop: 10,
@@ -390,9 +424,6 @@ export function ChatBubble({
               Descargar
             </button>
           </div>
-        )}
-        {message.role === "model" && message.listeningInvite?.show && !showAsMenuIntroButtons && !isEmpty && (
-          <ContributionPrompt invite={message.listeningInvite} theme={t} />
         )}
         {onFeedback && message.role === "model" && message.isGenerated && message.content?.trim() && !showAsMenuIntroButtons && !isEmpty && (
           <div style={{ marginTop: 10, paddingTop: 8, borderTop: `1px solid ${t.c.border}`, display: "flex", alignItems: "center", gap: 8 }}>
