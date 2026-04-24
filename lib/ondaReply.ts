@@ -48,6 +48,7 @@ import {
   buildVoiceBlock,
   detectEmotionalLoad,
   getVoiceProfile,
+  type DelightLocale,
 } from "@/lib/ondaVoice";
 import { optimizeSystemPrompt } from "@/lib/promptOptimizer";
 import { getCachedResponse, setCachedResponse } from "@/lib/responseCache";
@@ -790,6 +791,11 @@ function transparencySystemAppend(
   });
 }
 
+function toDelightLocale(locale: string | null | undefined): DelightLocale | null {
+  if (!locale) return null;
+  return String(locale).toLowerCase().startsWith("pt") ? "pt-BR" : "es-LATAM";
+}
+
 /** Intent → voz de eje → validación emocional granular → memoria → resto de bloques. */
 function chainIntentVoiceEmotionMemory(
   userText: string,
@@ -799,10 +805,11 @@ function chainIntentVoiceEmotionMemory(
   whatsappBlock: string,
   sourcesBlock: string,
   noticiaBlock: string,
-  ragWebBlock: string
+  ragWebBlock: string,
+  outputLocale?: string | null
 ): string {
   const profile = getVoiceProfile(eje);
-  const voiceBlock = buildVoiceBlock(eje);
+  const voiceBlock = buildVoiceBlock(eje, toDelightLocale(outputLocale));
   const load = detectEmotionalLoad(userText);
   const emotionalBlock =
     load !== "none"
@@ -869,7 +876,8 @@ export async function getOndaReply(
       whatsappBlock,
       sourcesBlock,
       noticiaBlock,
-      ragWebBlock
+      ragWebBlock,
+      inclusivePreferences?.locale ?? null
     );
   const systemContent =
     systemContentCore +
@@ -999,7 +1007,8 @@ export async function* getOndaReplyStream(
       "",
       sourcesBlock,
       noticiaBlock,
-      ragWebBlock
+      ragWebBlock,
+      inclusivePreferences?.locale ?? null
     );
   const systemContent =
     systemContentCore +
@@ -1193,7 +1202,8 @@ export async function getOndaReplyWithImage(
       whatsappBlock,
       sourcesBlock,
       noticiaBlockImg,
-      ragWebBlock
+      ragWebBlock,
+      inclusivePreferences?.locale ?? null
     );
   const systemContent =
     systemContentCore +

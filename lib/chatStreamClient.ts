@@ -64,28 +64,40 @@ export async function consumeChatNdjsonStream(
         const parseListeningInviteObject = (raw: unknown): void => {
           if (!raw || typeof raw !== "object") return;
           const li = raw as Record<string, unknown>;
-          if (li.show === true && typeof li.prompt === "string" && typeof li.turnToken === "string") {
-            const st = li.suggestedContributionType;
-            const suggestedContributionType =
-              st === "experiencia" ||
-              st === "duda_persistente" ||
-              st === "correccion" ||
-              st === "sugerencia" ||
-              st === "caso_reportado" ||
-              st === "senal_comunitaria"
-                ? (st as ContributionType)
-                : undefined;
-            listeningInvite = {
-              show: true,
-              prompt: li.prompt,
-              turnToken: li.turnToken,
-              userEcho: typeof li.userEcho === "string" ? li.userEcho : "",
-              assistantSummary: typeof li.assistantSummary === "string" ? li.assistantSummary : "",
-              topicHint: typeof li.topicHint === "string" ? li.topicHint : "comunidad",
-              locale: typeof li.locale === "string" ? li.locale : "es-LATAM",
-              ...(suggestedContributionType ? { suggestedContributionType } : {}),
-            };
-          }
+          const turnToken = typeof li.turnToken === "string" ? li.turnToken : "";
+          if (!turnToken) return;
+
+          const expecting = li.expectingExperienceFollowUp === true;
+          const show = li.show === true;
+          if (!show && !expecting) return;
+
+          if (show && typeof li.prompt !== "string") return;
+
+          const st = li.suggestedContributionType;
+          const suggestedContributionType =
+            st === "experiencia" ||
+            st === "duda_persistente" ||
+            st === "correccion" ||
+            st === "sugerencia" ||
+            st === "caso_reportado" ||
+            st === "senal_comunitaria"
+              ? (st as ContributionType)
+              : undefined;
+
+          const inviteVariant = li.inviteVariant === "soft_nudge" ? ("soft_nudge" as const) : undefined;
+
+          listeningInvite = {
+            show,
+            ...(expecting ? { expectingExperienceFollowUp: true } : {}),
+            ...(inviteVariant ? { inviteVariant } : {}),
+            prompt: typeof li.prompt === "string" ? li.prompt : "",
+            turnToken,
+            userEcho: typeof li.userEcho === "string" ? li.userEcho : "",
+            assistantSummary: typeof li.assistantSummary === "string" ? li.assistantSummary : "",
+            topicHint: typeof li.topicHint === "string" ? li.topicHint : "comunidad",
+            locale: typeof li.locale === "string" ? li.locale : "es-LATAM",
+            ...(suggestedContributionType ? { suggestedContributionType } : {}),
+          };
         };
 
         if (obj.type === "listeningInvite") {

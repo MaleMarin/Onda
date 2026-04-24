@@ -55,3 +55,8 @@ export function looksLikeContributionFollowUp(text: string): boolean {
   if (isShortAcknowledgement(t)) return false;
   return true;
 }
+
+/** Respuesta de experiencia al puente de Onda (Suwali): sustancial y no es una pregunta nueva desviada. */
+export function isExperienceContributionCandidate(text: string): boolean {
+  return looksLikeContributionFollowUp(text) && !looksLikeNewStandaloneQuestion(text);
+}

@@ -63,6 +63,10 @@ export type OndaContributionRecord = CommunityContribution & { turnToken?: strin
 
 export type ListeningInviteStreamPayload = {
   show: boolean;
+  /** Web: el turno espera respuesta de experiencia en el siguiente mensaje (sin burbuja de formulario al cerrar el stream). */
+  expectingExperienceFollowUp?: boolean;
+  /** Solo `soft_nudge`: una línea suave si la persona no compartió experiencia; sin formulario. */
+  inviteVariant?: "soft_nudge";
   prompt: string;
   turnToken: string;
   userEcho: string;

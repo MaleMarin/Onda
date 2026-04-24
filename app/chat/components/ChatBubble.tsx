@@ -363,7 +363,14 @@ export function ChatBubble({
           </div>
         )
       )}
-      <div style={isUser ? userBubbleStyle : botBubbleStyle}>
+      <div
+        style={isUser ? userBubbleStyle : botBubbleStyle}
+        title={
+          isUser && message.interpretedAsCommunityContribution
+            ? "Tu mensaje se guardó como aporte opcional para revisión humana del equipo de Precisar."
+            : undefined
+        }
+      >
         {showAsMenuIntroButtons && menuIntroQuestions ? (
           <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 2 }}>
             {[...menuIntroQuestions, mc.menuIntroFreeText].map((label) => (

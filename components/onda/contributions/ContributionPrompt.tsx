@@ -19,6 +19,7 @@ const GREEN_BG = "rgba(34, 197, 94, 0.06)";
 
 /**
  * Segundo momento conversacional: burbuja propia (no es continuación del markdown de la respuesta).
+ * Variante `soft_nudge`: una línea si la persona no compartió experiencia; sin formulario.
  */
 export function ContributionPrompt({
   invite,
@@ -29,6 +30,7 @@ export function ContributionPrompt({
   onRemove,
 }: ContributionPromptProps) {
   const isPt = String(invite.locale || "").toLowerCase().startsWith("pt");
+  const isSoft = invite.inviteVariant === "soft_nudge";
   const [phase, setPhase] = useState<"idle" | "writing" | "sending" | "sent">("idle");
   const [draft, setDraft] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -106,6 +108,49 @@ export function ContributionPrompt({
       setPhase("writing");
     }
   }, [draft, conversationId, ejeSlug, invite, isPt, messageId]);
+
+  if (isSoft) {
+    return (
+      <div
+        role="note"
+        aria-label={isPt ? "Lembrete de escuta comunitária" : "Recordatorio de escucha comunitaria"}
+        onTransitionEnd={handleTransitionEnd}
+        style={{
+          width: "100%",
+          maxWidth: "92%",
+          opacity,
+          transition: "opacity 0.45s ease",
+          borderRadius: t.isDark ? 8 : "0 22px 22px 22px",
+          border: `1px solid ${t.glass.border}`,
+          borderLeft: `4px solid ${GREEN}`,
+          background: t.isDark ? "rgba(34,197,94,0.08)" : GREEN_BG,
+          boxShadow: t.shadow.neuRaised,
+          padding: "12px 14px",
+          color: t.c.ink,
+        }}
+      >
+        <p style={{ margin: 0, fontSize: "0.9375rem", lineHeight: 1.45, fontWeight: 500 }}>{invite.prompt}</p>
+        <button
+          type="button"
+          onClick={startDismiss}
+          style={{
+            marginTop: 10,
+            padding: 0,
+            border: "none",
+            background: "none",
+            color: t.c.muted,
+            fontSize: "0.8125rem",
+            fontWeight: 600,
+            cursor: "pointer",
+            textDecoration: "underline",
+            fontFamily: "inherit",
+          }}
+        >
+          {isPt ? "Fechar" : "Cerrar"}
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div

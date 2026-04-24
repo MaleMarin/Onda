@@ -6,6 +6,11 @@ const LEGACY_INLINE_HINT_ES =
 const LEGACY_INLINE_HINT_PT =
   "Se você responder abaixo com uma linha ou duas, pode ser registrado como contribuição opcional para a equipe (não é obrigatório).";
 
+const SOFT_NUDGE_ES =
+  "Si en algún momento quieres contarnos qué pasa por allá, estamos escuchando.";
+const SOFT_NUDGE_PT =
+  "Se em algum momento quiser nos contar o que acontece por aí, estamos ouvindo.";
+
 /**
  * Quita del texto del asistente el eco de la invitación a escucha cuando el modelo
  * la repitió en markdown; la invitación canónica va por NDJSON + burbuja aparte.
@@ -30,5 +35,7 @@ export function stripListeningInviteEchoFromText(
   if (out.includes(LEGACY_INLINE_HINT_PT_TYPO)) {
     out = out.split(LEGACY_INLINE_HINT_PT_TYPO).join("");
   }
+  if (out.includes(SOFT_NUDGE_ES)) out = out.split(SOFT_NUDGE_ES).join("");
+  if (out.includes(SOFT_NUDGE_PT)) out = out.split(SOFT_NUDGE_PT).join("");
   return out.replace(/\n{3,}/g, "\n\n").trim();
 }

@@ -10,13 +10,14 @@ Capa de producto para invitar, de forma breve y conversacional, a que la persona
 - El cliente web envía `alreadyInvitedInConversation: true` cuando en los últimos mensajes ya hubo una burbuja con `listeningInvite` (evita spam en la misma ventana de conversación).
 - WhatsApp usa `contributionInviteContext` en la sesión KV (`src/lib/waSession.ts`): si hay invitación pendiente reciente, no se emite otra hasta que caduque (30 min), se consuma como aporte o se limpie.
 
-## Flujo web
+## Flujo web (Suwali — persona → comunidad)
 
-1. `POST /api/chat/stream` genera la respuesta habitual (NDJSON).
-2. Si las heurísticas lo permiten, el servidor emite una línea extra: `{ "listeningInvite": { "show", "prompt", "turnToken", "userEcho", "assistantSummary", "topicHint", "locale", "suggestedContributionType?" } }` **antes** de `{ "done": true }`.
-3. `lib/chatStreamClient.ts` captura `listeningInvite`. `ChatBubble` muestra `ContributionPrompt` (texto breve; **sin** formulario aparte).
-4. El usuario puede responder en el **mismo input** del chat. Si el texto califica como seguimiento sustancial, el cliente envía `POST /api/onda-contributions` y marca la burbuja de usuario con `interpretedAsCommunityContribution`.
-5. El servidor fuerza `sourceRisk: needs_review` y `reviewStatus: new`. `turnToken` evita duplicados por turno.
+1. `POST /api/chat/stream` genera la respuesta; el modelo cierra con **una pregunta corta por la experiencia propia** (puente de escucha), sin datos de “popularidad” de la duda.
+2. Si las heurísticas lo permiten, el servidor emite `{ "listeningInvite": { "expectingExperienceFollowUp": true, "show": false, "turnToken", "userEcho", "assistantSummary", "topicHint", "locale", … } }` **antes** de `{ "done": true }` (en **web** no se pide formulario en el mismo cierre del stream).
+3. El cliente guarda ese contexto en memoria (`contributionPendingRef`). En el **siguiente mensaje** del usuario:
+   - Si el texto es un **aporte de experiencia** sustancial y no parece pregunta nueva desviada → `POST /api/onda-contributions` y burbuja de usuario con `interpretedAsCommunityContribution`.
+   - Si responde con **ack corto** o **pregunta nueva** sin compartir experiencia → tras 1,5 s puede mostrarse una **línea suave** (`inviteVariant: "soft_nudge"`) sin formulario grande: “Si en algún momento quieres contarnos…”.
+4. `turnToken` y revisión humana (`sourceRisk: needs_review`, `reviewStatus: new`) siguen igual en Firestore.
 
 ## Flujo WhatsApp
 

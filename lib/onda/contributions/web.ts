@@ -7,6 +7,24 @@ import type { ContributionChannel, ListeningInviteStreamPayload } from "@/lib/on
 import { ejeOndaToContributionSlug, type ContributionType } from "@/lib/onda/contributions/types";
 import { shouldInviteContribution } from "@/lib/onda/contributions/shouldInviteContribution";
 
+/** Burbuja opcional en web cuando la persona no respondió con experiencia al puente de Onda. */
+export function buildSoftListeningNudgeInvite(locale: string | undefined): ListeningInviteStreamPayload {
+  const isPt = String(locale || "").toLowerCase().startsWith("pt");
+  return {
+    show: true,
+    inviteVariant: "soft_nudge",
+    prompt: isPt
+      ? "Se em algum momento quiser nos contar o que acontece por aí, estamos ouvindo."
+      : "Si en algún momento quieres contarnos qué pasa por allá, estamos escuchando.",
+    turnToken: typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `soft-${Date.now()}`,
+    userEcho: "",
+    assistantSummary: "",
+    topicHint: "escucha_comunitaria",
+    locale: isPt ? "pt-BR" : "es-LATAM",
+    suggestedContributionType: "experiencia",
+  };
+}
+
 function truncate(s: string, max: number): string {
   const t = (s ?? "").replace(/\s+/g, " ").trim();
   if (t.length <= max) return t;
@@ -58,19 +76,39 @@ export function buildListeningInvitePayload(args: {
     promptSeed: args.turnToken,
   });
 
-  if (!inv.shouldInvite || !inv.suggestedPrompt || !inv.suggestedTopic) return null;
+  if (!inv.shouldInvite || !inv.suggestedTopic) return null;
 
   const suggestedContributionType =
     inv.suggestedContributionType ?? suggestedTypeFromTurn(args.conversationIntent, args.detectedIntent);
+
+  const userEcho = truncate(args.userText, 500);
+  const assistantSummary = truncate(args.assistantText, 400);
+  const locale = String(args.locale || "es-LATAM");
+
+  if (args.channel === "web") {
+    return {
+      show: false,
+      expectingExperienceFollowUp: true,
+      prompt: "",
+      turnToken: args.turnToken,
+      userEcho,
+      assistantSummary,
+      topicHint: inv.suggestedTopic,
+      locale,
+      suggestedContributionType,
+    };
+  }
+
+  if (!inv.suggestedPrompt) return null;
 
   return {
     show: true,
     prompt: inv.suggestedPrompt,
     turnToken: args.turnToken,
-    userEcho: truncate(args.userText, 500),
-    assistantSummary: truncate(args.assistantText, 400),
+    userEcho,
+    assistantSummary,
     topicHint: inv.suggestedTopic,
-    locale: String(args.locale || "es-LATAM"),
+    locale,
     suggestedContributionType,
   };
 }

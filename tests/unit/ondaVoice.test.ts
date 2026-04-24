@@ -39,6 +39,11 @@ describe("buildVoiceBlock", () => {
     const block = buildVoiceBlock(EjeOnda.PROFES);
     expect(block.toLowerCase()).toMatch(/aula|docente|estudiante|clase/);
   });
+  it("incluye puente de escucha (experiencia propia, sin popularidad)", () => {
+    const block = buildVoiceBlock(EjeOnda.A_MANO, "es-LATAM");
+    expect(block.toLowerCase()).toMatch(/puente de escucha|experiencia real/);
+    expect(block.toLowerCase()).not.toMatch(/talleres de alfabetización|mucha gente tiene la misma duda/);
+  });
   it("los tres bloques son distintos entre sí", () => {
     const a = buildVoiceBlock(EjeOnda.A_MANO);
     const b = buildVoiceBlock(EjeOnda.CIVITA);
@@ -89,10 +94,11 @@ describe("buildDelightMoment", () => {
     expect(buildDelightMoment("fact_check", "web").length).toBeGreaterThan(0);
   });
 
-  it("pt-BR: cierre en portugués para explanation", () => {
+  it("pt-BR: cierre en portugués para explanation (sin talleres ni multitud)", () => {
     const d = buildDelightMoment("explanation", "web", "low", "pt-BR");
     expect(d.length).toBeGreaterThan(0);
-    expect(d.toLowerCase()).toMatch(/você|sabia|pergunta/);
+    expect(d.toLowerCase()).toMatch(/letramento|explicações|duas/);
+    expect(d.toLowerCase()).not.toMatch(/oficinas|muita gente/);
     expect(d).not.toMatch(/¿sabías|hiciste/i);
   });
 

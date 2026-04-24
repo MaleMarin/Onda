@@ -29,14 +29,15 @@ import { EjeOnda, type Message } from "@/content/types";
 import { parseResponseFormat } from "@/lib/responseFormat";
 import { consumeChatNdjsonStream, type ChatStreamMeta } from "@/lib/chatStreamClient";
 import { stripListeningInviteEchoFromText } from "@/lib/stripListeningInviteEcho";
+import { buildSoftListeningNudgeInvite } from "@/lib/onda/contributions/web";
 import {
   ejeOndaToContributionSlug,
   type ContributionType,
   type ListeningInviteStreamPayload,
 } from "@/lib/onda/contributions/types";
 import {
+  isExperienceContributionCandidate,
   isShortAcknowledgement,
-  looksLikeContributionFollowUp,
   looksLikeNewStandaloneQuestion,
 } from "@/lib/onda/contributions/extractContributionMetadata";
 import { computeWebPlayAudioDecision } from "@/lib/playAudioContract";
@@ -362,7 +363,13 @@ function getOrCreateSessionId(): string {
 /** Evita repetir invitación de escucha en pocos turnos (el servidor también filtra). */
 function hasRecentListeningInvite(msgs: Message[], maxMessages = 12): boolean {
   const tail = msgs.slice(-maxMessages);
-  return tail.some((m) => m.role === "model" && m.listeningInvite?.show === true);
+  return tail.some((m) => {
+    if (m.role !== "model") return false;
+    const li = m.listeningInvite;
+    if (!li) return false;
+    if (li.inviteVariant === "soft_nudge") return false;
+    return li.show === true || li.expectingExperienceFollowUp === true;
+  });
 }
 
 function trackUsage(
@@ -650,6 +657,23 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
     [clearPendingContributionInviteTimer]
   );
 
+  const scheduleSoftListeningNudgeBubble = useCallback(
+    (locale: string) => {
+      clearPendingContributionInviteTimer();
+      const inviteCopy = buildSoftListeningNudgeInvite(locale);
+      pendingContributionInviteTimerRef.current = window.setTimeout(() => {
+        pendingContributionInviteTimerRef.current = null;
+        const bubble = newMessage("model", "\u00a0", {
+          isContributionInviteBubble: true,
+          listeningInvite: inviteCopy,
+          isGenerated: false,
+        });
+        setMessages((m) => [...m, bubble]);
+      }, 1500);
+    },
+    [clearPendingContributionInviteTimer]
+  );
+
   useLayoutEffect(() => {
     scrollToBottom();
   }, [messages, loading, scrollToBottom]);
@@ -847,13 +871,16 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
       .filter((m) => !m.isContributionInviteBubble)
       .map((m) => ({ role: m.role, content: m.content }));
     const pendingSnap = contributionPendingRef.current;
+    const hadExperienceListenPending = !!pendingSnap;
     let userContributionInterpreted = false;
     if (pendingSnap && text.trim() && !imageToSend && !audioToSend) {
       if (isShortAcknowledgement(text)) {
         contributionPendingRef.current = null;
+        if (hadExperienceListenPending) scheduleSoftListeningNudgeBubble(requestLocale);
       } else if (looksLikeNewStandaloneQuestion(text)) {
         contributionPendingRef.current = null;
-      } else if (looksLikeContributionFollowUp(text)) {
+        if (hadExperienceListenPending) scheduleSoftListeningNudgeBubble(requestLocale);
+      } else if (isExperienceContributionCandidate(text)) {
         userContributionInterpreted = true;
         contributionPendingRef.current = null;
       }
@@ -960,6 +987,7 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
       if (receivedAnyText && fullContent) {
         const parsed = parseResponseFormat(fullContent);
         const cleaned = stripListeningInviteEchoFromText(parsed.text, streamMeta.listeningInvite);
+        const li = streamMeta.listeningInvite;
         setMessages((m) =>
           m.map((msg) =>
             msg.id === placeholderMsg.id
@@ -968,20 +996,24 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
                   content: cleaned,
                   guideId: parsed.guideId ?? undefined,
                   suggestions: parsed.suggestions?.length ? parsed.suggestions : undefined,
+                  listeningInvite:
+                    li && (li.expectingExperienceFollowUp || li.show) ? { ...li } : undefined,
                 }
               : msg
           )
         );
-        if (streamMeta.listeningInvite?.show) {
+        if (li && (li.expectingExperienceFollowUp || li.show)) {
           contributionPendingRef.current = {
-            turnToken: streamMeta.listeningInvite.turnToken,
-            userEcho: streamMeta.listeningInvite.userEcho,
-            assistantSummary: streamMeta.listeningInvite.assistantSummary,
-            topicHint: streamMeta.listeningInvite.topicHint,
-            locale: streamMeta.listeningInvite.locale,
-            suggestedContributionType: streamMeta.listeningInvite.suggestedContributionType,
+            turnToken: li.turnToken,
+            userEcho: li.userEcho,
+            assistantSummary: li.assistantSummary,
+            topicHint: li.topicHint,
+            locale: li.locale,
+            suggestedContributionType: li.suggestedContributionType,
           };
-          scheduleContributionInviteBubble(streamMeta.listeningInvite);
+          if (li.show && li.inviteVariant !== "soft_nudge") {
+            scheduleContributionInviteBubble(li);
+          }
         } else {
           contributionPendingRef.current = null;
         }
@@ -1122,13 +1154,16 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
       .filter((m) => !m.isContributionInviteBubble)
       .map((m) => ({ role: m.role, content: m.content }));
     const pendingChip = contributionPendingRef.current;
+    const hadChipExperienceListenPending = !!pendingChip;
     let chipContributionInterpreted = false;
     if (pendingChip && t.trim()) {
       if (isShortAcknowledgement(t)) {
         contributionPendingRef.current = null;
+        if (hadChipExperienceListenPending) scheduleSoftListeningNudgeBubble(requestLocaleChip);
       } else if (looksLikeNewStandaloneQuestion(t)) {
         contributionPendingRef.current = null;
-      } else if (looksLikeContributionFollowUp(t)) {
+        if (hadChipExperienceListenPending) scheduleSoftListeningNudgeBubble(requestLocaleChip);
+      } else if (isExperienceContributionCandidate(t)) {
         chipContributionInterpreted = true;
         contributionPendingRef.current = null;
       }
@@ -1223,6 +1258,7 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
         if (receivedAnyText && fullContent) {
           const parsed = parseResponseFormat(fullContent);
           const cleaned = stripListeningInviteEchoFromText(parsed.text, streamMetaChip.listeningInvite);
+          const liChip = streamMetaChip.listeningInvite;
           setMessages((m) =>
             m.map((msg) =>
               msg.id === placeholderMsg.id
@@ -1231,20 +1267,26 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
                     content: cleaned,
                     guideId: parsed.guideId ?? undefined,
                     suggestions: parsed.suggestions?.length ? parsed.suggestions : undefined,
+                    listeningInvite:
+                      liChip && (liChip.expectingExperienceFollowUp || liChip.show)
+                        ? { ...liChip }
+                        : undefined,
                   }
                 : msg
             )
           );
-          if (streamMetaChip.listeningInvite?.show) {
+          if (liChip && (liChip.expectingExperienceFollowUp || liChip.show)) {
             contributionPendingRef.current = {
-              turnToken: streamMetaChip.listeningInvite.turnToken,
-              userEcho: streamMetaChip.listeningInvite.userEcho,
-              assistantSummary: streamMetaChip.listeningInvite.assistantSummary,
-              topicHint: streamMetaChip.listeningInvite.topicHint,
-              locale: streamMetaChip.listeningInvite.locale,
-              suggestedContributionType: streamMetaChip.listeningInvite.suggestedContributionType,
+              turnToken: liChip.turnToken,
+              userEcho: liChip.userEcho,
+              assistantSummary: liChip.assistantSummary,
+              topicHint: liChip.topicHint,
+              locale: liChip.locale,
+              suggestedContributionType: liChip.suggestedContributionType,
             };
-            scheduleContributionInviteBubble(streamMetaChip.listeningInvite);
+            if (liChip.show && liChip.inviteVariant !== "soft_nudge") {
+              scheduleContributionInviteBubble(liChip);
+            }
           } else {
             contributionPendingRef.current = null;
           }

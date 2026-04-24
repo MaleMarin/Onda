@@ -4,6 +4,8 @@ import type { ConversationIntent } from "./intentClassifier";
 /** Alineado con CanalOnda en ondaReply (evita dependencia circular). */
 type CanalReply = "web" | "whatsapp";
 
+export type DelightLocale = "es-LATAM" | "pt-BR";
+
 export type EmotionalLoad = "anxiety" | "overwhelm" | "distrust" | "anger" | "none";
 
 function norm(s: string): string {
@@ -93,9 +95,35 @@ export function getVoiceProfile(eje: EjeOnda | null | undefined): VoiceProfile {
   };
 }
 
-export function buildVoiceBlock(eje: EjeOnda | null | undefined): string {
+/** Cierre Suwali: pregunta por la experiencia propia, nunca por “popularidad” de la duda. */
+function experienceClosingBlock(locale?: DelightLocale | null): string {
+  const pt = locale === "pt-BR";
+  if (pt) {
+    return (
+      "\n--- PUENTE DE ESCUCHA (após responder; obrigatório na web) ---\n" +
+      "Depois de responder, faça UMA pergunta curta que convide a pessoa a compartilhar sua experiência real com o tema. " +
+      "Não diga que muita gente pergunta o mesmo nem cite oficinas ou estatísticas de frequência. " +
+      "Pergunte o que ela já viu ou viveu do lugar onde está. " +
+      "Exemplos: «E aí na sua região, como isso está aparecendo?» · «Você já se deparou com isso antes?» · «Sabe se isso também rola na sua comunidade?» " +
+      "A pergunta é a ponte para a escuta — não um dado sobre popularidade.\n"
+    );
+  }
+  return (
+    "\n--- PUENTE DE ESCUCHA (después de responder; obligatorio en web) ---\n" +
+    "Después de responder, haz UNA pregunta corta que invite a la persona a compartir su experiencia real con el tema. " +
+    "No le digas cuánta gente pregunta lo mismo ni menciones talleres, oficinas ni frecuencia de la duda. " +
+    "Pregúntale qué ha visto o vivido ella desde donde está. " +
+    "Ejemplos: «¿Y en tu entorno, cómo lo están viviendo?» · «¿Tú ya te encontraste con esto antes?» · «¿Sabes si esto está pasando en tu comunidad también?» " +
+    "La pregunta es el puente hacia la escucha — no un dato sobre popularidad.\n"
+  );
+}
+
+export function buildVoiceBlock(eje: EjeOnda | null | undefined, locale?: DelightLocale | null): string {
   const p = getVoiceProfile(eje);
-  return `\n--- VOZ DE ESTA ONDA (${p.headline}) ---\nTono: ${p.tone}\nPrioridades:\n${p.priorities.map((x) => `- ${x}`).join("\n")}\n`;
+  return (
+    `\n--- VOZ DE ESTA ONDA (${p.headline}) ---\nTono: ${p.tone}\nPrioridades:\n${p.priorities.map((x) => `- ${x}`).join("\n")}\n` +
+    experienceClosingBlock(locale ?? null)
+  );
 }
 
 export function buildEmotionalValidation(load: EmotionalLoad, eje: EjeOnda): string {
@@ -180,8 +208,6 @@ function pick<T>(items: readonly T[]): T {
   return items[Math.floor(Math.random() * items.length)]!;
 }
 
-export type DelightLocale = "es-LATAM" | "pt-BR";
-
 /**
  * Cierre opcional para web: no aplica en WhatsApp ni con intents sensibles.
  * Con `locale === "pt-BR"` el cierre va en portugués (sin mezclar con español).
@@ -215,12 +241,12 @@ export function buildDelightMoment(
     return pick(
       pt
         ? ([
-            "\n\n🔍 *Você sabia...?* Essa pergunta é das que mais aparecem em oficinas de letramento midiático. Muita gente tem a mesma dúvida e poucos se arriscam a perguntar.",
-            "\n\n🔍 *Você sabia...?* Formular a dúvida assim já é letramento: nomear o que você não entende é metade do caminho.",
+            "\n\n🔍 *Você sabia...?* Formular a dúvida com clareza já é letramento: nomear o que você não entende é metade do caminho.",
+            "\n\n🔍 *Você sabia...?* Comparar duas explicações do mesmo tema ajuda a ver o que muda com o enfoque — é um hábito que vale treinar.",
           ] as const)
         : ([
-            "\n\n🔍 *¿Sabías que...?* Esta pregunta que hiciste es de las que más circulan en talleres de alfabetización mediática. Mucha gente tiene la misma duda y pocos se animan a preguntar.",
-            "\n\n🔍 *¿Sabías que...?* Formular la duda así ya es un paso de alfabetización: nombrar lo que no entiendes es la mitad del camino.",
+            "\n\n🔍 *¿Sabías que...?* Formular la duda con claridad ya es un paso de alfabetización: nombrar lo que no entiendes es la mitad del camino.",
+            "\n\n🔍 *¿Sabías que...?* Comparar dos explicaciones del mismo tema ayuda a ver qué cambia con el enfoque; es un hábito que vale entrenar.",
           ] as const)
     );
   }
