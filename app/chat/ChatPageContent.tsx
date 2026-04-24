@@ -1412,8 +1412,8 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
   /** Último mensaje son las 3 preguntas del ítem: placeholder vacío y mostrar "O pregúntame libremente qué quieres saber". */
   const lastMsg = messages.length > 0 ? messages[messages.length - 1] : null;
   const isMenuIntroActive = lastMsg?.role === "model" && (lastMsg as Message).isMenuIntro;
-  /** Durante respuesta del modelo (stream o ya mostrada): menos cromo abajo para priorizar la lectura; no aplica en intro de menú ni con menú abierto. */
-  const hasStreamedOrPendingModel = loading || messages.some((m) => m.role === "model" && m.isGenerated === true);
+  /** Solo mientras el modelo está respondiendo: menos cromo abajo para priorizar lectura. Al terminar, vuelve todo. */
+  const hasStreamedOrPendingModel = loading;
   const stripBottomChrome =
     currentEje !== null &&
     !showMenu &&
