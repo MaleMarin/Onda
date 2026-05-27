@@ -1773,5 +1773,93 @@ Aquí puedes hacer una pregunta concreta, por ejemplo:
 • “¿Qué tipo de actividad recomiendas para personas mayores con baja experiencia digital?”
 Escríbela o envíala en audio,
 y te respondo con una propuesta simple, adaptable y respetuosa del contexto educativo.
+
+4.4. Guía pedagógica de referencia: IA en el aula (uso por Onda Profes)
+👉 Nodo: PROFES_GUIA_IA_AULA
+Esta guía es material de referencia editorial para que Onda Profes responda con criterio cuando la persona docente pregunte sobre rol docente, alfabetización en IA, evaluación, ética o señales de uso problemático. No es un menú visible para el usuario: es conocimiento de fondo. Cuando aplique, Onda puede resumir, citar o derivar a esta guía con tono cercano, sin tecnicismos.
+
+01. Lo que la IA NO puede hacer (y el docente sí)
+• Construir vínculos afectivos y acompañar emocionalmente.
+• Enseñar a dudar con criterio y cuestionar fuentes.
+• Modelar la ética en el uso del conocimiento.
+• Identificar el contexto único de cada estudiante.
+• Guiar el error productivo como parte del aprendizaje.
+
+02. El docente como guía del pensamiento crítico
+Tu rol se desplaza de transmisor a arquitecto de experiencias de aprendizaje. La IA puede generar contenido; tú enseñas cómo evaluarlo, cuestionarlo y usarlo con integridad.
+• Orquestador: diseñas tareas que integran la IA como herramienta, no como atajo.
+• Interrogador: planteas preguntas que la IA no puede responder sola: éticas, contextuales, afectivas.
+• Evaluador: enseñas a verificar, contrastar y citar fuentes con rigor.
+• Mediador: facilitas el diálogo entre estudiantes y entre humanos y máquinas.
+
+03. Alfabetización en IA: qué enseñar
+Alfabetizar en IA no es enseñar a programar: es enseñar a convivir críticamente con sistemas que producen texto, imágenes y código de forma automática.
+Las 5 competencias clave:
+1) Comprensión básica: qué es la IA, cómo funciona (modelos de lenguaje, datos de entrenamiento, probabilidad).
+2) Evaluación crítica: detectar alucinaciones, sesgos y errores en respuestas de la IA.
+3) Uso ético: plagio, propiedad intelectual, privacidad y consentimiento de datos.
+4) Producción responsable: prompts claros, verificación de salidas, citación de herramientas.
+5) Reflexión metacognitiva: ¿qué aprendí yo?, ¿qué hizo la IA?, ¿cuál fue mi aporte real?
+
+04. Estrategias pedagógicas con IA
+Modelos de integración en el aula:
+• IA como borrador: el estudiante usa la IA para generar un primer borrador y luego lo analiza, corrige y mejora con argumentación propia.
+• IA como tutor de práctica: uso de chatbots para practicar idiomas, matemáticas o ciencias, con el docente diseñando los objetivos.
+• IA como investigador asistente: la IA sugiere fuentes y el estudiante verifica la existencia y confiabilidad de cada una.
+• IA como oponente: se pide a la IA que argumente en contra de la posición del estudiante; el alumno debe refutar con evidencia.
+• IA como generador de preguntas: el docente o los alumnos piden a la IA preguntas difíciles sobre un tema y las debaten en clase.
+• Análisis de respuestas de IA: la clase recibe la misma respuesta y cada equipo identifica qué falta, qué está mal o qué es impreciso.
+
+05. Preguntas para activar el pensamiento (territorio del docente humano)
+Para evaluar una respuesta de IA:
+• ¿Esta respuesta es verificable? ¿Cómo lo sabrías?
+• ¿Qué perspectiva NO está incluida aquí?
+• ¿Qué pregunta NO le hiciste a la IA y debería haberse respondido?
+Para profundizar el pensamiento:
+• Si esto fuera falso, ¿cómo lo detectarías?
+• ¿Qué haría alguien que NO esté de acuerdo con esta respuesta?
+• ¿Qué información adicional cambiaría tu conclusión?
+Para reflexionar sobre el proceso:
+• ¿Qué aprendiste tú al buscar esto, más allá de la respuesta?
+• ¿Qué decisión tomó la IA que tú no habrías tomado?
+• ¿Cómo sabes que entiendes esto y no solo lo copiaste?
+
+06. Señales de alerta y uso problemático
+Reconocer cuándo la IA se convierte en un sustituto del pensamiento en lugar de una herramienta de apoyo:
+• El estudiante no puede explicar lo que entregó: si no puede defender su trabajo con sus propias palabras, probablemente no lo procesó.
+• Las respuestas son genéricas, sin contexto local: la IA no conoce su escuela, su barrio, su historia familiar. Si el trabajo carece de eso, es sospechoso.
+• El estudiante consulta la IA antes de pensar: el proceso debería ser intento propio → herramientas → verificación. No al revés.
+• Uso de IA para evitar la dificultad cognitiva: el esfuerzo mental es el aprendizaje; eludirlo sistemáticamente bloquea el desarrollo.
+• Cita fuentes que no existen: los modelos de lenguaje pueden inventar referencias bibliográficas. Siempre verificar.
+
+07. Protocolo de aula con IA
+Marco simple para integrar la IA de forma transparente, pedagógica y ética en cualquier actividad.
+ANTES:
+• Define qué aprenderá el estudiante (no qué producirá).
+• Decide si la IA está permitida, limitada o excluida en esta tarea.
+• Diseña una pregunta que la IA sola no pueda responder.
+DURANTE:
+• Pide al estudiante que documente sus prompts.
+• Introduce una pregunta de verificación (“¿esto es verdad?”).
+• Genera un momento de debate sin pantallas.
+DESPUÉS:
+• Solicita una reflexión: “¿Qué hice yo que la IA no hizo?”.
+• Revisa con el estudiante la diferencia entre su versión y la de la IA.
+• Evalúa el proceso, no solo el producto.
+
+08. Lista de verificación del docente (antes de cada clase con IA)
+1) Definí el objetivo de aprendizaje (no el de producción).
+2) Tengo al menos una pregunta sin respuesta en la IA.
+3) Diseñé un momento de verificación crítica de las respuestas.
+4) Las y los estudiantes saben qué uso de IA está permitido y cuál no.
+5) Incluí una instancia de reflexión metacognitiva al final.
+6) Tengo claro cómo evaluar el proceso, no solo el resultado.
+7) Estoy preparado para debatir sobre ética y sesgos si surge.
+8) Revisé si alguna respuesta de IA que usaré tiene información incorrecta.
+
+Cierre editorial de la guía:
+“La IA no reemplaza al docente: amplifica su importancia como guía del pensamiento humano.”
+Recordatorio: tu valor como docente no está solo en lo que sabes, sino en cómo ayudas a pensar a tus estudiantes.
+Piensa | Cuestiona | Acompaña | Verifica
 `;
 
