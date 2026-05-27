@@ -157,6 +157,11 @@ export const MENU_QUESTIONS: Record<string, MenuQuestionTriple> = {
     "¿Qué formato prefieres — guías, videos, artículos, herramientas, o ejemplos prácticos?",
     "¿Hay algún tema específico sobre IA y educación que te interese explorar?",
   ],
+  P_G10: [
+    "¿Quieres una guía general para usar IA en el aula o necesitas resolver una situación concreta?",
+    "¿El foco es rol docente, pensamiento crítico, evaluación, ética, o señales de uso problemático?",
+    "¿Para qué nivel o grupo quieres adaptar esta guía?",
+  ],
 };
 
 /**

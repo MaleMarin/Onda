@@ -1674,6 +1674,7 @@ Botones:
 🧪 Ideas de proyectos y secuencias didácticas
 🔍 Transparencia en el uso de IA (prompts, modelos)
 🧰 Talleres y trabajo con organizaciones
+📘 Guía: IA en el aula
 ❓ Hacer una pregunta rápida
 🔁 Volver al menú de Ondas
 4.3. Textos por opción de Onda Profes
@@ -1773,6 +1774,21 @@ Aquí puedes hacer una pregunta concreta, por ejemplo:
 • “¿Qué tipo de actividad recomiendas para personas mayores con baja experiencia digital?”
 Escríbela o envíala en audio,
 y te respondo con una propuesta simple, adaptable y respetuosa del contexto educativo.
+
+8️⃣ 📘 Guía: IA en el aula
+👉 Nodo: PROFES_GUIA_IA_AULA
+📘 Guía: IA en el aula
+Aquí puedes pedir una orientación clara para integrar IA en clase sin reemplazar el pensamiento del estudiantado ni el rol docente.
+Podemos trabajar:
+• Qué puede hacer la IA y qué sigue siendo tarea humana del docente.
+• Cómo enseñar pensamiento crítico, verificación y uso ético.
+• Estrategias de aula donde la IA sea herramienta y no atajo.
+• Señales de alerta cuando la IA sustituye el aprendizaje.
+• Un protocolo antes, durante y después de una actividad con IA.
+Para empezar, cuéntame:
+• Nivel o grupo con el que trabajas.
+• Qué situación quieres resolver.
+• Si necesitas una guía general, una actividad concreta o una lista de verificación.
 
 4.4. Guía pedagógica de referencia: IA en el aula (uso por Onda Profes)
 👉 Nodo: PROFES_GUIA_IA_AULA

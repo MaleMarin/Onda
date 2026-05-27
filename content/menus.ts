@@ -59,6 +59,7 @@ export const ONDA_PROFES_OPTIONS: MenuItem[] = [
   { id: "P_X7", emoji: "🤖", label_es: "Explicar IA a un curso", label_pt: "Explicar IA para uma turma" },
   { id: "P_L8", emoji: "📂", label_es: "Proyectos largos con IA", label_pt: "Projetos longos com IA" },
   { id: "P_S9", emoji: "📚", label_es: "Recursos sugeridos", label_pt: "Recursos sugeridos" },
+  { id: "P_G10", emoji: "📘", label_es: "Guía: IA en el aula", label_pt: "Guia: IA em sala de aula" },
 ];
 
 export function getLabel(item: MenuItem, locale: MenuLocale): string {

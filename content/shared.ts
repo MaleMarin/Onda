@@ -864,9 +864,10 @@ const PROFES_MENU_DEFS: ProfMenuDef[] = [
   { id: "P_X7", internalPrompt: "Prepara una explicación corta, metáforas y 3 preguntas para conversar con el grupo." },
   { id: "P_L8", internalPrompt: "Diseña un proyecto de varias semanas (Explorar, Investigar, Analizar, Crear, Compartir)." },
   { id: "P_S9", internalPrompt: "Sugiere tipos de fuentes y recursos confiables para docentes." },
+  { id: "P_G10", internalPrompt: "Usa la guía PROFES_GUIA_IA_AULA para orientar a docentes sobre rol humano, pensamiento crítico, alfabetización en IA, estrategias pedagógicas, protocolo de aula, señales de alerta y checklist docente." },
 ];
 
-/** Opciones del menú Onda Profes (9 opciones + volver). Intro = solo las 3 preguntas de ese ítem (menuQuestions). */
+/** Opciones del menú Onda Profes (10 opciones + volver). Intro = solo las 3 preguntas de ese ítem (menuQuestions). */
 export const PROFES_OPTIONS: MenuOption[] = PROFES_MENU_DEFS.map((d) => {
   const item = menuItemById(MENU_PROF_ITEMS, d.id);
   return {
