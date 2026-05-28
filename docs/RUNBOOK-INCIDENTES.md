@@ -75,3 +75,26 @@
 ## Post-mortem
 
 Después de cada incidente de más de 30 minutos, documentar en `docs/POSTMORTEMS/` con: qué pasó, cuándo, impacto, causa raíz, solución aplicada, qué se mejora.
+
+## Rotación de secrets
+
+### Cuándo rotar
+
+- Cada 6 meses como mínimo
+- Inmediatamente si hay sospecha de filtración
+- Al cambiar integrantes del equipo con acceso
+
+### Cómo rotar
+
+1. `npm run secrets:generate` → genera nuevos valores
+2. Actualizar en Vercel Dashboard → Settings → Environment Variables
+3. Hacer redeploy en Vercel (los cambios de env requieren redeploy)
+4. Verificar con `npm run env:verify` que todo está bien
+5. Guardar nuevos valores en el gestor de contraseñas del equipo
+6. Invalidar los secrets anteriores (cambiar contraseña de API si aplica)
+
+### Gestor de contraseñas recomendado
+
+Bitwarden (gratuito para organizaciones sin fines de lucro)
+→ <https://bitwarden.com/organizations>
+
