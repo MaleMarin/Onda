@@ -26,7 +26,7 @@ import {
 import { formatMenuIntro } from "@/content/menuQuestions";
 import { displayMenuOptionLabel, userPickedMenuOption } from "@/content/menus";
 import { EjeOnda, type Message } from "@/content/types";
-import { parseResponseFormat } from "@/lib/responseFormat";
+import { parseResponseFormat, stripOndaInflightMarkers } from "@/lib/responseFormat";
 import { consumeChatNdjsonStream, type ChatStreamMeta } from "@/lib/chatStreamClient";
 import { stripListeningInviteEchoFromText } from "@/lib/stripListeningInviteEcho";
 import { buildSoftListeningNudgeInvite } from "@/lib/onda/contributions/web";
@@ -961,14 +961,17 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
       let receivedAnyText = false;
       let serverPlayAudio: boolean | undefined;
       let streamMeta: ChatStreamMeta = { fullContent: "", receivedAnyText: false };
+      let rawStreamAcc = "";
       if (reader) {
         streamMeta = await consumeChatNdjsonStream(
           reader,
           (chunk) => {
             receivedAnyText = true;
+            rawStreamAcc += chunk;
+            const displayed = stripOndaInflightMarkers(rawStreamAcc);
             setMessages((m) =>
               m.map((msg) =>
-                msg.id === placeholderMsg.id ? { ...msg, content: msg.content + chunk } : msg
+                msg.id === placeholderMsg.id ? { ...msg, content: displayed } : msg
               )
             );
             setTimeout(() => scrollToBottom(), 0);
@@ -1232,14 +1235,17 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
         let receivedAnyText = false;
         let serverPlayAudio: boolean | undefined;
         let streamMetaChip: ChatStreamMeta = { fullContent: "", receivedAnyText: false };
+        let rawStreamAccChip = "";
         if (reader) {
           streamMetaChip = await consumeChatNdjsonStream(
             reader,
             (chunk) => {
               receivedAnyText = true;
+              rawStreamAccChip += chunk;
+              const displayed = stripOndaInflightMarkers(rawStreamAccChip);
               setMessages((m) =>
                 m.map((msg) =>
-                  msg.id === placeholderMsg.id ? { ...msg, content: msg.content + chunk } : msg
+                  msg.id === placeholderMsg.id ? { ...msg, content: displayed } : msg
                 )
               );
               setTimeout(() => scrollToBottom(), 0);

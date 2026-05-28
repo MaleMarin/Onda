@@ -79,6 +79,7 @@ export const DATASET_FILES_CI = [
   "whatsapp_session.jsonl",
   "infographics.jsonl",
   "prefs_unified.jsonl",
+  "disinfo_360.jsonl",
 ] as const;
 
 export const BASELINE_APPROVED_PATH = path.join(EVALS_ROOT, "baselines", "approved.json");

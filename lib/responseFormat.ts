@@ -134,6 +134,10 @@ const FORMATO_REGEX = /\[ONDA_FORMATO:\s*(texto|audio|infografia|imagen)\s*\]/gi
 const GUIA_REGEX = /\[ONDA_GUIA:([a-z0-9_-]+)\]/gi;
 /** [ONDA_SUGERENCIAS: pregunta1 | pregunta2 | pregunta3] → preguntas relacionadas, fraseo como usuario */
 const SUGERENCIAS_REGEX = /\[ONDA_SUGERENCIAS:\s*([^\]]+)\]/gi;
+/** Cualquier otro marcador interno con el prefijo `[ONDA_...]` que pudiera filtrarse. */
+const ONDA_ANY_MARKER_REGEX = /\[ONDA_[A-Z_]+:[^\]]*\]/gi;
+/** Inicio de un marcador interno (puede estar partido entre chunks durante streaming). */
+const ONDA_INFLIGHT_PREFIX_REGEX = /\[ONDA_[A-Z_]*(?::[^\]]*)?$/i;
 
 export type FormatoSalida = "texto" | "audio" | "infografia" | "imagen";
 
@@ -189,10 +193,25 @@ export function parseResponseFormat(reply: string, options?: ParseResponseFormat
     return "";
   });
 
+  text = text.replace(ONDA_ANY_MARKER_REGEX, "");
+
   text = text.replace(/\n{3,}/g, "\n\n").trim();
   const f = formato as FormatoSalida;
   const sendAudio = f === "audio";
   const infographicPayload =
     f === "infografia" ? buildInfographicPayloadFromModelText(text, options?.infographic) : undefined;
   return { text, formato: f, sendAudio, guideId, suggestions, infographicPayload };
+}
+
+/**
+ * Para uso en streaming en el cliente: dado el contenido acumulado del mensaje, devuelve la
+ * versión que se debe mostrar al usuario. Quita marcadores completos `[ONDA_...:...]` y
+ * oculta también un prefijo de marcador todavía sin cerrar (queda al final del buffer),
+ * para evitar que aparezcan parcialmente mientras se está recibiendo el chunk.
+ */
+export function stripOndaInflightMarkers(accumulated: string): string {
+  if (!accumulated) return "";
+  let out = accumulated.replace(ONDA_ANY_MARKER_REGEX, "");
+  out = out.replace(ONDA_INFLIGHT_PREFIX_REGEX, "");
+  return out;
 }

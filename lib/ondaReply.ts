@@ -883,7 +883,6 @@ export async function getOndaReply(
     systemContentCore +
     buildInclusivePromptLayer(userText, inclusivePreferences ?? null, eje ?? null, canal ?? null) +
     infographicLocaleSystemBlock(inclusivePreferences?.locale) +
-    buildRiskSystemAppend(riskPipeline ?? null, inclusivePreferences?.locale) +
     buildUnifiedFormatPromptAppend(userText, unifiedUserPrefs ?? null) +
     buildOutputLanguageLockAppend(inclusivePreferences?.locale ?? "es-LATAM", unifiedUserPrefs ?? null) +
     transparencySystemAppend(
@@ -895,6 +894,11 @@ export async function getOndaReply(
       false,
       unifiedUserPrefs ?? null,
       transparencyRequested
+    ) +
+    buildRiskSystemAppend(
+      riskPipeline ?? null,
+      inclusivePreferences?.locale,
+      { hasExternalContext: Boolean(extraContext?.trim()) }
     );
 
   const { prompt: systemForModel, wasOptimized } = optimizeSystemPrompt(systemContent);
@@ -1014,7 +1018,6 @@ export async function* getOndaReplyStream(
     systemContentCore +
     buildInclusivePromptLayer(userText, inclusivePreferences ?? null, eje ?? null, canal ?? null) +
     infographicLocaleSystemBlock(inclusivePreferences?.locale) +
-    buildRiskSystemAppend(riskPipeline ?? null, inclusivePreferences?.locale) +
     buildUnifiedFormatPromptAppend(userText, unifiedUserPrefs ?? null) +
     buildOutputLanguageLockAppend(inclusivePreferences?.locale ?? "es-LATAM", unifiedUserPrefs ?? null) +
     transparencySystemAppend(
@@ -1026,6 +1029,11 @@ export async function* getOndaReplyStream(
       false,
       unifiedUserPrefs ?? null,
       transparencyRequested
+    ) +
+    buildRiskSystemAppend(
+      riskPipeline ?? null,
+      inclusivePreferences?.locale,
+      { hasExternalContext: Boolean(extraContext?.trim()) }
     );
 
   const { prompt: systemForModel, wasOptimized } = optimizeSystemPrompt(systemContent);
@@ -1209,7 +1217,6 @@ export async function getOndaReplyWithImage(
     systemContentCore +
     buildInclusivePromptLayer(userText, inclusivePreferences ?? null, eje ?? null, canal ?? null) +
     infographicLocaleSystemBlock(inclusivePreferences?.locale) +
-    buildRiskSystemAppend(riskPipeline ?? null, inclusivePreferences?.locale) +
     buildUnifiedFormatPromptAppend(userText, unifiedUserPrefs ?? null) +
     buildOutputLanguageLockAppend(inclusivePreferences?.locale ?? "es-LATAM", unifiedUserPrefs ?? null) +
     transparencySystemAppend(
@@ -1221,6 +1228,11 @@ export async function getOndaReplyWithImage(
       true,
       unifiedUserPrefs ?? null,
       transparencyRequested
+    ) +
+    buildRiskSystemAppend(
+      riskPipeline ?? null,
+      inclusivePreferences?.locale,
+      { hasExternalContext: Boolean(extraContext?.trim()) }
     );
 
   const { prompt: systemForModelVision, wasOptimized: visionOpt } = optimizeSystemPrompt(systemContent);
