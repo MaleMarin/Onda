@@ -13,6 +13,24 @@ function kvConfigured(): boolean {
   return !!(process.env.KV_REST_API_URL?.trim() && process.env.KV_REST_API_TOKEN?.trim());
 }
 
+/**
+ * Alerta explícita si en producción se intenta usar opt-out / ventana sin KV.
+ * No cambia el comportamiento (sigue fail-open para no bloquear conversaciones),
+ * pero deja huella en logs para que ops pueda diagnosticar y arreglar el deploy.
+ * Se emite por cada operación crítica para que sea visible aún si la
+ * instancia se recicla (no usamos singleton: en prod el log es información
+ * accionable y no spam ruidoso).
+ */
+function assertKvForProduction(op: string): void {
+  if (kvConfigured()) return;
+  if (process.env.NODE_ENV !== "production") return;
+  console.error(
+    `[waCompliance] PRODUCCIÓN sin Vercel KV configurado (op=${op}). ` +
+      `Opt-out, ventana 24 h y primer contacto NO sobreviven cold starts. ` +
+      `Configurar KV_REST_API_URL / KV_REST_API_TOKEN en Vercel → Storage.`
+  );
+}
+
 function phoneKey(phone: string): string {
   const d = String(phone).replace(/\D/g, "");
   return d || String(phone).trim() || "unknown";
@@ -94,6 +112,7 @@ export function isOptInMessage(text: string): boolean {
  */
 export async function setOptOut(phone: string): Promise<void> {
   if (!kvConfigured()) {
+    assertKvForProduction("setOptOut");
     console.warn("[waCompliance] KV no configurado; setOptOut omitido.");
     return;
   }
@@ -123,7 +142,10 @@ export async function setOptIn(phone: string): Promise<void> {
  * Verifica si el número está en opt-out
  */
 export async function isOptedOut(phone: string): Promise<boolean> {
-  if (!kvConfigured()) return false;
+  if (!kvConfigured()) {
+    assertKvForProduction("isOptedOut");
+    return false;
+  }
   try {
     const v = await kv.get(keyOptOut(phone));
     return v != null && v !== "";
@@ -152,7 +174,10 @@ export async function renewMessageWindow(phone: string): Promise<void> {
  * Si la ventana de 24 h está activa → se puede responder con texto libre (política Meta).
  */
 export async function isWindowActive(phone: string): Promise<boolean> {
-  if (!kvConfigured()) return true;
+  if (!kvConfigured()) {
+    assertKvForProduction("isWindowActive");
+    return true;
+  }
   try {
     const ttl = await kv.ttl(keyWindow(phone));
     if (ttl === -2) return false;

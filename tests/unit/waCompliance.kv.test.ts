@@ -71,4 +71,31 @@ describe("waCompliance (KV configurado, mock)", () => {
     await markAsSeen("+56999999999");
     expect(kvMock.set).toHaveBeenCalled();
   });
+
+  it("opt-out sobrevive cold start: el TTL configurado es ≥ 2 años", async () => {
+    kvMock.set.mockResolvedValueOnce("OK");
+    await setOptOut("+56999999999");
+    const callArgs = kvMock.set.mock.calls[kvMock.set.mock.calls.length - 1];
+    const opts = callArgs[2] as { ex?: number };
+    expect(opts.ex).toBeGreaterThanOrEqual(2 * 365 * 24 * 60 * 60);
+  });
+});
+
+describe("waCompliance (KV NO configurado en producción) — alerta explícita", () => {
+  const ORIGINAL_NODE_ENV = process.env.NODE_ENV;
+  beforeEach(() => {
+    vi.clearAllMocks();
+    delete process.env.KV_REST_API_URL;
+    delete process.env.KV_REST_API_TOKEN;
+    Object.assign(process.env, { NODE_ENV: "production" });
+  });
+
+  it("setOptOut en producción sin KV: logguea error explícito (riesgo documentado)", async () => {
+    const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    await setOptOut("+56999999999");
+    expect(errSpy).toHaveBeenCalled();
+    const msgs = errSpy.mock.calls.map((c) => String(c[0]));
+    expect(msgs.some((m) => m.includes("PRODUCCIÓN sin Vercel KV"))).toBe(true);
+    Object.assign(process.env, { NODE_ENV: ORIGINAL_NODE_ENV });
+  });
 });

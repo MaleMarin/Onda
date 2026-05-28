@@ -296,6 +296,96 @@ export async function sendWhatsAppAudio(
 }
 
 /**
+ * Envía un mensaje basado en plantilla HSM aprobada en WhatsApp Manager.
+ *
+ * Uso típico: cuando la ventana de 24 h con el usuario está cerrada, Meta sólo
+ * permite mensajes vía plantilla. El nombre y el código de idioma deben
+ * coincidir EXACTAMENTE con la plantilla aprobada (Business Settings →
+ * Plantillas de mensajes en Meta).
+ *
+ * `params`: lista ordenada de valores que rellenan los placeholders {{1}}…{{N}}
+ * del body. Si la plantilla no tiene variables, pasar `[]`.
+ *
+ * Errores comunes que devuelve Meta:
+ *  - 132000 / 132001: nombre o idioma incorrectos.
+ *  - 132005: estructura del componente body inválida.
+ *  - 132012: parámetros de body insuficientes.
+ *  - 131026: usuario fuera de ventana y plantilla no disponible para su idioma.
+ */
+export async function sendWhatsAppTemplate(
+  to: string,
+  templateName: string,
+  params: string[] = [],
+  languageCode = "es"
+): Promise<{ ok: boolean; error?: string; code?: number }> {
+  const config = getConfig();
+  if (!config) {
+    console.error("[wa-template] Missing WhatsApp config");
+    return { ok: false, error: "Missing WhatsApp config" };
+  }
+  if (!templateName || !templateName.trim()) {
+    return { ok: false, error: "templateName vacío (revisar WHATSAPP_TEMPLATE_* en env)" };
+  }
+  const { accessToken, phoneNumberId, graphVersion } = config;
+  const baseUrl = `https://graph.facebook.com/${graphVersion}`;
+  const url = `${baseUrl}/${phoneNumberId}/messages`;
+
+  type TemplateBodyParam = { type: "text"; text: string };
+  type TemplateComponent = { type: "body"; parameters: TemplateBodyParam[] };
+  const components: TemplateComponent[] = [];
+  if (params.length > 0) {
+    components.push({
+      type: "body",
+      parameters: params.map((p) => ({ type: "text", text: String(p ?? "") })),
+    });
+  }
+  const body = {
+    messaging_product: "whatsapp",
+    to: String(to).replace(/\D/g, ""),
+    type: "template",
+    template: {
+      name: templateName,
+      language: { code: languageCode },
+      ...(components.length ? { components } : {}),
+    },
+  };
+
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+    const data = (await res.json()) as {
+      error?: { message: string; code: number };
+      messages?: Array<{ id: string }>;
+    };
+    if (!res.ok) {
+      console.error("[wa-template] API error", {
+        status: res.status,
+        code: data?.error?.code,
+        message: data?.error?.message,
+        template: templateName,
+        lang: languageCode,
+      });
+      return {
+        ok: false,
+        error: data?.error?.message ?? `HTTP ${res.status}`,
+        code: data?.error?.code,
+      };
+    }
+    return { ok: true };
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error("[wa-template] Error enviando template:", msg);
+    return { ok: false, error: msg };
+  }
+}
+
+/**
  * Envía una imagen por WhatsApp. Sube el buffer y envía el mensaje.
  * Opcional: caption para texto debajo de la imagen.
  */
