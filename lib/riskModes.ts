@@ -3,11 +3,14 @@ import type { OndaChatLocale } from "@/lib/userPreferences";
 import {
   SENSITIVE_OPENING_LINE_ES,
   SENSITIVE_OPENING_LINE_PT,
+  SYSTEM_BLOCK_DISINFO_360_ES,
+  SYSTEM_BLOCK_DISINFO_360_PT,
   SYSTEM_BLOCK_KIT_EMERGENCIA_ES,
   SYSTEM_BLOCK_KIT_EMERGENCIA_PT,
   SYSTEM_BLOCK_PANTALLAZO_DETECTIVE_ES,
   SYSTEM_BLOCK_PANTALLAZO_DETECTIVE_PT,
 } from "@/content/shared";
+import type { ConversationIntent } from "@/lib/intentClassifier";
 
 /** Locale reducido para listas de palabras (PT vs ES). */
 export type RiskLocale = "pt" | "es";
@@ -16,6 +19,8 @@ export type RiskPipelineFlags = {
   emergency: boolean;
   sensitive: boolean;
   pantallazoDetective: boolean;
+  /** Modo Desinformación 360: rumor/cadena/titular/link dudoso/imagen-audio con afirmaciones, "¿es verdad?", "¿lo comparto?" */
+  disinfo360: boolean;
 };
 
 function normText(text: string): string {
@@ -107,14 +112,39 @@ export function detectScamQuestion(text: string): boolean {
 }
 
 /**
- * Flags para inyectar bloques de sistema (emergencia, pantallazo detective, aviso sensible).
+ * Patrones de Desinformación 360: rumor/cadena/audio viral/titular/link dudoso/imagen con afirmación,
+ * preguntas tipo "¿es verdad?", "¿lo comparto?", "sin fuente", "sin fecha".
+ * No depende del eje; pueden venir en cualquier Onda.
+ */
+export function detectDisinfo360Patterns(text: string): boolean {
+  const t = normText(text);
+  return (
+    /\bme\s+lleg(o|aron)\b|\bme\s+mandaron\b|\bme\s+pasaron\b/.test(t) ||
+    /\bdicen\s+que\b|\bse\s+dice\s+que\b|\bdice(n)?\s+(que|por\s+ahi)\b/.test(t) ||
+    /\bcadena(s)?\s+(de\s+)?(whatsapp|wpp|zap)?\b|\brumor(es)?\b/.test(t) ||
+    /\bfake\s*news\b|\bnoticia\s+falsa\b|\bbulo(s)?\b|\bdesinformaci[oó]n\b/.test(t) ||
+    /\bsin\s+fuente(s)?\b|\bsin\s+fecha\b|\bno\s+tiene\s+(fuente|fecha)\b/.test(t) ||
+    /\b(es\s+)?verdad\s+o\s+mentira\b|\bes\s+manipulaci[oó]n\b/.test(t) ||
+    /[¿\?]\s*es\s+verdad\b|[¿\?]\s*es\s+cierto\b|\bser[aá]\s+verdad\b/.test(t) ||
+    /\blo\s+(comparto|reenv[ií]o)\b|\bla\s+(comparto|reenv[ií]o)\b/.test(t) ||
+    /\btitular\s+dice\b|\baudio\s+(dice|familiar)\b|\bimagen\s+dice\b/.test(t) ||
+    /\bme\s+dijeron\s+que\b|\bun\s+audio\s+(que\s+)?dice\b|\bun\s+mensaje\s+(que\s+)?dice\b/.test(t) ||
+    /\breenviaron\b|\breenvi[eé]\b/.test(t)
+  );
+}
+
+/**
+ * Flags para inyectar bloques de sistema (emergencia, pantallazo detective, aviso sensible, disinfo 360).
  * Pantallazo detective: eje A MANO y (imagen O intención pantallazo O señales de estafa).
+ * Disinfo 360: intent === "disinformation" | "fact_check" O patrones de rumor/cadena/etc. Activo
+ * mientras no haya emergencia (en emergencia, kit prioritario).
  */
 export function computeRiskPipelineFlags(
   text: string,
   hasImage: boolean,
   eje: EjeOnda | null | undefined,
-  locale: OndaChatLocale | null | undefined
+  locale: OndaChatLocale | null | undefined,
+  intent?: ConversationIntent | null
 ): RiskPipelineFlags {
   const rl = localeToRiskLocale(locale);
   const emergency = detectEmergencyKeywords(text, rl);
@@ -126,7 +156,10 @@ export function computeRiskPipelineFlags(
     !emergency &&
     eje === EjeOnda.A_MANO &&
     (hasImage || scamQ || scamKw || shot);
-  return { emergency, sensitive, pantallazoDetective };
+  const disinfoByIntent = intent === "disinformation" || intent === "fact_check";
+  const disinfoByPattern = detectDisinfo360Patterns(text);
+  const disinfo360 = !emergency && (disinfoByIntent || disinfoByPattern);
+  return { emergency, sensitive, pantallazoDetective, disinfo360 };
 }
 
 function localeIsPt(locale: OndaChatLocale | null | undefined): boolean {
@@ -155,10 +188,13 @@ export function buildRiskSystemAppend(
   if (flags.pantallazoDetective) {
     parts.push(pt ? SYSTEM_BLOCK_PANTALLAZO_DETECTIVE_PT : SYSTEM_BLOCK_PANTALLAZO_DETECTIVE_ES);
   }
+  if (flags.disinfo360) {
+    parts.push(pt ? SYSTEM_BLOCK_DISINFO_360_PT : SYSTEM_BLOCK_DISINFO_360_ES);
+  }
   return parts.join("\n\n");
 }
 
 export function riskPipelineSkipsCache(flags: RiskPipelineFlags | null | undefined): boolean {
   if (!flags) return false;
-  return flags.emergency || flags.sensitive || flags.pantallazoDetective;
+  return flags.emergency || flags.sensitive || flags.pantallazoDetective || flags.disinfo360;
 }

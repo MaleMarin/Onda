@@ -40,11 +40,17 @@ export function classifyIntent(userMessage: string): IntentResult {
     return { intent: "emotional", ragNeeded: false, confidence: "high" };
   }
 
-  // 2) Cadena, audio viral, rumor
+  // 2) Cadena, audio viral, rumor, reenvíos, "me dijeron que..."
   if (
-    /\bme lleg[óo]\s+(un |una )?(audio|video|mensaje|cadena|imagen)\b/.test(t) ||
-    /\b(cadena de whatsapp|reenviaron|reenvié|audio que dice|dicen que van a)\b/.test(t) ||
-    /\b(rumor|desinformaci[oó]n|bulo|fake news|noticia falsa)\b/.test(t)
+    /\bme lleg[óo]\s+(un |una )?(audio|video|mensaje|cadena|imagen|whatsapp|wpp|zap)\b/.test(t) ||
+    /\bme\s+(mandaron|pasaron|enviaron|dijeron)\b/.test(t) ||
+    /\b(cadena de whatsapp|cadena de zap|cadena|reenviaron|reenvi[eé]|lo\s+(reenv[ií]o|comparto)|la\s+(reenv[ií]o|comparto))\b/.test(t) ||
+    /\b(audio|titular|imagen)\s+(que\s+)?dice\b/.test(t) ||
+    /\baudio\s+familiar\b/.test(t) ||
+    /\bdicen\s+que\s+van\s+a\b|\bdicen\s+que\b/.test(t) ||
+    /\b(rumor|desinformaci[oó]n|bulo|fake\s*news|noticia\s+falsa)\b/.test(t) ||
+    /\bsin\s+fuente(s)?\b|\bsin\s+fecha\b|\bno\s+tiene\s+(fuente|fecha)\b/.test(t) ||
+    /\bes\s+manipulaci[oó]n\b|\bes\s+manipulado\b/.test(t)
   ) {
     return { intent: "disinformation", ragNeeded: true, confidence: "high" };
   }
@@ -52,6 +58,8 @@ export function classifyIntent(userMessage: string): IntentResult {
   // 3) Verificación factual
   if (
     /\b(es verdad|es cierto|será verdad|mito o realidad|confirm(ar|a) si)\b/.test(t) ||
+    /[¿\?]\s*es\s+(verdad|cierto)\b/.test(t) ||
+    /\b(es\s+)?verdad\s+o\s+mentira\b|\bverdad\s+o\s+manipulaci[oó]n\b/.test(t) ||
     /\b5g\b.*c[aá]ncer|c[aá]ncer.*\b5g\b/.test(t) ||
     /\b(realmente|de verdad)\s+(causa|provoca|es)\b/.test(t) ||
     /\b(estafa|engaño)\s+(o|es)\s+verdad\b/.test(t)

@@ -388,15 +388,29 @@ export async function POST(req: Request) {
       body?.insightsOptOut === true ||
       body?.telemetry === false ||
       userRequestedTelemetryOptOut(message);
-    const riskPre = computeRiskPipelineFlags(query, Boolean(image), eje, userPreferences.locale);
+    const intentResultForLog = classifyIntent(query || " ");
+    const riskPre = computeRiskPipelineFlags(
+      query,
+      Boolean(image),
+      eje,
+      userPreferences.locale,
+      intentResultForLog.intent
+    );
     const ejeForModel = riskPre.emergency ? EjeOnda.A_MANO : eje;
-    const riskPipeline = computeRiskPipelineFlags(query, Boolean(image), ejeForModel, userPreferences.locale);
+    const riskPipeline = computeRiskPipelineFlags(
+      query,
+      Boolean(image),
+      ejeForModel,
+      userPreferences.locale,
+      intentResultForLog.intent
+    );
     const transparencyExplicit = detectTransparencyRequest(messageForModel || message, userPreferences.locale)
       ? true
       : undefined;
     const requestId = generateRequestId("web");
-    const intentResultForLog = classifyIntent(query || " ");
-    console.info(`[${requestId}] chat/stream START intent=${intentResultForLog.intent}`);
+    console.info(
+      `[${requestId}] chat/stream START intent=${intentResultForLog.intent} disinfo360=${riskPipeline.disinfo360}`
+    );
     const telemetryCtx = { requestId, canal: "web" as const };
 
     if (!telemetryOptOut) {
@@ -457,7 +471,10 @@ export async function POST(req: Request) {
           const intentResult = classifyIntent(query);
           const orch = await classifyOrchestratorDepth(query, ejeForModel, 0);
           const isDeep = orch === "deep" || orch === "docs";
-          const shouldSearch = isDeep || intentResult.ragNeeded;
+          /** Modo Desinfo 360 o fact_check siempre disparan búsqueda web (si hay clave). */
+          const disinfoIntent =
+            intentResult.intent === "disinformation" || intentResult.intent === "fact_check";
+          const shouldSearch = isDeep || intentResult.ragNeeded || disinfoIntent || riskPipeline.disinfo360;
 
           const webP = shouldSearch
             ? Promise.race([
@@ -485,14 +502,21 @@ export async function POST(req: Request) {
           const rag_used = Boolean(rag?.trim()) || Boolean(privateDocs?.trim());
           const web_search_used = Boolean(webContext?.trim());
           const ragEmpty = !rag?.trim() && !privateDocs?.trim();
+          const webEmpty = !webContext?.trim();
 
           const factCheckFootnote =
             intentResult.intent === "fact_check" && ragEmpty
               ? `\n\n--- NOTA DEL SISTEMA (RAG interno vacío, verificación) ---\nNo hay fragmentos recuperados de la base documental interna para esta consulta. Al final de tu respuesta, añade una línea breve como nota al pie: indica que la verificación se apoya en búsqueda abierta y conocimiento general, no en documentos internos de Precisar, y sugiere contrastar con fuentes oficiales.\n`
               : "";
 
+          /** Modo Desinfo 360 sin clave de búsqueda ni RAG: que el modelo lo declare con transparencia. */
+          const disinfoNoEvidenceFootnote =
+            (riskPipeline.disinfo360 || disinfoIntent) && webEmpty && ragEmpty
+              ? `\n\n--- NOTA DEL SISTEMA (Desinformación 360 sin evidencia externa) ---\nNo hay búsqueda web ni RAG interno disponibles para esta consulta. En la sección "Qué se puede concluir hoy y qué no", indica de forma transparente: "No tengo evidencia externa disponible en este momento; puedo ayudarte a revisar señales y qué fuentes consultar." NO inventes fuentes ni cifras.\n`
+              : "";
+
           const base = [webContext, rag, privateDocs].filter(Boolean).join("\n\n");
-          const combined = (base + factCheckFootnote).trim();
+          const combined = (base + factCheckFootnote + disinfoNoEvidenceFootnote).trim();
 
           return {
             extraContext: combined || undefined,

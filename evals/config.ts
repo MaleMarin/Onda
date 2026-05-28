@@ -60,6 +60,7 @@ export const DATASET_FILES = [
   "profes.core.jsonl",
   "safety.core.jsonl",
   "cross-channel.core.jsonl",
+  "disinfo_360.jsonl",
 ] as const;
 
 /**

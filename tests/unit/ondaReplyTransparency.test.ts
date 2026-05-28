@@ -9,7 +9,7 @@ describe("buildTransparencyInstructionAppend (inyectado en ondaReply)", () => {
     const s = buildTransparencyInstructionAppend({
       requested: true,
       locale: "es-LATAM",
-      riskPipeline: { emergency: false, sensitive: false, pantallazoDetective: false },
+      riskPipeline: { emergency: false, sensitive: false, pantallazoDetective: false, disinfo360: false },
       hasArticleContext: true,
       articleThin: false,
       hasExternalContext: false,
@@ -26,7 +26,7 @@ describe("buildTransparencyInstructionAppend (inyectado en ondaReply)", () => {
     const s = buildTransparencyInstructionAppend({
       requested: true,
       locale: "pt-BR",
-      riskPipeline: { emergency: false, sensitive: false, pantallazoDetective: false },
+      riskPipeline: { emergency: false, sensitive: false, pantallazoDetective: false, disinfo360: false },
       hasArticleContext: false,
       hasExternalContext: false,
       hasImageInput: false,

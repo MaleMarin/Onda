@@ -2189,7 +2189,7 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
           </div>
         )}
 
-        {/* Regla 3 Ondas: no mostrar preguntas de otros temas (Congreso, diputado, inflación, etc.) — provocan ruido informacional. Solo "Ver menú". */}
+        {/* Regla 3 Ondas: no mostrar preguntas de otros temas (Congreso, diputado, inflación, etc.) — provocan ruido informacional. Solo "Ver menú" y, en A Mano, el atajo a Modo Desinformación 360. */}
         {currentEje !== null && !showMenu && !showIASubmenu && !stripBottomChrome && (
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 6, padding: "0 4px", alignItems: "center" }}>
             <button
@@ -2200,6 +2200,31 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
             >
               {mc.menuViewMenu}
             </button>
+            {currentEje === EjeOnda.A_MANO && (
+              <button
+                type="button"
+                data-onda-action="disinfo360"
+                data-onda-chip="disinfo360"
+                onClick={() => {
+                  const starter =
+                    unifiedPrefs.locale === "pt"
+                      ? "Tenho uma dúvida sobre algo que me chegou (notícia, áudio, mensagem ou link). É verdade? "
+                      : "Tengo una duda sobre algo que me llegó (noticia, audio, mensaje o link). ¿Es verdad? ";
+                  setInput(starter);
+                  setShowPickOndaNotice(false);
+                  inputRef.current?.focus();
+                }}
+                disabled={loading}
+                style={chipBase}
+                title={
+                  unifiedPrefs.locale === "pt"
+                    ? "Modo Desinformação 360: cole o texto, link, áudio ou descreva o que recebeu"
+                    : "Modo Desinformación 360: pega el texto, link, audio o describe lo que te llegó"
+                }
+              >
+                🔎 {unifiedPrefs.locale === "pt" ? "Tenho uma dúvida / Revisar notícia" : "Tengo una duda / Revisar noticia"}
+              </button>
+            )}
           </div>
         )}
 

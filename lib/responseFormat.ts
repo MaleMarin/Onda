@@ -56,6 +56,41 @@ export function wantsSources(userMessage: string): boolean {
   return terms.some((term) => t.includes(term));
 }
 
+/**
+ * Versión "relaxed" de wantsSources: detecta señales más amplias de que la persona quiere
+ * respaldo, pruebas o cómo lo sabes. Útil para Modo Desinformación 360 y verificación, sin
+ * forzar la lista oficial completa (eso lo hace wantsSources). No inventa fuentes si no hay
+ * contexto externo inyectado.
+ */
+export function wantsSourcesRelaxed(userMessage: string): boolean {
+  const t = (userMessage || "").toLowerCase().trim();
+  if (!t) return false;
+  if (wantsSources(t)) return true;
+  const extras = [
+    "evidencia",
+    "evidencias",
+    "respaldo",
+    "respaldar",
+    "pruebas",
+    "prueba de que",
+    "cómo sabes",
+    "como sabes",
+    "cómo lo sabes",
+    "como lo sabes",
+    "en base a qué",
+    "en base a que",
+    "de dónde viene",
+    "de donde viene",
+    "comprobar",
+    "comprobado",
+    "verifica",
+    "verificable",
+    "fuente confiable",
+    "documento que lo respalde",
+  ];
+  return extras.some((term) => t.includes(term));
+}
+
 /** Detecta si el usuario pide explícitamente imagen, infografía o diagrama */
 export function wantsImage(userMessage: string): boolean {
   const t = (userMessage || "").toLowerCase().trim();
