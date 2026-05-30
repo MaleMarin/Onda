@@ -1819,7 +1819,7 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
               style={{ display: "block", objectFit: "contain", flexShrink: 0 }}
             />
             <div aria-hidden="true" style={{ fontWeight: 600, fontSize: compact ? "1.0625rem" : "1.25rem", letterSpacing: ".04em", color: t.c.ink }}>
-              ONDA
+              Onda de Precisar
             </div>
           </a>
         </div>
