@@ -2503,8 +2503,10 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
           <div
             style={{
               display: "flex",
+              flexDirection: "column",
               justifyContent: "center",
               alignItems: "center",
+              gap: 6,
               marginTop: 12,
               paddingTop: 12,
               borderTop: `1px solid ${t.glass.borderSoft}`,
@@ -2533,6 +2535,19 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
                 decoding="async"
               />
             </a>
+            <p
+              style={{
+                margin: 0,
+                fontSize: compact ? "0.6875rem" : "0.75rem",
+                lineHeight: 1.35,
+                color: t.c.muted,
+                textAlign: "center",
+                maxWidth: 520,
+                padding: "0 12px",
+              }}
+            >
+              {mc.precisarFooterTagline}
+            </p>
           </div>
         </div>
         </div>

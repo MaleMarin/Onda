@@ -254,6 +254,8 @@ export type ChatUiMicrocopy = {
   menuViewMenu: string;
   /** Cabecera: enlace logo + marca → sitio Precisar. */
   precisarSiteLinkAria: string;
+  /** Pie del chat: línea institucional bajo el logo de Precisar. */
+  precisarFooterTagline: string;
   /** Tabs Onda (role=tablist). */
   ejeTablistAria: string;
   /** Picker grande: prefijo aria “Elegir …”. */
@@ -328,6 +330,7 @@ const CHAT_UI_ES: ChatUiMicrocopy = {
   menuBackToMenu: "↩️ Volver al menú",
   menuViewMenu: "📋 Ver menú",
   precisarSiteLinkAria: "Fundación Precisar, sitio web (se abre en una pestaña nueva)",
+  precisarFooterTagline: "Onda es un asistente educativo de Precisar para fortalecer criterio digital y ciudadanía digital.",
   ejeTablistAria: "Elegir Onda: perfil de la conversación",
   ejePickerChoosePrefix: "Elegir",
   ejePickerContinuePrefix: "Continuar en",
@@ -389,6 +392,7 @@ const CHAT_UI_PT: ChatUiMicrocopy = {
   menuBackToMenu: "↩️ Voltar ao menu",
   menuViewMenu: "📋 Ver menu",
   precisarSiteLinkAria: "Fundação Precisar, site oficial (abre em uma nova aba)",
+  precisarFooterTagline: "Onda é um assistente educativo da Precisar para fortalecer critério digital e cidadania digital.",
   ejeTablistAria: "Escolher Onda: perfil da conversa",
   ejePickerChoosePrefix: "Escolher",
   ejePickerContinuePrefix: "Continuar em",
