@@ -589,6 +589,7 @@ export async function POST(req: Request) {
               JSON.stringify({
                 rag_used: bundle.rag_used,
                 web_search_used: bundle.web_search_used,
+                intent: intentResultForLog.intent,
               }) + "\n"
             )
           );

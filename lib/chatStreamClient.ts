@@ -13,6 +13,10 @@ export type ChatStreamMeta = {
   serverPlayAudioReason?: string;
   /** Escucha estructurada: invitación opcional al final del turno. */
   listeningInvite?: ListeningInviteStreamPayload;
+  /** Primer chunk NDJSON: si RAG interno aportó contexto. */
+  ragUsed?: boolean | null;
+  /** Primer chunk NDJSON: intent conversacional clasificado en el servidor. */
+  conversationIntent?: string | null;
 };
 
 /**
@@ -30,6 +34,8 @@ export async function consumeChatNdjsonStream(
   let serverPlayAudio: boolean | undefined;
   let serverPlayAudioReason: string | undefined;
   let listeningInvite: ListeningInviteStreamPayload | undefined;
+  let ragUsed: boolean | null | undefined;
+  let conversationIntent: string | null | undefined;
 
   while (true) {
     const { done, value } = await reader.read();
@@ -51,6 +57,12 @@ export async function consumeChatNdjsonStream(
           fullContent = String(obj.error);
           onStreamError?.(fullContent);
           break;
+        }
+        if (typeof obj.rag_used === "boolean") {
+          ragUsed = obj.rag_used;
+        }
+        if (typeof obj.intent === "string") {
+          conversationIntent = obj.intent;
         }
         if (typeof obj.tema === "string" && obj.tema.trim() && typeof window !== "undefined") {
           localStorage.setItem(STORAGE_KEY_ONDA_ULTIMO_TEMA, obj.tema.trim());
@@ -118,5 +130,7 @@ export async function consumeChatNdjsonStream(
     serverPlayAudio,
     serverPlayAudioReason,
     listeningInvite,
+    ragUsed: ragUsed ?? null,
+    conversationIntent: conversationIntent ?? null,
   };
 }

@@ -3,6 +3,8 @@
  * y saneo de contexto externo (artículos, RAG). Sin llamadas extra a LLM.
  */
 
+import { ONDA_LIMIT_MESSAGES } from "@/content/shared";
+
 export type SafetyReason = "jailbreak" | "prompt_leak" | "roleplay_abuse" | "injection";
 
 export interface SafetyCheckResult {
@@ -19,8 +21,7 @@ const RESPONSES: Record<SafetyReason, string> = {
     "Mi forma de trabajar no es un secreto: soy un asistente de alfabetización mediática creado por Precisar. Pero el detalle de mis instrucciones internas lo guardo para mí, como cualquier buen profesional. ¿Qué información necesitas analizar?",
   roleplay_abuse:
     "Solo soy Onda; no puedo cambiar de personaje. Si quieres explorar un tema desde otro ángulo, puedo intentarlo dentro de lo que sé hacer. ¿De qué quieres hablar?",
-  injection:
-    "El contenido que compartiste tiene algo que no puedo procesar de forma segura. ¿Puedes contarme con tus palabras qué quieres saber sobre ese tema?",
+  injection: ONDA_LIMIT_MESSAGES.content_not_processable,
 };
 
 /** Orden de evaluación: primera coincidencia gana. */

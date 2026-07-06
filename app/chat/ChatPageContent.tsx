@@ -559,6 +559,8 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
   const [loading, setLoading] = useState(false);
   /** Anuncio único al terminar el stream (lectores de pantalla; no un chunk por token). */
   const [streamDoneAnnouncement, setStreamDoneAnnouncement] = useState("");
+  /** Metadata RAG del turno en curso (null = sin datos aún; se resetea al enviar). */
+  const [ragUsed, setRagUsed] = useState<boolean | null>(null);
   const prevLoadingForA11yRef = useRef(false);
   const [showPickOndaNotice, setShowPickOndaNotice] = useState(false);
   const [highlightOndaButtons, setHighlightOndaButtons] = useState(false);
@@ -816,6 +818,7 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
     const hasContent = text || attachmentImage || attachmentAudio || !!audioOverride;
     if (!hasContent || loading) return;
     clearPendingContributionInviteTimer();
+    setRagUsed(null);
 
     const prefCmd = parsePreferenceCommand(text, unifiedPrefs);
     if (prefCmd && !attachmentImage && !attachmentAudio && !audioOverride) {
@@ -1001,10 +1004,15 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
                   suggestions: parsed.suggestions?.length ? parsed.suggestions : undefined,
                   listeningInvite:
                     li && (li.expectingExperienceFollowUp || li.show) ? { ...li } : undefined,
+                  ragUsed: streamMeta.ragUsed ?? null,
+                  conversationIntent: streamMeta.conversationIntent ?? null,
                 }
               : msg
           )
         );
+        if (streamMeta.ragUsed !== undefined) {
+          setRagUsed(streamMeta.ragUsed);
+        }
         if (li && (li.expectingExperienceFollowUp || li.show)) {
           contributionPendingRef.current = {
             turnToken: li.turnToken,
@@ -1128,6 +1136,7 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
     const t = text.trim();
     if (!t || loading || ej === null) return;
     clearPendingContributionInviteTimer();
+    setRagUsed(null);
     const chipPref = parsePreferenceCommand(t, unifiedPrefs);
     if (chipPref) {
       const merged = mergePrefs(unifiedPrefs, chipPref.patch);
@@ -1277,10 +1286,15 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
                       liChip && (liChip.expectingExperienceFollowUp || liChip.show)
                         ? { ...liChip }
                         : undefined,
+                    ragUsed: streamMetaChip.ragUsed ?? null,
+                    conversationIntent: streamMetaChip.conversationIntent ?? null,
                   }
                 : msg
             )
           );
+          if (streamMetaChip.ragUsed !== undefined) {
+            setRagUsed(streamMetaChip.ragUsed);
+          }
           if (liChip && (liChip.expectingExperienceFollowUp || liChip.show)) {
             contributionPendingRef.current = {
               turnToken: liChip.turnToken,

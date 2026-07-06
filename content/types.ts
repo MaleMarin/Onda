@@ -40,6 +40,10 @@ export interface Message {
   isContributionInviteBubble?: boolean;
   /** Marca visual cuando el texto se envió también como aporte comunitario opcional. */
   interpretedAsCommunityContribution?: boolean;
+  /** Metadata del stream: RAG interno usado en este turno (undefined = no aplica). */
+  ragUsed?: boolean | null;
+  /** Intent clasificado en servidor para este turno (fact_check, disinformation, etc.). */
+  conversationIntent?: string | null;
 }
 
 export interface EjeConfig {

@@ -421,6 +421,36 @@ export function ChatBubble({
             ✓ {mc.fuenteVerificada}
           </span>
         )}
+        {message.ragUsed === false &&
+          (message.conversationIntent === "fact_check" ||
+            message.conversationIntent === "disinformation") &&
+          message.isGenerated &&
+          !showAsMenuIntroButtons &&
+          !hideActions && (
+            <div
+              role="note"
+              aria-label="Aviso de fuentes"
+              style={{
+                fontSize: "0.75rem",
+                color: t.c.muted,
+                marginTop: 8,
+                fontStyle: "italic",
+                paddingTop: 8,
+                borderTop: `1px solid ${t.c.border}`,
+              }}
+            >
+              Esta respuesta se basa en conocimiento general. Para información verificada de Precisar,
+              visita{" "}
+              <a
+                href="https://precisar.net"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: "inherit", textDecoration: "underline" }}
+              >
+                precisar.net
+              </a>
+            </div>
+          )}
         {showCopyDownload && showActionButtons && (
           <div style={copyDownloadWrap}>
             <span style={copyDownloadHint}>Puedes copiar o descargar la tabla:</span>

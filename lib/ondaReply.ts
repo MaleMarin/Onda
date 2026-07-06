@@ -28,6 +28,7 @@ import {
   ADDON_ONDA_PROFES,
   ADDON_CANAL_WEB,
   REGLAS_MODO_NOTICIA_ENLACE,
+  ONDA_LIMIT_MESSAGES,
 } from "../content/shared";
 import {
   RAW_A_MANO_FULL,
@@ -151,8 +152,7 @@ function getGoogleApiKey(): string | undefined {
 }
 
 /** Cuando todos los proveedores fallan o los circuitos están abiertos. */
-const EMERGENCY_RESPONSE =
-  "En este momento estoy teniendo dificultades técnicas para procesar tu consulta. Por favor, intenta de nuevo en unos minutos. Si el problema persiste, puedes contactar a Precisar en precisar.net";
+const TECHNICAL_ERROR_RESPONSE = ONDA_LIMIT_MESSAGES.technical_error;
 
 /** Fallback síncrono cuando falla el clasificador por IA (regex/keywords). */
 function classifyIntentFallback(
@@ -949,8 +949,8 @@ export async function getOndaReply(
       }
     }
   }
-  if (reply === null) reply = EMERGENCY_RESPONSE;
-  const isEmergency = reply === EMERGENCY_RESPONSE;
+  if (reply === null) reply = TECHNICAL_ERROR_RESPONSE;
+  const isEmergency = reply === TECHNICAL_ERROR_RESPONSE;
   const delight = isEmergency
     ? ""
     : buildDelightMoment(queryIntent.intent, canal, queryIntent.confidence, inclusivePreferences?.locale ?? null);
@@ -1093,7 +1093,7 @@ export async function* getOndaReplyStream(
   }
   if (!streamOk) {
     usedEmergency = true;
-    streamedAcc = EMERGENCY_RESPONSE;
+    streamedAcc = TECHNICAL_ERROR_RESPONSE;
     yield streamedAcc;
   }
   if (!usedEmergency) {
@@ -1274,7 +1274,7 @@ export async function getOndaReplyWithImage(
           ],
           max_tokens: MAX_TOKENS_RESPUESTA,
         });
-        return completion.choices[0].message.content || "Ups, no tengo una respuesta en este momento.";
+        return completion.choices[0].message.content || TECHNICAL_ERROR_RESPONSE;
       });
     });
     return raw + delight;
@@ -1296,12 +1296,12 @@ export async function getOndaReplyWithImage(
             ],
             max_tokens: MAX_TOKENS_RESPUESTA,
           });
-          return fallback.choices[0].message.content || "Ups, no tengo una respuesta en este momento.";
+          return fallback.choices[0].message.content || TECHNICAL_ERROR_RESPONSE;
         });
       });
       return raw + delight;
     } catch {
-      return EMERGENCY_RESPONSE;
+      return TECHNICAL_ERROR_RESPONSE;
     }
   }
 }
