@@ -29,20 +29,19 @@ describe("detectEmotionalLoad", () => {
 describe("buildVoiceBlock", () => {
   it("A_MANO menciona WhatsApp, cotidiano o foco en mensajes/noticias", () => {
     const block = buildVoiceBlock(EjeOnda.A_MANO);
-    expect(block.toLowerCase()).toMatch(/whatsapp|cotidian|familiar|sencill|noticia|mensaj/);
+    expect(block.toLowerCase()).toMatch(/whatsapp|cotidian|familiar|sencill|noticia|mensaj|100 palabras/);
   });
-  it("CIVITA menciona rigor cívico o institucional", () => {
+  it("CIVITA menciona rigor cívico, SIFT o Bellingcat", () => {
     const block = buildVoiceBlock(EjeOnda.CIVITA);
-    expect(block.toLowerCase()).toMatch(/institucional|rigor|cívic|neutralidad|datos/);
+    expect(block.toLowerCase()).toMatch(/sift|bellingcat|institucional|rigor|cívic/);
   });
-  it("PROFES menciona aula o docente", () => {
+  it("PROFES menciona aula, docente o Para trabajar en clase", () => {
     const block = buildVoiceBlock(EjeOnda.PROFES);
-    expect(block.toLowerCase()).toMatch(/aula|docente|estudiante|clase/);
+    expect(block.toLowerCase()).toMatch(/aula|docente|estudiante|clase|para trabajar en clase/);
   });
-  it("incluye puente de escucha (experiencia propia, sin popularidad)", () => {
-    const block = buildVoiceBlock(EjeOnda.A_MANO, "es-LATAM");
-    expect(block.toLowerCase()).toMatch(/puente de escucha|experiencia real/);
-    expect(block.toLowerCase()).not.toMatch(/talleres de alfabetización|mucha gente tiene la misma duda/);
+  it("incluye reglas estrictas de voz diferenciada", () => {
+    const block = buildVoiceBlock(EjeOnda.A_MANO);
+    expect(block.toLowerCase()).toMatch(/reglas estrictas|ejemplo de respuesta correcta/);
   });
   it("los tres bloques son distintos entre sí", () => {
     const a = buildVoiceBlock(EjeOnda.A_MANO);
@@ -114,5 +113,9 @@ describe("buildEmotionalValidation", () => {
     expect(text).not.toMatch(/^[0-9]/);
     expect(text).not.toMatch(/^-/);
     expect(text.length).toBeGreaterThan(20);
+  });
+  it("incluye regla anti-listas después de validación", () => {
+    const text = buildEmotionalValidation("anxiety", EjeOnda.A_MANO);
+    expect(text.toLowerCase()).toMatch(/máximo 2 párrafos|sin listas|sin numeración/);
   });
 });

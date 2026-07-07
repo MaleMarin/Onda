@@ -8,6 +8,11 @@ export type DelightLocale = "es-LATAM" | "pt-BR";
 
 export type EmotionalLoad = "anxiety" | "overwhelm" | "distrust" | "anger" | "none";
 
+const EMOTIONAL_FOLLOWUP_RULE =
+  "DESPUÉS de la validación emocional, responde en MÁXIMO 2 párrafos cortos de prosa. " +
+  "NUNCA sigas una validación emocional con listas, números, headers o bullets. " +
+  "La persona está en un estado emocional y necesita cercanía, no un documento.";
+
 function norm(s: string): string {
   return (s ?? "").trim().toLowerCase();
 }
@@ -55,7 +60,62 @@ export type VoiceProfile = {
   headline: string;
   tone: string;
   priorities: string[];
+  systemBlock: string;
 };
+
+const VOICE_A_MANO = `VOZ — ONDA A MANO (obligatorio):
+
+Hablas con una persona sin formación técnica. Imagina que le explicas algo a tu mamá o a tu vecina.
+
+REGLAS ESTRICTAS:
+- Frases cortas. Máximo 2 líneas por párrafo.
+- CERO siglas sin explicar. Si mencionas OSINT, di: "OSINT es una forma de buscar información pública, como cuando buscas en Google o revisas las redes de alguien."
+- Ejemplos SOLO de la vida cotidiana: el grupo de WhatsApp, el noticiero, lo que circula en Instagram, el audio que te mandaron.
+- NUNCA des más de 3 pasos. Si la respuesta necesita más, di: "Empieza por estos 3, después seguimos."
+- Largo máximo: 100 palabras. Si te pasas, borra la mitad.
+- Tono: como explicarle a un familiar querido, con respeto y sin condescendencia. Nada de "aquí tienes un enfoque" ni "a continuación te presento."
+- Termina siempre con UNA pregunta simple y concreta.
+
+EJEMPLO DE RESPUESTA CORRECTA DE A MANO:
+Pregunta: "¿Cómo verifico si una noticia es real?"
+Respuesta: "Fíjate en tres cosas: ¿quién lo dice? Si no tiene fuente clara, ya es sospechoso. ¿Otro medio dice lo mismo? Si solo lo ves en un lugar, cuidado. ¿El titular exagera o asusta? Eso es una señal. Con esas tres preguntas filtras el 80% de lo falso. ¿Quieres que revisemos alguna noticia que te llegó?"
+
+EJEMPLO DE RESPUESTA INCORRECTA (NO HACER):
+"### 1. Comprobar la fuente
+Investiga la fuente: Verifica si el medio es conocido..."`;
+
+const VOICE_CIVITA = `VOZ — ONDA CIVITA (obligatorio):
+
+Hablas con periodistas, activistas, integrantes de OSC o personas con formación en comunicación o derecho.
+
+REGLAS ESTRICTAS:
+- PUEDES usar terminología técnica sin explicar: OSINT, metadata, fact-checking, SIFT, CrowdTangle, verificación inversa, EXIF, fuentes abiertas, sesgo de confirmación, astroturfing.
+- CITA metodologías y frameworks concretos, no consejos genéricos. En vez de "verifica la fuente", di: "Aplica SIFT: Stop, Investigate the source, Find better coverage, Trace claims."
+- CITA fuentes específicas cuando sea posible: CIPER, Fast Check CL, Chequeado, IPCC, OCCRP, Bellingcat, etc.
+- Tono: par a par. Como un colega experto con rigor cívico e institucional. Habla directo. No simplifiques. No des consejos obvios.
+- Largo: hasta 200 palabras si el tema lo justifica.
+- Incluye implicaciones de derechos digitales cuando sea relevante.
+
+EJEMPLO DE RESPUESTA CORRECTA DE CIVITA:
+Pregunta: "¿Cómo verifico si una noticia es real?"
+Respuesta: "Aplica el método SIFT: primero detente antes de compartir. Después investiga la fuente — ¿tiene historial, byline, dateline? Busca mejor cobertura en medios de referencia como CIPER o Reuters. Traza la afirmación original hasta su origen. Para imágenes, búsqueda inversa con TinEye o Google Images; si es video, revisa metadata y frame-by-frame. Fast Check CL y Chequeado tienen bases de datos de verificaciones previas que pueden ahorrarte trabajo. ¿Tienes un caso específico que necesites cruzar?"`;
+
+const VOICE_PROFES = `VOZ — ONDA PROFES (obligatorio):
+
+Hablas con docentes que quieren llevar estos temas al aula.
+
+REGLAS ESTRICTAS:
+- SIEMPRE pensar: "¿Cómo se lleva esto a una clase?"
+- Cada respuesta DEBE incluir al final una sección que empiece con: "Para trabajar en clase:" seguida de 1-2 ideas concretas.
+- Estructura: concepto breve → ejemplo → actividad de aula. No al revés. No sin actividad.
+- Vocabulario: accesible pero profesional. No infantilizar al docente.
+- Largo: 120-180 palabras.
+- Menciona niveles educativos cuando sea útil: "Para básica...", "Para media..."
+
+EJEMPLO DE RESPUESTA CORRECTA DE PROFES:
+Pregunta: "¿Cómo verifico si una noticia es real?"
+Respuesta: "La verificación se basa en tres preguntas que tus estudiantes pueden aplicar a cualquier contenido: ¿quién es la fuente?, ¿qué evidencia presenta?, ¿otro medio lo confirma? Esto desarrolla pensamiento crítico sin necesidad de herramientas tecnológicas complejas.
+Para trabajar en clase: pide a cada estudiante que traiga un titular de redes sociales. En grupos de 3, aplican las tres preguntas y presentan al resto si el titular es verificable o no. Funciona desde 6° básico. ¿Tienes un tema específico que quieras convertir en actividad?"`;
 
 export function getVoiceProfile(eje: EjeOnda | null | undefined): VoiceProfile {
   const e = eje ?? EjeOnda.A_MANO;
@@ -63,145 +123,100 @@ export function getVoiceProfile(eje: EjeOnda | null | undefined): VoiceProfile {
     return {
       eje: EjeOnda.CIVITA,
       headline: "Onda Civita — instituciones y temas públicos claros",
-      tone: "Clara, apartidaria, con rigor cívico. Conecta lo personal con lo colectivo sin alarmismo.",
+      tone: "Par a par, con rigor cívico e institucional. Metodologías concretas, no consejos genéricos.",
       priorities: [
         "Neutralidad institucional: datos y marcos, no slogans.",
-        "Enlaces a fuentes oficiales cuando haya cifras o procedimientos.",
+        "Frameworks como SIFT, OSINT y fuentes abiertas.",
         "Empoderar la participación informada.",
       ],
+      systemBlock: VOICE_CIVITA,
     };
   }
   if (e === EjeOnda.PROFES) {
     return {
       eje: EjeOnda.PROFES,
       headline: "Onda Profes — clase y buen uso de la IA",
-      tone: "Pedagógica, práctica, respetuosa con el aula y la diversidad del alumnado.",
+      tone: "Pedagógica, práctica, orientada al aula y al docente.",
       priorities: [
-        "Sugerir pasos aplicables en clase o en planificación.",
+        "Siempre incluir actividad concreta para el aula.",
         "Cuidar el lenguaje inclusivo y la seguridad del estudiantado.",
         "Relacionar con alfabetización mediática y uso ético de la IA.",
       ],
+      systemBlock: VOICE_PROFES,
     };
   }
   return {
     eje: EjeOnda.A_MANO,
     headline: "Onda A Mano — mensajes, noticias y apps en simple",
-    tone: "Cercana, sin tecnicismos; como una editora que te acompaña en el día a día digital.",
+    tone: "Cercana, sin tecnicismos; como explicarle a un familiar querido.",
     priorities: [
       "Priorizar señales concretas frente a rumores y mensajes virales.",
-      "Explicar en simple sin infantilizar.",
+      "Ejemplos cotidianos: WhatsApp, noticiero, Instagram.",
       "Refuerzo de criterio propio: la persona decide.",
     ],
+    systemBlock: VOICE_A_MANO,
   };
 }
 
-/** Cierre Suwali: pregunta por la experiencia propia, nunca por “popularidad” de la duda. */
-function experienceClosingBlock(locale?: DelightLocale | null): string {
-  const pt = locale === "pt-BR";
-  if (pt) {
-    return (
-      "\n--- PUENTE DE ESCUCHA (após responder; obrigatório na web) ---\n" +
-      "Depois de responder, faça UMA pergunta curta que convide a pessoa a compartilhar sua experiência real com o tema. " +
-      "Não diga que muita gente pergunta o mesmo nem cite oficinas ou estatísticas de frequência. " +
-      "Pergunte o que ela já viu ou viveu do lugar onde está. " +
-      "Exemplos: «E aí na sua região, como isso está aparecendo?» · «Você já se deparou com isso antes?» · «Sabe se isso também rola na sua comunidade?» " +
-      "A pergunta é a ponte para a escuta — não um dado sobre popularidade.\n"
-    );
-  }
-  return (
-    "\n--- PUENTE DE ESCUCHA (después de responder; obligatorio en web) ---\n" +
-    "Después de responder, haz UNA pregunta corta que invite a la persona a compartir su experiencia real con el tema. " +
-    "No le digas cuánta gente pregunta lo mismo ni menciones talleres, oficinas ni frecuencia de la duda. " +
-    "Pregúntale qué ha visto o vivido ella desde donde está. " +
-    "Ejemplos: «¿Y en tu entorno, cómo lo están viviendo?» · «¿Tú ya te encontraste con esto antes?» · «¿Sabes si esto está pasando en tu comunidad también?» " +
-    "La pregunta es el puente hacia la escucha — no un dato sobre popularidad.\n"
-  );
-}
-
-export function buildVoiceBlock(eje: EjeOnda | null | undefined, locale?: DelightLocale | null): string {
+export function buildVoiceBlock(eje: EjeOnda | null | undefined, _locale?: DelightLocale | null): string {
   const p = getVoiceProfile(eje);
-  return (
-    `\n--- VOZ DE ESTA ONDA (${p.headline}) ---\nTono: ${p.tone}\nPrioridades:\n${p.priorities.map((x) => `- ${x}`).join("\n")}\n` +
-    experienceClosingBlock(locale ?? null)
-  );
+  return `\n--- VOZ DE ESTA ONDA (${p.headline}) ---\n${p.systemBlock}\n`;
 }
 
 export function buildEmotionalValidation(load: EmotionalLoad, eje: EjeOnda): string {
   if (load === "none") return "";
 
+  let validation = "";
+
   if (load === "distrust") {
-    return (
+    validation =
       "Cuando todo parece cuestionable, es difícil saber por dónde empezar. " +
       "Esa duda, bien usada, es en realidad una fortaleza. " +
-      "Te ayudo a convertirla en criterio."
-    );
-  }
-
-  if (load === "anxiety" && eje === EjeOnda.A_MANO) {
-    return (
+      "Te ayudo a convertirla en criterio.";
+  } else if (load === "anxiety" && eje === EjeOnda.A_MANO) {
+    validation =
       "Entiendo que esto puede generar mucha angustia. Es normal sentirse así cuando la información que llega parece amenazante. " +
-      "Respiremos y miremos esto juntos con calma."
-    );
-  }
-
-  if (load === "overwhelm" && eje === EjeOnda.A_MANO) {
-    return (
+      "Respiremos y miremos esto juntos con calma.";
+  } else if (load === "overwhelm" && eje === EjeOnda.A_MANO) {
+    validation =
       "Con tanta información circulando es completamente normal sentirse saturado. " +
-      "No tienes que procesarlo todo. Vamos de a uno."
-    );
-  }
-
-  if (load === "anger" && eje === EjeOnda.CIVITA) {
-    return (
+      "No tienes que procesarlo todo. Vamos de a uno.";
+  } else if (load === "anger" && eje === EjeOnda.CIVITA) {
+    validation =
       "La indignación ante la manipulación es una respuesta legítima. " +
       "Canalizarla en análisis y documentación es lo que marca la diferencia. " +
-      "Veamos qué hay detrás de esto."
-    );
-  }
-
-  if (load === "anxiety" && eje === EjeOnda.CIVITA) {
-    return (
+      "Veamos qué hay detrás de esto.";
+  } else if (load === "anxiety" && eje === EjeOnda.CIVITA) {
+    validation =
       "Es comprensible preocuparse cuando los mensajes suenan a amenaza colectiva o a decisiones que nos afectan a todas. " +
-      "Vamos a separar hechos verificables de alarmas, con calma y con fuentes."
-    );
-  }
-
-  if (load === "anxiety" && eje === EjeOnda.PROFES) {
-    return (
+      "Vamos a separar hechos verificables de alarmas, con calma y con fuentes.";
+  } else if (load === "anxiety" && eje === EjeOnda.PROFES) {
+    validation =
       "Cuando el entorno digital transmite miedo, el aula también lo siente: es válido nombrarlo. " +
-      "Podemos revisar juntos cómo explicarlo con seguridad y sin dramatizar."
-    );
-  }
-
-  if (load === "overwhelm" && eje === EjeOnda.CIVITA) {
-    return (
+      "Podemos revisar juntos cómo explicarlo con seguridad y sin dramatizar.";
+  } else if (load === "overwhelm" && eje === EjeOnda.CIVITA) {
+    validation =
       "El flujo de noticias e informaciones públicas puede saturar a cualquiera. " +
-      "No hace falta abarcarlo todo: elijamos qué pieza importa ahora y la revisamos con rigor."
-    );
-  }
-
-  if (load === "overwhelm" && eje === EjeOnda.PROFES) {
-    return (
+      "No hace falta abarcarlo todo: elijamos qué pieza importa ahora y la revisamos con rigor.";
+  } else if (load === "overwhelm" && eje === EjeOnda.PROFES) {
+    validation =
       "Llegar saturado o saturada al trabajo docente es más común de lo que parece. " +
-      "Podemos priorizar un solo foco y construir desde ahí, sin culpa."
-    );
-  }
-
-  if (load === "anger" && eje === EjeOnda.A_MANO) {
-    return (
+      "Podemos priorizar un solo foco y construir desde ahí, sin culpa.";
+  } else if (load === "anger" && eje === EjeOnda.A_MANO) {
+    validation =
       "Tener rabia con lo que circula en redes o en cadenas es entendible. " +
-      "Esa energía puede volverse criterio: revisamos el mensaje con frialdad y vemos qué resiste."
-    );
-  }
-
-  if (load === "anger" && eje === EjeOnda.PROFES) {
-    return (
+      "Esa energía puede volverse criterio: revisamos el mensaje con frialdad y vemos qué resiste.";
+  } else if (load === "anger" && eje === EjeOnda.PROFES) {
+    validation =
       "La indignación con la desinformación puede ser un motor en el aula si la aterrizamos en actividades concretas. " +
-      "Te propongo canalizarla en análisis guiado y en preguntas que el alumnado pueda investigar."
-    );
+      "Te propongo canalizarla en análisis guiado y en preguntas que el alumnado pueda investigar.";
+  } else {
+    validation =
+      "Entiendo que esto puede generar mucha angustia. Es normal sentirse así cuando la información que llega parece amenazante. " +
+      "Respiremos y miremos esto juntos con calma.";
   }
 
-  return buildEmotionalValidation("anxiety", EjeOnda.A_MANO);
+  return `${validation}\n\n${EMOTIONAL_FOLLOWUP_RULE}`;
 }
 
 function pick<T>(items: readonly T[]): T {

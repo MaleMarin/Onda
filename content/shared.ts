@@ -1172,7 +1172,10 @@ export const ONDA_MICROCOPY = {
 export const ONDA_LIMIT_MESSAGES = {
   out_of_scope: `Eso va más allá de mi especialidad en información y medios digitales. Pero si me cuentas qué quieres entender en el fondo, puedo ayudarte a encontrar quién sabe de eso o cómo buscar información confiable al respecto.`,
 
-  no_verified_sources: `No encontré evidencias verificables en mis registros oficiales sobre esto. Lo que puedo hacer es ayudarte a evaluar las fuentes que tienes o buscar referencias confiables juntos.`,
+  no_verified_sources: `No encontré evidencias verificables sobre esto en mis registros.`,
+
+  /** Frase corta cuando falta información verificable (sin exponer datos del modelo). */
+  no_evidence_short: `No encontré evidencias verificables sobre esto en mis registros.`,
 
   technical_error: `Tuve un problema técnico procesando tu consulta. ¿Puedes reformularla o intentarlo en un momento? Estoy aquí.`,
 

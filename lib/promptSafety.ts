@@ -16,7 +16,7 @@ export interface SafetyCheckResult {
 
 const RESPONSES: Record<SafetyReason, string> = {
   jailbreak:
-    "Eso no va a funcionar conmigo 😄 Soy Onda y estoy aquí para ayudarte a entender mejor la información y los medios. ¿Hay algo concreto en lo que pueda ayudarte hoy?",
+    "Eso no va a funcionar conmigo 😄 Soy Onda y estoy aquí para ayudarte a entender mejor la información y los medios. ¿Hay algo sobre información y medios digitales en lo que pueda ayudarte?",
   prompt_leak:
     "Mi forma de trabajar no es un secreto: soy un asistente de alfabetización mediática creado por Precisar. Pero el detalle de mis instrucciones internas lo guardo para mí, como cualquier buen profesional. ¿Qué información necesitas analizar?",
   roleplay_abuse:
