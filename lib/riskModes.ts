@@ -177,18 +177,18 @@ export type BuildRiskAppendOptions = {
 
 /**
  * Encabezado de PRIORIDAD para el bloque Desinformación 360. Se inyecta antes del bloque
- * obligatorio para que el modelo entienda que esta estructura reemplaza cualquier otro
- * formato sugerido anteriormente.
+ * obligatorio para que el modelo entienda que el formato de 3 párrafos en prosa reemplaza
+ * cualquier otro formato sugerido anteriormente.
  */
 const DISINFO_360_PRIORITY_HEADER_ES = `\n\n--- PRIORIDAD ABSOLUTA: MODO_DESINFORMACION_360 (overrides) ---
-Cuando este modo está activo, la estructura de 9 secciones que sigue REEMPLAZA cualquier otro formato sugerido anteriormente (formato 60 segundos, estructura noticia, formato unificado, recomendaciones de enlaces obligatorios, citado de autoridad, etc.).
+Cuando este modo está activo, el formato de MÁXIMO 3 párrafos en prosa que sigue REEMPLAZA cualquier otro formato sugerido anteriormente (formato 60 segundos, estructura noticia, formato unificado, recomendaciones de enlaces obligatorios, citado de autoridad, estructura numerada de análisis, etc.).
 
-INSTRUCCIÓN DE PRIORIDAD: Si este bloque está presente, debes usar exactamente los 9 títulos indicados. No uses el formato general de 60 segundos, no uses otra estructura, no omitas secciones y no cambies los nombres de los títulos.\n`;
+INSTRUCCIÓN DE PRIORIDAD: Si este bloque está presente, responde en máximo 3 párrafos cortos, sin listas, sin numeración y sin títulos de sección. No uses el formato general de 60 segundos ni ninguna estructura de 9 secciones.\n`;
 
 const DISINFO_360_PRIORITY_HEADER_PT = `\n\n--- PRIORIDADE ABSOLUTA: MODO_DESINFORMACAO_360 (overrides) ---
-Quando este modo está ativo, a estrutura de 9 seções a seguir SUBSTITUI qualquer outro formato sugerido anteriormente (formato 60 segundos, estrutura notícia, formato unificado, recomendações de links obrigatórios, citação de autoridade, etc.).
+Quando este modo está ativo, o formato de NO MÁXIMO 3 parágrafos em prosa a seguir SUBSTITUI qualquer outro formato sugerido anteriormente (formato 60 segundos, estrutura notícia, formato unificado, recomendações de links obrigatórios, citação de autoridade, estrutura numerada de análise, etc.).
 
-INSTRUÇÃO DE PRIORIDADE: Se este bloco estiver presente, deves usar exatamente os 9 títulos indicados. Não uses o formato geral de 60 segundos, não uses outra estrutura, não omitas seções e não mudes os nomes dos títulos.\n`;
+INSTRUÇÃO DE PRIORIDADE: Se este bloco estiver presente, responde em no máximo 3 parágrafos curtos, sem listas, sem numeração e sem títulos de seção. Não uses o formato geral de 60 segundos nem nenhuma estrutura de 9 seções.\n`;
 
 /**
  * Recordatorio explícito que se inyecta junto al bloque Desinformación 360 cuando NO hay
@@ -198,7 +198,7 @@ INSTRUÇÃO DE PRIORIDADE: Se este bloco estiver presente, deves usar exatamente
 const DISINFO_360_NO_EXTERNAL_ES = `\n\n--- NOTA OBLIGATORIA: SIN EVIDENCIA EXTERNA INYECTADA ---
 No hay CONTEXTO_DE_ACTUALIDAD, ni resultados de búsqueda web, ni RAG disponibles para esta consulta.
 Por lo tanto, en este turno:
-- En la sección 5 ("Qué evidencia habría que buscar") y/o 6 ("Qué se puede concluir hoy y qué no") DEBES decir explícitamente, con estas palabras o equivalentes muy cercanas: "No tengo evidencia externa disponible en este momento; puedo ayudarte a revisar señales y qué fuentes consultar."
+- Dentro del párrafo 2 DEBES decir explícitamente, con estas palabras o equivalentes muy cercanas: "No tengo evidencia externa disponible en este momento; puedo ayudarte a revisar señales y qué fuentes consultar."
 - PROHIBIDO citar BBC, Reuters, OMS, CDC, INE, Chequeado, CIPER, AFP, AP, Maldita, Salud con Lupa u otros medios u organismos como si hubieran sido consultados.
 - PROHIBIDO listar nombres de fuentes con enlaces como si fueran fuentes revisadas.
 - Está permitido decir, en lenguaje claro, "fuentes que convendría consultar" (sin enlaces inventados), dejando claro que NO fueron consultadas en esta respuesta.
@@ -207,7 +207,7 @@ Por lo tanto, en este turno:
 const DISINFO_360_NO_EXTERNAL_PT = `\n\n--- NOTA OBRIGATÓRIA: SEM EVIDÊNCIA EXTERNA INJETADA ---
 Não há CONTEXTO_DE_ACTUALIDAD, nem resultados de busca web, nem RAG disponíveis para esta consulta.
 Portanto, neste turno:
-- Na seção 5 ("Que evidência seria preciso buscar") e/ou 6 ("O que dá para concluir hoje e o que não dá") DEVES dizer explicitamente, com estas palavras ou equivalentes muito próximas: "Não tenho evidência externa disponível neste momento; posso te ajudar a revisar sinais e que fontes consultar."
+- Dentro do parágrafo 2 DEVES dizer explicitamente, com estas palavras ou equivalentes muito próximas: "Não tenho evidência externa disponível neste momento; posso te ajudar a revisar sinais e que fontes consultar."
 - PROIBIDO citar BBC, Reuters, OMS, CDC, INE, Chequeado, CIPER, AFP, AP, Maldita, Salud con Lupa ou outros meios/organismos como se tivessem sido consultados.
 - PROIBIDO listar nomes de fontes com links como se fossem fontes revisadas.
 - É permitido dizer, em linguagem clara, "fontes que conviria consultar" (sem links inventados), deixando claro que NÃO foram consultadas nesta resposta.

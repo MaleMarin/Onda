@@ -7,19 +7,15 @@ import {
 import { stripOndaInflightMarkers } from "@/lib/responseFormat";
 
 /**
- * Auditoría de producción mostró 7/7 casos con disinfo360=true pero 0/7 cumplieron las 9
- * secciones obligatorias. La causa raíz fue jerarquía: el bloque 360 quedaba compitiendo con
- * el formato general 60s y la regla de enlaces obligatorios. Estos tests blindan:
- *  - Que `buildRiskSystemAppend(disinfo360=true)` incluye TODOS los 9 títulos exactos.
+ * El modo Desinformación 360 responde en máximo 3 párrafos en prosa (sin 9 secciones).
+ * Estos tests blindan:
+ *  - Que el bloque exige prosa de 3 párrafos y prohíbe estructura numerada.
  *  - Que incluye la INSTRUCCIÓN DE PRIORIDAD que reemplaza otros formatos.
  *  - Que incluye la frase de transparencia obligatoria cuando NO hay contexto externo.
- *  - Que el ensamblaje final pone el bloque 360 DESPUÉS de transparencia/format/locale lock.
- *  - Que `stripOndaInflightMarkers` filtra `[ONDA_SUGERENCIAS:...]` y demás artefactos internos.
- *
- * Si alguno falla tras un cambio: la regresión en el formato 360 está volviendo a colarse.
+ *  - Que `stripOndaInflightMarkers` filtra marcadores internos.
  */
 
-const REQUIRED_TITLES_ES = [
+const FORBIDDEN_SECTION_TITLES_ES = [
   "**1. Qué entendí**",
   "**2. Qué se afirma**",
   "**3. Tipo de afirmación**",
@@ -31,7 +27,7 @@ const REQUIRED_TITLES_ES = [
   "**9. Cómo reconocer este patrón la próxima vez**",
 ];
 
-const REQUIRED_TITLES_PT = [
+const FORBIDDEN_SECTION_TITLES_PT = [
   "**1. O que entendi**",
   "**2. O que se afirma**",
   "**3. Tipo de afirmação**",
@@ -44,36 +40,37 @@ const REQUIRED_TITLES_PT = [
 ];
 
 describe("Desinformación 360 — system prompt enforcement", () => {
-  it("SYSTEM_BLOCK_DISINFO_360_ES contiene los 9 títulos exactos en orden", () => {
-    let lastIndex = -1;
-    for (const title of REQUIRED_TITLES_ES) {
-      const idx = SYSTEM_BLOCK_DISINFO_360_ES.indexOf(title);
-      expect(idx, `Falta título ES: ${title}`).toBeGreaterThan(lastIndex);
-      lastIndex = idx;
+  it("SYSTEM_BLOCK_DISINFO_360_ES exige máximo 3 párrafos en prosa y prohíbe 9 secciones", () => {
+    expect(SYSTEM_BLOCK_DISINFO_360_ES).toMatch(/M[ÁA]XIMO\s+3\s+p[áa]rrafos/i);
+    expect(SYSTEM_BLOCK_DISINFO_360_ES).toMatch(/sin numerar/i);
+    expect(SYSTEM_BLOCK_DISINFO_360_ES).toMatch(/estructura numerada de 9 secciones/i);
+    for (const title of FORBIDDEN_SECTION_TITLES_ES) {
+      expect(SYSTEM_BLOCK_DISINFO_360_ES, `No debe contener: ${title}`).not.toContain(title);
     }
+    expect(SYSTEM_BLOCK_DISINFO_360_ES).not.toContain("Qué entendí");
+    expect(SYSTEM_BLOCK_DISINFO_360_ES).not.toContain("Qué se afirma");
+    expect(SYSTEM_BLOCK_DISINFO_360_ES).not.toContain("Nivel de certeza");
   });
 
-  it("SYSTEM_BLOCK_DISINFO_360_PT contiene los 9 títulos exactos en orden", () => {
-    let lastIndex = -1;
-    for (const title of REQUIRED_TITLES_PT) {
-      const idx = SYSTEM_BLOCK_DISINFO_360_PT.indexOf(title);
-      expect(idx, `Falta título PT: ${title}`).toBeGreaterThan(lastIndex);
-      lastIndex = idx;
+  it("SYSTEM_BLOCK_DISINFO_360_PT exige no máximo 3 parágrafos em prosa e proíbe 9 seções", () => {
+    expect(SYSTEM_BLOCK_DISINFO_360_PT).toMatch(/NO\s+M[ÁA]XIMO\s+3\s+par[áa]grafos/i);
+    expect(SYSTEM_BLOCK_DISINFO_360_PT).toMatch(/sem numerar/i);
+    expect(SYSTEM_BLOCK_DISINFO_360_PT).toMatch(/estrutura numerada de 9 se[çc][õo]es/i);
+    for (const title of FORBIDDEN_SECTION_TITLES_PT) {
+      expect(SYSTEM_BLOCK_DISINFO_360_PT, `Não deve conter: ${title}`).not.toContain(title);
     }
+    expect(SYSTEM_BLOCK_DISINFO_360_PT).not.toContain("O que entendi");
+    expect(SYSTEM_BLOCK_DISINFO_360_PT).not.toContain("Nível de certeza");
   });
 
   it("SYSTEM_BLOCK_DISINFO_360_ES contiene INSTRUCCIÓN DE PRIORIDAD", () => {
     expect(SYSTEM_BLOCK_DISINFO_360_ES).toMatch(/INSTRUCCI[OÓ]N\s+DE\s+PRIORIDAD/i);
-    expect(SYSTEM_BLOCK_DISINFO_360_ES).toMatch(
-      /esta\s+estructura\s+reemplaza\s+cualquier\s+otro\s+formato/i
-    );
+    expect(SYSTEM_BLOCK_DISINFO_360_ES).toMatch(/REPLAZA\s+cualquier\s+otro\s+formato/i);
   });
 
   it("SYSTEM_BLOCK_DISINFO_360_PT contiene INSTRUÇÃO DE PRIORIDADE", () => {
     expect(SYSTEM_BLOCK_DISINFO_360_PT).toMatch(/INSTRU[CÇ][AÃ]O\s+DE\s+PRIORIDADE/i);
-    expect(SYSTEM_BLOCK_DISINFO_360_PT).toMatch(
-      /esta\s+estrutura\s+substitui\s+qualquer\s+outro\s+formato/i
-    );
+    expect(SYSTEM_BLOCK_DISINFO_360_PT).toMatch(/SUBSTITUI\s+qualquer\s+outro\s+formato/i);
   });
 
   it("SYSTEM_BLOCK_DISINFO_360_ES contiene un ejemplo one-shot con el caso 'bancos'", () => {
@@ -86,7 +83,7 @@ describe("Desinformación 360 — system prompt enforcement", () => {
     expect(SYSTEM_BLOCK_DISINFO_360_PT).toMatch(/fechar\s+todos\s+os\s+bancos/i);
   });
 
-  it("buildRiskSystemAppend con disinfo360=true (sin contexto externo) inyecta los 9 títulos + prioridad + transparencia", () => {
+  it("buildRiskSystemAppend con disinfo360=true (sin contexto externo) inyecta prosa 3 párrafos + prioridad + transparencia", () => {
     const flags = computeRiskPipelineFlags(
       "Me llegó un audio que dice que mañana cerrarán todos los bancos. ¿Es verdad?",
       false,
@@ -97,14 +94,14 @@ describe("Desinformación 360 — system prompt enforcement", () => {
 
     const appended = buildRiskSystemAppend(flags, "es-LATAM", { hasExternalContext: false });
 
-    for (const title of REQUIRED_TITLES_ES) {
-      expect(appended, `Falta título tras append: ${title}`).toContain(title);
-    }
-
+    expect(appended).toMatch(/M[ÁA]XIMO\s+3\s+p[áa]rrafos/i);
     expect(appended).toMatch(/PRIORIDAD\s+ABSOLUTA:\s+MODO_DESINFORMACION_360/i);
     expect(appended).toMatch(/INSTRUCCI[OÓ]N\s+DE\s+PRIORIDAD/i);
     expect(appended).toMatch(/No\s+tengo\s+evidencia\s+externa\s+disponible/i);
     expect(appended).toMatch(/PROHIBIDO\s+citar\s+BBC,\s+Reuters/i);
+    for (const title of FORBIDDEN_SECTION_TITLES_ES) {
+      expect(appended, `No debe inyectar: ${title}`).not.toContain(title);
+    }
   });
 
   it("buildRiskSystemAppend con disinfo360=true Y contexto externo NO inyecta nota anti-fuentes", () => {
@@ -123,7 +120,7 @@ describe("Desinformación 360 — system prompt enforcement", () => {
     expect(appended).not.toMatch(/SIN\s+EVIDENCIA\s+EXTERNA\s+INYECTADA/i);
   });
 
-  it("buildRiskSystemAppend PT con disinfo360=true inyecta los 9 títulos PT + prioridade", () => {
+  it("buildRiskSystemAppend PT con disinfo360=true inyecta prosa 3 parágrafos + prioridade", () => {
     const flags = computeRiskPipelineFlags(
       "Me chegou um áudio dizendo que amanhã vão fechar todos os bancos. É verdade?",
       false,
@@ -134,13 +131,13 @@ describe("Desinformación 360 — system prompt enforcement", () => {
     expect(flags.disinfo360).toBe(true);
 
     const appended = buildRiskSystemAppend(flags, "pt-BR", { hasExternalContext: false });
-    for (const title of REQUIRED_TITLES_PT) {
-      expect(appended, `Falta título PT tras append: ${title}`).toContain(title);
-    }
-
+    expect(appended).toMatch(/NO\s+M[ÁA]XIMO\s+3\s+par[áa]grafos/i);
     expect(appended).toMatch(/PRIORIDADE\s+ABSOLUTA:\s+MODO_DESINFORMACAO_360/i);
     expect(appended).toMatch(/INSTRU[CÇ][AÃ]O\s+DE\s+PRIORIDADE/i);
     expect(appended).toMatch(/N[aã]o\s+tenho\s+evid[eê]ncia\s+externa/i);
+    for (const title of FORBIDDEN_SECTION_TITLES_PT) {
+      expect(appended, `Não deve injetar: ${title}`).not.toContain(title);
+    }
   });
 
   it("buildRiskSystemAppend con disinfo360=false NO inyecta el bloque 360", () => {
@@ -154,7 +151,7 @@ describe("Desinformación 360 — system prompt enforcement", () => {
       "es-LATAM",
       { hasExternalContext: false }
     );
-    expect(appended).not.toContain("**1. Qué entendí**");
+    expect(appended).not.toContain("MODO_DESINFORMACION_360");
     expect(appended).not.toMatch(/PRIORIDAD\s+ABSOLUTA/i);
   });
 });

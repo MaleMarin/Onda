@@ -10,8 +10,10 @@ import { shouldInviteContribution } from "@/lib/onda/contributions/shouldInviteC
 /** Burbuja opcional en web cuando la persona no respondió con experiencia al puente de Onda. */
 export function buildSoftListeningNudgeInvite(locale: string | undefined): ListeningInviteStreamPayload {
   const isPt = String(locale || "").toLowerCase().startsWith("pt");
+  // TODO: Puente de escucha desactivado por confusión UX.
+  // Reactivar cuando se defina cuándo y cómo mostrarlo.
   return {
-    show: true,
+    show: false,
     inviteVariant: "soft_nudge",
     prompt: isPt
       ? "Se em algum momento quiser nos contar o que acontece por aí, estamos ouvindo."

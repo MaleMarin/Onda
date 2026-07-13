@@ -29,7 +29,6 @@ import { EjeOnda, type Message } from "@/content/types";
 import { parseResponseFormat, stripOndaInflightMarkers } from "@/lib/responseFormat";
 import { consumeChatNdjsonStream, type ChatStreamMeta } from "@/lib/chatStreamClient";
 import { stripListeningInviteEchoFromText } from "@/lib/stripListeningInviteEcho";
-import { buildSoftListeningNudgeInvite } from "@/lib/onda/contributions/web";
 import {
   ejeOndaToContributionSlug,
   type ContributionType,
@@ -660,20 +659,12 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
   );
 
   const scheduleSoftListeningNudgeBubble = useCallback(
-    (locale: string) => {
-      clearPendingContributionInviteTimer();
-      const inviteCopy = buildSoftListeningNudgeInvite(locale);
-      pendingContributionInviteTimerRef.current = window.setTimeout(() => {
-        pendingContributionInviteTimerRef.current = null;
-        const bubble = newMessage("model", "\u00a0", {
-          isContributionInviteBubble: true,
-          listeningInvite: inviteCopy,
-          isGenerated: false,
-        });
-        setMessages((m) => [...m, bubble]);
-      }, 1500);
+    (_locale: string) => {
+      // TODO: Puente de escucha desactivado por confusión UX.
+      // Reactivar cuando se defina cuándo y cómo mostrarlo.
+      // Antes: buildSoftListeningNudgeInvite(locale) + burbuja ContributionPrompt.
     },
-    [clearPendingContributionInviteTimer]
+    []
   );
 
   useLayoutEffect(() => {
