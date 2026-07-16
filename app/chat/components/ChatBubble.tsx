@@ -281,9 +281,11 @@ export function ChatBubble({
     fontWeight: 500,
   };
 
+  // soft_nudge / puente "estamos escuchando" eliminado: no renderizar esa burbuja.
   if (
     message.isContributionInviteBubble &&
     message.listeningInvite?.show &&
+    message.listeningInvite.inviteVariant !== "soft_nudge" &&
     onRemoveContributionInviteBubble &&
     contributionConversationId &&
     contributionEjeSlug
@@ -305,6 +307,9 @@ export function ChatBubble({
         )}
       </div>
     );
+  }
+  if (message.isContributionInviteBubble) {
+    return null;
   }
 
   const copyDownloadWrap: CSSProperties = {

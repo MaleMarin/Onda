@@ -642,7 +642,8 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
 
   const scheduleContributionInviteBubble = useCallback(
     (invite: ListeningInviteStreamPayload) => {
-      if (!invite?.show) return;
+      // soft_nudge / puente "estamos escuchando" eliminado por confusión UX.
+      if (!invite?.show || invite.inviteVariant === "soft_nudge") return;
       clearPendingContributionInviteTimer();
       const inviteCopy = { ...invite };
       pendingContributionInviteTimerRef.current = window.setTimeout(() => {
@@ -656,15 +657,6 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
       }, 1500);
     },
     [clearPendingContributionInviteTimer]
-  );
-
-  const scheduleSoftListeningNudgeBubble = useCallback(
-    (_locale: string) => {
-      // TODO: Puente de escucha desactivado por confusión UX.
-      // Reactivar cuando se defina cuándo y cómo mostrarlo.
-      // Antes: buildSoftListeningNudgeInvite(locale) + burbuja ContributionPrompt.
-    },
-    []
   );
 
   useLayoutEffect(() => {
@@ -865,15 +857,11 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
       .filter((m) => !m.isContributionInviteBubble)
       .map((m) => ({ role: m.role, content: m.content }));
     const pendingSnap = contributionPendingRef.current;
-    const hadExperienceListenPending = !!pendingSnap;
     let userContributionInterpreted = false;
     if (pendingSnap && text.trim() && !imageToSend && !audioToSend) {
-      if (isShortAcknowledgement(text)) {
+      if (isShortAcknowledgement(text) || looksLikeNewStandaloneQuestion(text)) {
+        // Puente soft_nudge eliminado: no mostrar burbuja "estamos escuchando".
         contributionPendingRef.current = null;
-        if (hadExperienceListenPending) scheduleSoftListeningNudgeBubble(requestLocale);
-      } else if (looksLikeNewStandaloneQuestion(text)) {
-        contributionPendingRef.current = null;
-        if (hadExperienceListenPending) scheduleSoftListeningNudgeBubble(requestLocale);
       } else if (isExperienceContributionCandidate(text)) {
         userContributionInterpreted = true;
         contributionPendingRef.current = null;
@@ -1013,6 +1001,7 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
             locale: li.locale,
             suggestedContributionType: li.suggestedContributionType,
           };
+          // Nunca programar soft_nudge ni puente de escucha en web.
           if (li.show && li.inviteVariant !== "soft_nudge") {
             scheduleContributionInviteBubble(li);
           }
@@ -1157,15 +1146,11 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
       .filter((m) => !m.isContributionInviteBubble)
       .map((m) => ({ role: m.role, content: m.content }));
     const pendingChip = contributionPendingRef.current;
-    const hadChipExperienceListenPending = !!pendingChip;
     let chipContributionInterpreted = false;
     if (pendingChip && t.trim()) {
-      if (isShortAcknowledgement(t)) {
+      if (isShortAcknowledgement(t) || looksLikeNewStandaloneQuestion(t)) {
+        // Puente soft_nudge eliminado: no mostrar burbuja "estamos escuchando".
         contributionPendingRef.current = null;
-        if (hadChipExperienceListenPending) scheduleSoftListeningNudgeBubble(requestLocaleChip);
-      } else if (looksLikeNewStandaloneQuestion(t)) {
-        contributionPendingRef.current = null;
-        if (hadChipExperienceListenPending) scheduleSoftListeningNudgeBubble(requestLocaleChip);
       } else if (isExperienceContributionCandidate(t)) {
         chipContributionInterpreted = true;
         contributionPendingRef.current = null;

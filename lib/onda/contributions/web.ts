@@ -7,26 +7,6 @@ import type { ContributionChannel, ListeningInviteStreamPayload } from "@/lib/on
 import { ejeOndaToContributionSlug, type ContributionType } from "@/lib/onda/contributions/types";
 import { shouldInviteContribution } from "@/lib/onda/contributions/shouldInviteContribution";
 
-/** Burbuja opcional en web cuando la persona no respondió con experiencia al puente de Onda. */
-export function buildSoftListeningNudgeInvite(locale: string | undefined): ListeningInviteStreamPayload {
-  const isPt = String(locale || "").toLowerCase().startsWith("pt");
-  // TODO: Puente de escucha desactivado por confusión UX.
-  // Reactivar cuando se defina cuándo y cómo mostrarlo.
-  return {
-    show: false,
-    inviteVariant: "soft_nudge",
-    prompt: isPt
-      ? "Se em algum momento quiser nos contar o que acontece por aí, estamos ouvindo."
-      : "Si en algún momento quieres contarnos qué pasa por allá, estamos escuchando.",
-    turnToken: typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `soft-${Date.now()}`,
-    userEcho: "",
-    assistantSummary: "",
-    topicHint: "escucha_comunitaria",
-    locale: isPt ? "pt-BR" : "es-LATAM",
-    suggestedContributionType: "experiencia",
-  };
-}
-
 function truncate(s: string, max: number): string {
   const t = (s ?? "").replace(/\s+/g, " ").trim();
   if (t.length <= max) return t;
