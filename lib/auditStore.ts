@@ -8,6 +8,8 @@
  * `getMetrics` ignora entradas ya vencidas.
  */
 
+import { createHash } from "crypto";
+
 const KV_LIST_MAX = 50_000;
 const USAGE_KEY = "onda:usage";
 const FEEDBACK_KEY = "onda:feedback";
@@ -48,12 +50,70 @@ export type FeedbackPayload = {
 
 export type ErrorPayload = {
   source: "chat" | "whatsapp";
+  /** Solo con ONDA_AUDIT_DEBUG=1 fuera de producción. */
   userMessage?: string;
   botResponse?: string;
   error?: string;
+  route?: string;
+  requestId?: string;
+  sessionHash?: string;
+  userMessageLen?: number;
+  botResponseLen?: number;
   ts: string;
   expiresAt?: number;
 };
+
+export type ErrorRecordInput = Omit<ErrorPayload, "ts" | "expiresAt"> & {
+  sessionId?: string;
+};
+
+function hashSessionId(sessionId?: string): string | undefined {
+  const raw = sessionId?.trim();
+  if (!raw) return undefined;
+  return createHash("sha256").update(raw).digest("hex").slice(0, 16);
+}
+
+function keepErrorTextDetail(): boolean {
+  return process.env.NODE_ENV !== "production" && process.env.ONDA_AUDIT_DEBUG === "1";
+}
+
+function clipTechnicalError(error?: string): string | undefined {
+  if (typeof error !== "string") return undefined;
+  const t = error.replace(/\s+/g, " ").trim();
+  if (!t) return undefined;
+  return t.slice(0, 160);
+}
+
+/**
+ * Quita texto de usuario/bot salvo flag explícito de desarrollo.
+ * En producción nunca persiste ni deja userMessage/botResponse.
+ */
+export function sanitizeErrorRecord(payload: ErrorRecordInput): ErrorRecordInput {
+  const userLen =
+    typeof payload.userMessageLen === "number"
+      ? payload.userMessageLen
+      : typeof payload.userMessage === "string"
+        ? payload.userMessage.length
+        : undefined;
+  const botLen =
+    typeof payload.botResponseLen === "number"
+      ? payload.botResponseLen
+      : typeof payload.botResponse === "string"
+        ? payload.botResponse.length
+        : undefined;
+  const debug = keepErrorTextDetail();
+  return {
+    source: payload.source,
+    error: clipTechnicalError(payload.error),
+    route: typeof payload.route === "string" ? payload.route.slice(0, 80) : undefined,
+    requestId: typeof payload.requestId === "string" ? payload.requestId.slice(0, 80) : undefined,
+    sessionHash: payload.sessionHash || hashSessionId(payload.sessionId),
+    userMessageLen: userLen,
+    botResponseLen: botLen,
+    ...(debug && payload.userMessage ? { userMessage: payload.userMessage.slice(0, 500) } : {}),
+    ...(debug && payload.botResponse ? { botResponse: payload.botResponse.slice(0, 500) } : {}),
+  };
+}
 
 /** Log opcional de conversación (integración futura o cliente que lo invoque). */
 export type ConversationLogPayload = {
@@ -168,9 +228,10 @@ export async function recordFeedback(payload: Omit<FeedbackPayload, "ts" | "expi
   }
 }
 
-export async function recordError(payload: Omit<ErrorPayload, "ts" | "expiresAt">): Promise<void> {
+export async function recordError(payload: ErrorRecordInput): Promise<void> {
+  const sanitized = sanitizeErrorRecord(payload);
   const full: ErrorPayload = {
-    ...payload,
+    ...sanitized,
     ts: new Date().toISOString(),
     expiresAt: nowMs() + TTL_MS.error,
   };

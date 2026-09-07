@@ -5,8 +5,8 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * POST { "source": "chat" | "whatsapp", "userMessage"?, "botResponse"?, "error"? }
- * Registra fallos para auditoría: cuando el bot falla o el usuario califica negativamente.
+ * POST { source, error?, sessionId?, requestId? }
+ * No persiste texto de usuario en producción.
  */
 export async function POST(req: Request) {
   try {
@@ -18,7 +18,19 @@ export async function POST(req: Request) {
     const userMessage = typeof body?.userMessage === "string" ? body.userMessage : undefined;
     const botResponse = typeof body?.botResponse === "string" ? body.botResponse : undefined;
     const error = typeof body?.error === "string" ? body.error : undefined;
-    await recordError({ source, userMessage, botResponse, error });
+    const sessionId = typeof body?.sessionId === "string" ? body.sessionId : undefined;
+    const requestId = typeof body?.requestId === "string" ? body.requestId : undefined;
+    await recordError({
+      source,
+      error,
+      sessionId,
+      requestId,
+      route: "/api/errors",
+      userMessageLen: userMessage?.length,
+      botResponseLen: botResponse?.length,
+      userMessage,
+      botResponse,
+    });
     return new NextResponse(null, { status: 204 });
   } catch {
     return NextResponse.json({ error: "Error" }, { status: 500 });

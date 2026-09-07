@@ -984,6 +984,7 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
                   listeningInvite:
                     li && (li.expectingExperienceFollowUp || li.show) ? { ...li } : undefined,
                   ragUsed: streamMeta.ragUsed ?? null,
+                  webSearchUsed: streamMeta.webSearchUsed ?? null,
                   conversationIntent: streamMeta.conversationIntent ?? null,
                 }
               : msg
@@ -1102,8 +1103,10 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           source: "chat",
-          userMessage: userMessage || undefined,
-          botResponse: botMsg?.content ?? undefined,
+          sessionId: conversationId || undefined,
+          error: "feedback_down",
+          userMessageLen: userMessage.length || undefined,
+          botResponseLen: botMsg?.content?.length,
         }),
         keepalive: true,
       }).catch(() => {});
@@ -1263,6 +1266,7 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
                         ? { ...liChip }
                         : undefined,
                     ragUsed: streamMetaChip.ragUsed ?? null,
+                    webSearchUsed: streamMetaChip.webSearchUsed ?? null,
                     conversationIntent: streamMetaChip.conversationIntent ?? null,
                   }
                 : msg
@@ -2536,7 +2540,10 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
                 padding: "0 12px",
               }}
             >
-              {mc.precisarFooterTagline}
+              {mc.precisarFooterTagline}{" "}
+              <a href="/privacidad" style={{ color: "inherit", textDecoration: "underline" }}>
+                {mc.privacyPolicyLink}
+              </a>
             </p>
           </div>
         </div>

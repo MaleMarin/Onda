@@ -14,6 +14,11 @@ function truncate(s: string, max: number): string {
   return s.slice(0, max).trim() + "…";
 }
 
+/** True si hay al menos una clave de búsqueda en vivo. No expone valores. */
+export function isWebSearchConfigured(): boolean {
+  return Boolean(process.env.TAVILY_API_KEY?.trim() || process.env.SERPER_API_KEY?.trim());
+}
+
 /**
  * Busca en la web y devuelve un texto para inyectar en el prompt.
  * Prioridad: TAVILY_API_KEY > SERPER_API_KEY.

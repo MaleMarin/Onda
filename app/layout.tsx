@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   metadataBase: new URL(resolveOndaMetadataBaseUrl()),
   title: "Onda - Asistente Digital Precisar",
   description:
-    "Webhook WhatsApp para ONDA. Asistente de Alfabetización Mediática e Informacional (AMI).",
+    "Onda es el asistente educativo de Precisar para fortalecer criterio digital, comprender contenidos digitales y compartir con más responsabilidad.",
   icons: {
     icon: [
       { url: "/favicon-onda.png", type: "image/png", sizes: "512x512" },

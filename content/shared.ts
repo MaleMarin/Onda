@@ -35,7 +35,7 @@ export const EJE_CONFIGS: Record<EjeOnda, EjeConfig> = {
     bgColor: "bg-green-50",
     icon: "",
     description:
-      "Para entender la vida pública sin sesgos: instituciones, decisiones y contexto en lenguaje claro.",
+      "Para entender la vida pública con criterios claros, contexto y fuentes cuando estén disponibles: instituciones, decisiones y lenguaje claro.",
     placeholder:
       "Exploremos cómo funcionan las instituciones o conceptos de economía...",
   },
@@ -297,7 +297,7 @@ export function migrateMainWelcomeClosingCopy(text: string): string {
 
 const MAIN_WELCOME_BODY = `Te doy la bienvenida a Onda 🌊, un espacio diseñado para navegar el mundo digital con menos ruido 🔊 y mucho más criterio 🧠.
 
-Mi objetivo es acompañarte a entender mejor todo lo que ves, escuchas y recibes a diario. Aquí exploramos la información de forma simple y objetiva, siempre bajo el rigor de fuentes confiables y sin sesgos personales.
+Mi objetivo es acompañarte a entender mejor todo lo que ves, escuchas y recibes a diario. Aquí exploramos la información de forma simple y objetiva, con criterios claros, contexto y fuentes cuando estén disponibles.
 
 Puedes enviarme lo que necesites analizar en el formato que prefieras: 📜 Textos · 🎙️ Audios · 🖼️ Imágenes · 🔗 Links
 
@@ -312,7 +312,7 @@ export function getMainWelcome(): string {
 /** @deprecated Usar getMainWelcome() para que el saludo dependa de la hora. Se mantiene por compatibilidad. */
 export const MAIN_WELCOME = `¡Hola! Te doy la bienvenida a Onda 🌊, un espacio diseñado para navegar el mundo digital con menos ruido 🔊 y mucho más criterio 🧠.
 
-Mi objetivo es acompañarte a entender mejor todo lo que ves, escuchas y recibes a diario. Aquí exploramos la información de forma simple y objetiva, siempre bajo el rigor de fuentes confiables y sin sesgos personales.
+Mi objetivo es acompañarte a entender mejor todo lo que ves, escuchas y recibes a diario. Aquí exploramos la información de forma simple y objetiva, con criterios claros, contexto y fuentes cuando estén disponibles.
 
 Puedes enviarme lo que necesites analizar en el formato que prefieras: 📜 Textos · 🎙️ Audios · 🖼️ Imágenes · 🔗 Links
 
@@ -558,7 +558,7 @@ export const BLINDAJE_WHATSAPP_POR_EJE: Record<EjeOnda, string> = {
 `,
   [EjeOnda.CIVITA]: `
 🟢 WhatsApp - Onda Civita (Ciudadanía y geopolítica):
-- Ante política: "Soy un bot de consulta institucional. Mi labor es explicar cómo funciona el mundo y sus leyes, sin sesgos ni opiniones personales."
+- Ante política: "Soy un bot de consulta institucional. Mi labor es explicar cómo funciona el mundo y sus leyes, con criterios claros y sin opiniones personales."
 - Derechos Humanos: "Todas mis respuestas se basan estrictamente en el respeto a los Derechos Humanos y Digitales. Es mi prioridad absoluta."
 - Complejidad: "Este tema geopolítico es complejo. Aquí tienes los hechos verificados para que formes tu propio criterio."
 `,
@@ -1165,7 +1165,7 @@ export const ONDA_MICROCOPY = {
   menuIntroAtajos: ["Tengo otra pregunta", "Quiero contarte algo", "Busco información sobre un tema"] as const,
   compartir: "Compartir",
   compartirCopiado: "Copiado",
-  fuenteVerificada: "Fuente verificada por Onda",
+  fuenteVerificada: "Fuente consultada en esta respuesta",
 } as const;
 
 /** Mensajes de límite (tono Onda, español neutro) para rutas y fallbacks controlados. */

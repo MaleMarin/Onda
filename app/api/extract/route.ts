@@ -1,8 +1,25 @@
 import { NextResponse } from "next/server";
-import { extractArticle } from "@/lib/extractArticle";
+import { extractArticle, type ExtractError } from "@/lib/extractArticle";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+function statusForExtractError(error: ExtractError): number {
+  switch (error) {
+    case "invalid_url":
+      return 400;
+    case "blocked_url":
+      return 403;
+    case "too_large":
+      return 413;
+    case "timeout":
+      return 504;
+    case "fetch_failed":
+      return 502;
+    default:
+      return 400;
+  }
+}
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -18,7 +35,7 @@ export async function GET(req: Request) {
         ...(result.host != null ? { host: result.host } : {}),
         ...(result.meta != null ? { meta: result.meta } : {}),
       },
-      { status: result.error === "invalid_url" ? 400 : 500 }
+      { status: statusForExtractError(result.error) }
     );
   }
 

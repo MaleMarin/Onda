@@ -16,7 +16,7 @@ import {
 import { searchPrivateDocs } from "../../../../lib/firebaseRag";
 import { getRagContext } from "../../../../lib/rag";
 import { parseResponseFormat, wantsSources, type ParseResponseFormatOptions } from "../../../../lib/responseFormat";
-import { searchWeb } from "../../../../lib/searchWeb";
+import { isWebSearchConfigured, searchWeb } from "../../../../lib/searchWeb";
 import { transcribeAudio, TRANSCRIBE_ERROR } from "../../../../lib/transcribe";
 import { extractArticle } from "../../../../lib/extractArticle";
 import { generateImageFromText } from "../../../../lib/generateImage";
@@ -505,18 +505,21 @@ export async function POST(req: Request) {
           const webEmpty = !webContext?.trim();
 
           const factCheckFootnote =
-            intentResult.intent === "fact_check" && ragEmpty
-              ? `\n\n--- NOTA DEL SISTEMA (RAG interno vacío, verificación) ---\nNo hay fragmentos recuperados de la base documental interna para esta consulta. Al final de tu respuesta, añade una línea breve como nota al pie: indica que la verificación se apoya en búsqueda abierta y conocimiento general, no en documentos internos de Precisar, y sugiere contrastar con fuentes oficiales.\n`
+            intentResult.intent === "fact_check" && ragEmpty && !webEmpty
+              ? `\n\n--- NOTA DEL SISTEMA (RAG interno vacío, verificación) ---\nNo hay fragmentos recuperados de la base documental interna para esta consulta. Indica que te apoyas en el contexto web inyectado y en conocimiento general, no en documentos internos de Precisar.\n`
               : "";
 
-          /** Modo Desinfo 360 sin clave de búsqueda ni RAG: que el modelo lo declare con transparencia. */
-          const disinfoNoEvidenceFootnote =
-            (riskPipeline.disinfo360 || disinfoIntent) && webEmpty && ragEmpty
-              ? `\n\n--- NOTA DEL SISTEMA (Desinformación 360 sin evidencia externa) ---\nNo hay búsqueda web ni RAG interno disponibles para esta consulta. En la sección "Qué se puede concluir hoy y qué no", indica de forma transparente: "No tengo evidencia externa disponible en este momento; puedo ayudarte a revisar señales y qué fuentes consultar." NO inventes fuentes ni cifras.\n`
+          const noExternalEvidenceFootnote =
+            shouldSearch && webEmpty
+              ? `\n\n--- NOTA DEL SISTEMA (sin evidencia externa) ---\n${
+                  isWebSearchConfigured()
+                    ? "La búsqueda web no devolvió resultados utilizables."
+                    : "No hay clave de búsqueda web configurada en este entorno."
+                } Di con transparencia, sin inventar fuentes consultadas: "No tengo evidencia externa disponible en este momento; puedo ayudarte a revisar señales y qué fuentes consultar." Si mencionas sitios, son sugerencias de consulta, no fuentes que hayas leído en este turno.\n`
               : "";
 
           const base = [webContext, rag, privateDocs].filter(Boolean).join("\n\n");
-          const combined = (base + factCheckFootnote + disinfoNoEvidenceFootnote).trim();
+          const combined = (base + factCheckFootnote + noExternalEvidenceFootnote).trim();
 
           return {
             extraContext: combined || undefined,

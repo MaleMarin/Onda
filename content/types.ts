@@ -42,6 +42,8 @@ export interface Message {
   interpretedAsCommunityContribution?: boolean;
   /** Metadata del stream: RAG interno usado en este turno (undefined = no aplica). */
   ragUsed?: boolean | null;
+  /** Metadata del stream: búsqueda web (Tavily/Serper) aportó contexto. */
+  webSearchUsed?: boolean | null;
   /** Intent clasificado en servidor para este turno (fact_check, disinformation, etc.). */
   conversationIntent?: string | null;
 }

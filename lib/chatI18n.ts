@@ -226,6 +226,7 @@ export type ChatUiMicrocopy = {
   compartir: string;
   compartirCopiado: string;
   fuenteVerificada: string;
+  privacyPolicyLink: string;
   clearConversation: string;
   clearConversationTitle: string;
   backHome: string;
@@ -305,7 +306,8 @@ const CHAT_UI_ES: ChatUiMicrocopy = {
   menuIntroAtajos: ["Tengo otra pregunta", "Quiero contarte algo", "Busco información sobre un tema"] as const,
   compartir: "Compartir",
   compartirCopiado: "Copiado",
-  fuenteVerificada: "Fuente verificada por Onda",
+  fuenteVerificada: "Fuente consultada en esta respuesta",
+  privacyPolicyLink: "Privacidad",
   clearConversation: "Borrar esta conversación",
   clearConversationTitle: "Elimina el historial de esta conversación de tu dispositivo",
   backHome: "🏠 Volver al inicio",
@@ -367,7 +369,8 @@ const CHAT_UI_PT: ChatUiMicrocopy = {
   menuIntroAtajos: ["Tenho outra pergunta", "Quero te contar algo", "Busco informação sobre um tema"] as const,
   compartir: "Compartilhar",
   compartirCopiado: "Copiado",
-  fuenteVerificada: "Fonte verificada pela Onda",
+  fuenteVerificada: "Fonte consultada nesta resposta",
+  privacyPolicyLink: "Privacidade",
   clearConversation: "Apagar esta conversa",
   clearConversationTitle: "Remove o histórico desta conversa do seu dispositivo",
   backHome: "🏠 Voltar ao início",
@@ -445,7 +448,7 @@ const EJE_CARD_SUBTITLE_ES: Record<EjeOnda, string> = {
   [EjeOnda.A_MANO]:
     "Para aterrizar lo digital sin enredos: mensajes, noticias, audios y dudas del día a día.",
   [EjeOnda.CIVITA]:
-    "Para entender la vida pública sin sesgos: instituciones, decisiones y contexto en lenguaje claro.",
+    "Para entender la vida pública con criterios claros, contexto y fuentes cuando estén disponibles: instituciones, decisiones y lenguaje claro.",
   [EjeOnda.PROFES]:
     "Para enseñar con IA crítica: actividades, rúbricas y herramientas sin perder el criterio.",
 };

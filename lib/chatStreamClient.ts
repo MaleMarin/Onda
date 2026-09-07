@@ -15,6 +15,8 @@ export type ChatStreamMeta = {
   listeningInvite?: ListeningInviteStreamPayload;
   /** Primer chunk NDJSON: si RAG interno aportó contexto. */
   ragUsed?: boolean | null;
+  /** Primer chunk NDJSON: si la búsqueda web aportó contexto. */
+  webSearchUsed?: boolean | null;
   /** Primer chunk NDJSON: intent conversacional clasificado en el servidor. */
   conversationIntent?: string | null;
 };
@@ -35,6 +37,7 @@ export async function consumeChatNdjsonStream(
   let serverPlayAudioReason: string | undefined;
   let listeningInvite: ListeningInviteStreamPayload | undefined;
   let ragUsed: boolean | null | undefined;
+  let webSearchUsed: boolean | null | undefined;
   let conversationIntent: string | null | undefined;
 
   while (true) {
@@ -60,6 +63,9 @@ export async function consumeChatNdjsonStream(
         }
         if (typeof obj.rag_used === "boolean") {
           ragUsed = obj.rag_used;
+        }
+        if (typeof obj.web_search_used === "boolean") {
+          webSearchUsed = obj.web_search_used;
         }
         if (typeof obj.intent === "string") {
           conversationIntent = obj.intent;
@@ -131,6 +137,7 @@ export async function consumeChatNdjsonStream(
     serverPlayAudioReason,
     listeningInvite,
     ragUsed: ragUsed ?? null,
+    webSearchUsed: webSearchUsed ?? null,
     conversationIntent: conversationIntent ?? null,
   };
 }

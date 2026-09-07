@@ -12,7 +12,7 @@ const MAIN_WELCOME_CLOSING_PT = "Com qual Onda você quer começar hoje? ✨";
 
 const MAIN_WELCOME_BODY_ES = `Te doy la bienvenida a Onda 🌊, un espacio diseñado para navegar el mundo digital con menos ruido 🔊 y mucho más criterio 🧠.
 
-Mi objetivo es acompañarte a entender mejor todo lo que ves, escuchas y recibes a diario. Aquí exploramos la información de forma simple y objetiva, siempre bajo el rigor de fuentes confiables y sin sesgos personales.
+Mi objetivo es acompañarte a entender mejor todo lo que ves, escuchas y recibes a diario. Aquí exploramos la información de forma simple y objetiva, con criterios claros, contexto y fuentes cuando estén disponibles.
 
 Puedes enviarme lo que necesites analizar en el formato que prefieras: 📜 Textos · 🎙️ Audios · 🖼️ Imágenes · 🔗 Links
 
@@ -20,7 +20,7 @@ ${MAIN_WELCOME_CLOSING_ES}`;
 
 const MAIN_WELCOME_BODY_PT = `Dou as boas-vindas à Onda 🌊, um espaço para navegar o mundo digital com menos ruído 🔊 e muito mais critério 🧠.
 
-Meu objetivo é te acompanhar a entender melhor o que você vê, ouve e recebe no dia a dia. Aqui exploramos a informação de forma simples e objetiva, com rigor de fontes confiáveis e sem viés pessoal.
+Meu objetivo é te acompanhar a entender melhor o que você vê, ouve e recebe no dia a dia. Aqui exploramos a informação de forma simples e objetiva, com critérios claros, contexto e fontes quando estiverem disponíveis.
 
 Você pode me enviar o que precisar analisar no formato que preferir: 📜 Textos · 🎙️ Áudios · 🖼️ Imagens · 🔗 Links
 
@@ -41,7 +41,7 @@ const EJE_PRESENTATION: Record<
     nameEs: "Onda Civita",
     namePt: "Onda Civita",
     descriptionEs:
-      "Para entender la vida pública sin sesgos: instituciones, decisiones y contexto en lenguaje claro.",
+      "Para entender la vida pública con criterios claros, contexto y fuentes cuando estén disponibles: instituciones, decisiones y lenguaje claro.",
     descriptionPt: "Instituições e temas públicos, com linguagem clara e neutra.",
   },
   [EjeOnda.PROFES]: {

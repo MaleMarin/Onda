@@ -67,12 +67,6 @@ interface ChatBubbleProps {
 
 const LINK_REGEX = /\[([^\]]*)\]\((https?:\/\/[^)\s]+)\)/g;
 
-/** Indica si el texto tiene enlaces en formato markdown [texto](url). */
-function hasMarkdownLinks(text: string): boolean {
-  LINK_REGEX.lastIndex = 0;
-  return LINK_REGEX.test(text);
-}
-
 /** Mensajes sin evidencias útiles: no mostrar botón Compartir (no aporta valor). */
 function isNoUsefulEvidenceMessage(content: string): boolean {
   const t = (content || "").trim();
@@ -170,7 +164,9 @@ export function ChatBubble({
       ? rawContent.replace(mc.menuIntroFreeText, "").replace(/\n{3,}/g, "\n\n").trim()
       : rawContent;
   const showCopyDownload = message.role === "model" && message.content && hasTable(message.content);
-  const showFuenteVerificada = message.role === "model" && message.content && hasMarkdownLinks(message.content);
+  const consultedSource = message.ragUsed === true || message.webSearchUsed === true;
+  const showFuenteConsultada =
+    message.role === "model" && Boolean(message.content) && consultedSource;
   /** Escuchar, Compartir, Copiar/Descargar y Feedback: solo en respuestas generadas y cuando hideActions es false (saludo/error = sin acciones). */
   const showActionButtons = !hideActions && message.role === "model" && message.content && !isEmpty && message.isGenerated === true && !message.isMenuIntro;
   const showEscuchar = showActionButtons && !!onPlayTTS;
@@ -421,9 +417,9 @@ export function ChatBubble({
             )}
           </>
         )}
-        {showFuenteVerificada && !showAsMenuIntroButtons && (
+        {showFuenteConsultada && !showAsMenuIntroButtons && (
           <span style={{ marginTop: 6, fontSize: "0.8125rem", color: t.c.muted, display: "inline-block" }}>
-            ✓ {mc.fuenteVerificada}
+            {mc.fuenteVerificada}
           </span>
         )}
         {message.ragUsed === false &&
