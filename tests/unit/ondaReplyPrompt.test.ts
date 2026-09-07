@@ -28,6 +28,7 @@ describe("ondaReply system prompt — stress test regressions", () => {
     expect(guardIdx).toBeGreaterThanOrEqual(0);
     expect(formatIdx).toBeGreaterThan(guardIdx);
     expect(bodyIdx).toBeGreaterThan(formatIdx);
+    expect(prompt).toMatch(/Excepción Desinformación 360/);
   });
 
   it("A_MANO: voz con máximo 100 palabras y ejemplo corto", () => {

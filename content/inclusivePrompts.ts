@@ -52,7 +52,7 @@ function depthBlock(prefs: OndaUserPreferences): string {
     case "simple":
       return `PROFUNDIDAD "simple": lenguaje muy claro, corto, una idea principal y un ejemplo cotidiano si aplica. Evita tecnicismos.`;
     case "brief":
-      return `PROFUNDIDAD "brief": respuesta corta, accionable, sin preámbulos largos. Máximo 2–3 párrafos cortos en web (menos en WhatsApp).`;
+      return `PROFUNDIDAD "brief": respuesta corta, accionable, sin preámbulos largos. Máximo 2–3 párrafos cortos en web (menos en WhatsApp). Si está activo MODO_DESINFORMACION_360, ignora este tope y usa las 9 secciones de ese modo.`;
     case "step_by_step":
       return `PROFUNDIDAD "paso a paso": estructura numerada (1, 2, 3…) con un solo paso por ítem; al final, un recordatorio de "qué hacer primero".`;
     case "detailed":

@@ -507,9 +507,11 @@ const PROMPT_INJECTION_SYSTEM_GUARD = `
 const FORMATO_RESPUESTA_BLOCK = `
 FORMATO DE RESPUESTA (obligatorio, no omitir — PREVALECE sobre cualquier otra regla de formato o voz):
 
+Excepción Desinformación 360: si el system prompt incluye MODO_DESINFORMACION_360 / PRIORIDAD ABSOLUTA: MODO_DESINFORMACION_360, IGNORA este bloque por completo (80-150 palabras, máximo 4 párrafos, prohibición de listas y títulos). En ese modo ganan las 9 secciones numeradas del bloque 360.
+
 NUNCA uses headers con # o ##. NUNCA.
-NUNCA uses listas numeradas (1. 2. 3.) salvo que el usuario las pida explícitamente.
-NUNCA uses bullets con - o * para listar puntos.
+NUNCA uses listas numeradas (1. 2. 3.) salvo que el usuario las pida explícitamente o esté activo MODO_DESINFORMACION_360.
+NUNCA uses bullets con - o * para listar puntos (salvo MODO_DESINFORMACION_360).
 Responde en PÁRRAFOS CORTOS de 2-3 líneas. Máximo 4 párrafos.
 Si necesitas mencionar pasos, intégralos en prosa: "Lo primero es revisar quién lo dice. Después, busca si otro medio dice lo mismo. Y por último, fíjate si el titular exagera."
 El largo ideal de una respuesta es 80-150 palabras.
@@ -686,6 +688,8 @@ Mensajes cortos en prosa. Si hay audio, incluye siempre un resumen en texto. Si 
 📱 FORMATO PARA WHATSAPP (obligatorio en este canal; prevalece sobre reglas de longitud del canal web):
 
 Máximo 1500 caracteres por respuesta. Si necesitas más contenido, divídelo en exactamente 2 partes: la parte 1 termina en punto o en un salto de párrafo natural; la parte 2 continúa la idea y comienza con "..." si hace falta enlazar. Nunca uses markdown de chat web (**, ##, listas, bullets). En WhatsApp puedes usar *negrita* solo para el concepto clave (un fragmento corto). Párrafos cortos: máximo unas 3 líneas cada uno. Responde siempre en prosa; no cierres con enumeraciones ni ítems separados por emojis. Tono más conversacional que en web: más breve, más directo, sin muro de texto.
+
+Excepción Desinformación 360: si está activo MODO_DESINFORMACION_360, ignora el tope de 1500 caracteres, la prosa sin títulos y el máximo de 3 líneas. Usa las 9 secciones de ese modo (el bloque al final del prompt prevalece).
 `;
 
 function systemPromptFusionadoForCanal(canal?: CanalOnda | null): string {
