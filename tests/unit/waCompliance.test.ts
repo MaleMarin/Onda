@@ -13,6 +13,22 @@ describe("isOptOutMessage", () => {
     expect(isOptOutMessage("¿cómo verifico una noticia?")).toBe(false);
     expect(isOptOutMessage("quiero aprender más")).toBe(false);
   });
+
+  it('opt-out con mensaje exacto "BAJA"', () => {
+    expect(isOptOutMessage("BAJA")).toBe(true);
+  });
+
+  it('opt-out con "baja." (signos ignorados en coincidencia exacta)', () => {
+    expect(isOptOutMessage("baja.")).toBe(true);
+  });
+
+  it('no opt-out si "baja" aparece en una frase normal', () => {
+    expect(isOptOutMessage("la baja de precios es falsa?")).toBe(false);
+  });
+
+  it('regresión: "stop" sigue siendo opt-out', () => {
+    expect(isOptOutMessage("stop")).toBe(true);
+  });
 });
 
 describe("isOptInMessage", () => {

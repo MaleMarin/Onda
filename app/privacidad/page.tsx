@@ -251,7 +251,7 @@ export default function PrivacidadPage() {
           </h3>
           <p style={p}>
             Escribe STOP, PARAR, SALIR o BAJA en cualquier momento y Onda dejará de enviarte mensajes.
-            Para volver a usar el servicio, basta con escribir de nuevo. Para solicitar la
+            Para volver a usar el servicio, escribe HOLA, INICIO o CONTINUAR. Para solicitar la
             eliminación de tu número y del historial asociado, escribe a{" "}
             <a href="mailto:contacto@precisar.net">contacto@precisar.net</a> indicando el número de
             teléfono. Responderemos en un plazo máximo de 15 días hábiles.

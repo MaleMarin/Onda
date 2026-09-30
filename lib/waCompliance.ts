@@ -80,6 +80,14 @@ function normalizeWaText(s: string): string {
     .trim();
 }
 
+/** Normaliza y deja solo letras/números/espacios (sin signos) para coincidencia de mensaje completo. */
+function normalizeWaTextExactMessage(s: string): string {
+  return normalizeWaText(s)
+    .replace(/[^\p{L}\p{N}\s]/gu, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function matchesPhrase(norm: string, phrase: string): boolean {
   const p = normalizeWaText(phrase);
   if (p.includes(" ")) {
@@ -91,10 +99,15 @@ function matchesPhrase(norm: string, phrase: string): boolean {
 
 /**
  * Verifica si el mensaje es una solicitud de opt-out
+ *
+ * Keywords de una palabra usan límite de palabra (`\b…\b`), no mensaje completo.
+ * "baja" se trata aparte: solo si el mensaje completo normalizado (sin signos) es exactamente "baja",
+ * para no activar opt-out en frases como "la baja de precios…".
  */
 export function isOptOutMessage(text: string): boolean {
   const norm = normalizeWaText(text);
   if (!norm) return false;
+  if (normalizeWaTextExactMessage(text) === "baja") return true;
   return OPT_OUT_KEYWORDS.some((k) => matchesPhrase(norm, k));
 }
 
