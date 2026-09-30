@@ -27,13 +27,20 @@ export default function PrivacidadPage() {
   return (
     <main
       style={{
-        minHeight: "100%",
-        overflow: "auto",
+        // Root layout fija html/body con overflow:hidden (para el chat).
+        // Este main debe ser el contenedor con altura de viewport y scroll propio.
+        height: "100%",
+        maxHeight: "100dvh",
+        overflowY: "auto",
+        overflowX: "hidden",
+        WebkitOverflowScrolling: "touch",
+        overscrollBehavior: "contain",
         padding: "32px 20px 48px",
         fontFamily: 'var(--font-onda, "Avenir Next", Avenir, system-ui, sans-serif)',
         color: "#212121",
         background: "#f5f5f5",
         lineHeight: 1.65,
+        boxSizing: "border-box",
       }}
     >
       <article
@@ -42,7 +49,8 @@ export default function PrivacidadPage() {
           margin: "0 auto",
           background: "#fff",
           borderRadius: 20,
-          padding: "32px 28px",
+          padding: "32px 28px 48px",
+          marginBottom: "max(24px, env(safe-area-inset-bottom))",
         }}
       >
         <p style={{ margin: "0 0 8px", fontSize: "0.875rem" }}>

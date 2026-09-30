@@ -144,6 +144,9 @@ button[data-onda-send]:focus{background:${SEND_ORANGE} !important;color:#fff !im
 }
 /* Bajo consumo: menos sombras y animaciones en la carcasa del chat */
 .onda-shell[data-onda-low-bandwidth="1"] .bubble-in{animation:none!important}
+/* Páginas largas (privacidad): scroll propio aunque html/body tengan overflow:hidden */
+.onda-privacidad-scroll{height:100%;max-height:100dvh;overflow:hidden}
+.onda-privacidad-scroll>main{height:100%;max-height:100dvh;overflow-y:auto;-webkit-overflow-scrolling:touch}
 `;
 
 export default function RootLayout({
