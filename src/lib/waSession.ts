@@ -439,7 +439,7 @@ export function consumeWaEjeCommand(
   if (!raw) return { session, confirmation: null, remainder: "" };
 
   const prefix =
-    /^(a\s*mano|mão|mao|civita|cívita|profes|professores|professoras|profe)\s*[:.\-–]\s*(.+)$/i.exec(
+    /^(a\s*mano|mão|mao|mano|civita|cívita|profes|professores|professoras|profe|docente|docentes)\s*[:.\-–]\s*(.+)$/i.exec(
       raw
     );
   if (prefix) {
@@ -462,7 +462,7 @@ export function consumeWaEjeCommand(
     { re: /^(a\s*mano|amano|mao|mão|mano)$/, eje: "A_MANO" },
     { re: /^(civita|cívita)$/, eje: "CIVITA" },
     {
-      re: /^(profes|professores|professoras|profe|professor|docentes)$/,
+      re: /^(profes|professores|professoras|profe|professor|docente|docentes)$/,
       eje: "PROFES",
     },
   ];
@@ -481,9 +481,11 @@ export function consumeWaEjeCommand(
 
 function headToEje(head: string): WaEjeKey | null {
   const h = head.replace(/\s+/g, " ").trim().toLowerCase();
-  if (/^a\s*mano$|^mão$|^mao$/.test(h)) return "A_MANO";
-  if (/^civita|cívita$/.test(h)) return "CIVITA";
-  if (/^profes|professores|professoras|profe$|^professor$/.test(h)) return "PROFES";
+  if (/^a\s*mano$|^mão$|^mao$|^mano$/.test(h)) return "A_MANO";
+  if (/^civita$|^cívita$/.test(h)) return "CIVITA";
+  if (/^profes$|^professores$|^professoras$|^profe$|^professor$|^docente$|^docentes$/.test(h)) {
+    return "PROFES";
+  }
   return null;
 }
 

@@ -592,12 +592,29 @@ Privacidad: no pidas datos sensibles (contraseñas, documentos completos, datos 
 `;
 
 /**
- * Textos de producto WhatsApp (PT claro, neutro, acessível — Precisar, iniciativa da Fundação Democracia Aberta).
+ * Textos de producto WhatsApp (bienvenida ES por defecto; PT para +55 o mensaje en portugués).
  * Consumidos por `waCompliance`, `waSession` y el webhook.
  */
 
-export const WA_WELCOME_MESSAGE = `
-Olá! Eu sou a ONDA, uma assistente de orientação digital da Precisar, iniciativa da Fundação Democracia Aberta.
+/** Bienvenida de primer contacto en español (idioma por defecto). */
+export const WA_FIRST_CONTACT_PACK_ES = `
+¡Hola! Soy Onda, el servicio de educación mediática de Precisar, iniciativa de Fundación Democracia Abierta.
+
+Te ayudo a mirar con calma textos, audios, imágenes, capturas y enlaces, con contexto claro y sin tomar partido.
+
+¿Con qué Onda quieres empezar? Responde con una palabra:
+*Mano* · *Civita* · *Profes*
+
+Tip: si prefieres, pídeme la respuesta "en audio" o como "infografía".
+
+Un aviso: nunca envíes contraseñas, códigos de verificación ni datos bancarios. Si algo te parece urgente o sospechoso, lo revisamos juntos, con calma.
+
+Para dejar de recibir mensajes, escribe *STOP* o *BAJA*.
+`.trim();
+
+/** Bienvenida de primer contacto en portugués (+55 o texto PT). Sin "assistente". */
+export const WA_FIRST_CONTACT_PACK_PT = `
+Olá! Eu sou a ONDA, o serviço de educação midiática da Precisar, iniciativa da Fundação Democracia Aberta.
 
 Posso te ajudar com textos, áudios, imagens, capturas de tela e links — explicando de forma clara e sem tomar partido.
 
@@ -606,19 +623,48 @@ Responda com uma palavra:
 *Mão* / *Cívita* / *Professores*
 
 Dica: se quiser, diga também "em áudio" ou "infográfico".
-`.trim();
 
-/** Aviso rápido de segurança (primeiro contacto ou quando fizer sentido). */
-export const WA_WELCOME_PRIVACY_NOTE = `
 Aviso rápido: não envie senhas, códigos de verificação ou dados bancários. Se aparecer algo urgente ou suspeito, eu te ajudo a checar com calma.
+
+Para parar mensagens automáticos: *STOP* ou *PARAR*.
 `.trim();
 
-/** Primeira mensagem automática ao novo número (inclui bienvenida + nota de privacidade + opt-out). */
-export const WA_FIRST_CONTACT_PACK = `${WA_WELCOME_MESSAGE}
+/** @deprecated usar WA_FIRST_CONTACT_PACK_ES / _PT; alias = ES (default). */
+export const WA_WELCOME_MESSAGE = WA_FIRST_CONTACT_PACK_ES;
 
-${WA_WELCOME_PRIVACY_NOTE}
+/** @deprecated alias de compatibilidad; el aviso va dentro de cada pack. */
+export const WA_WELCOME_PRIVACY_NOTE = `
+Un aviso: nunca envíes contraseñas, códigos de verificación ni datos bancarios. Si algo te parece urgente o sospechoso, lo revisamos juntos, con calma.
+`.trim();
 
-Para parar mensagens automáticos: *STOP* ou *PARAR*.`.trim();
+/** Alias default = ES (lo que reexporta waCompliance como WA_FIRST_CONTACT_WELCOME). */
+export const WA_FIRST_CONTACT_PACK = WA_FIRST_CONTACT_PACK_ES;
+
+/**
+ * Elige bienvenida WA: PT si el número es +55 (Brasil) o el primer mensaje parece portugués; si no, ES.
+ * "baixa" no se menciona en PT: el opt-out no reconoce esa palabra (solo "baja" exacta en ES).
+ */
+export function resolveWaFirstContactWelcome(phone: string, userText?: string): string {
+  const digits = String(phone ?? "").replace(/\D/g, "");
+  if (digits.startsWith("55")) return WA_FIRST_CONTACT_PACK_PT;
+
+  const raw = (userText ?? "").trim();
+  if (raw.length > 0) {
+    const n = raw
+      .normalize("NFD")
+      .replace(/\p{M}/gu, "")
+      .toLowerCase();
+    const ptHint =
+      /[ãõç]/.test(raw) ||
+      /\b(nao|voce|você|obrigad|tambem|também|mensagem|preciso|gostaria|bom dia|boa tarde|boa noite)\b/.test(
+        n
+      ) ||
+      /^(oi|ola)\b/.test(n);
+    if (ptHint) return WA_FIRST_CONTACT_PACK_PT;
+  }
+
+  return WA_FIRST_CONTACT_PACK_ES;
+}
 
 export const WA_ONDA_CONFIRM_A_MANO = `
 Perfeito — ativei a ONDA Mão.

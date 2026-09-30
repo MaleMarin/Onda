@@ -1,4 +1,9 @@
 import { describe, it, expect } from "vitest";
+import {
+  resolveWaFirstContactWelcome,
+  WA_FIRST_CONTACT_PACK_ES,
+  WA_FIRST_CONTACT_PACK_PT,
+} from "@/content/shared";
 import { mergePrefs, parsePreferenceCommand } from "@/lib/userPrefs";
 import {
   appendWaHistory,
@@ -29,12 +34,50 @@ describe("waSession", () => {
     expect(r.remainder).toBe("");
   });
 
+  it('consumeWaEjeCommand: "Civita" enruta a CIVITA', () => {
+    const r = consumeWaEjeCommand("Civita", defaultWaSession());
+    expect(r.session.eje).toBe("CIVITA");
+  });
+
+  it('consumeWaEjeCommand: "profes" enruta a PROFES', () => {
+    const r = consumeWaEjeCommand("profes", defaultWaSession());
+    expect(r.session.eje).toBe("PROFES");
+  });
+
+  it('consumeWaEjeCommand: "a mano" enruta a A_MANO', () => {
+    const r = consumeWaEjeCommand("a mano", defaultWaSession());
+    expect(r.session.eje).toBe("A_MANO");
+  });
+
+  it('consumeWaEjeCommand: "docente" enruta a PROFES', () => {
+    const r = consumeWaEjeCommand("docente", defaultWaSession());
+    expect(r.session.eje).toBe("PROFES");
+  });
+
   it("consumeWaEjeCommand con prefijo Mão deja el resto como pregunta", () => {
     const s = defaultWaSession();
     const r = consumeWaEjeCommand("Mão: me llegó una estafa por WhatsApp", s);
     expect(r.session.eje).toBe("A_MANO");
     expect(r.confirmation).toBeNull();
     expect(r.remainder).toContain("estafa");
+  });
+
+  it("bienvenida WA: +56 → ES", () => {
+    const w = resolveWaFirstContactWelcome("+56912345678", "hola");
+    expect(w).toBe(WA_FIRST_CONTACT_PACK_ES);
+    expect(w).toMatch(/Soy Onda/);
+    expect(w).toMatch(/\*STOP\* o \*BAJA\*/);
+  });
+
+  it("bienvenida WA: +52 → ES", () => {
+    expect(resolveWaFirstContactWelcome("5215512345678", "hola")).toBe(WA_FIRST_CONTACT_PACK_ES);
+  });
+
+  it("bienvenida WA: +55 → PT", () => {
+    const w = resolveWaFirstContactWelcome("+5511999999999", "oi");
+    expect(w).toBe(WA_FIRST_CONTACT_PACK_PT);
+    expect(w).toMatch(/serviço de educação midiática/);
+    expect(w).not.toMatch(/assistente/);
   });
 
   it("applyLanguageAndFormatFromText detecta áudio y buildWaModelPreferences refleja outputMode", () => {

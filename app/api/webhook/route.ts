@@ -56,7 +56,6 @@ import {
   renewMessageWindow,
   setOptIn,
   setOptOut,
-  WA_FIRST_CONTACT_WELCOME,
   WA_OPTED_OUT_NOTICE,
   WA_OPT_IN_ACK,
   WA_OPT_OUT_ACK,
@@ -90,7 +89,7 @@ import type { OndaChatLocale } from "../../../lib/userPreferences";
 import { DEFAULT_USER_PREFS } from "../../../lib/userPrefs";
 import { parseWaInclusiveCommand } from "../../../lib/waInclusivePreferences";
 import { formatWebhookPostBlockedMessage, getWhatsAppEnvReport } from "../../../lib/waWebhookEnv";
-import { WA_AUDIO_TRANSCRIBING_ACK } from "../../../content/shared";
+import { resolveWaFirstContactWelcome, WA_AUDIO_TRANSCRIBING_ACK } from "../../../content/shared";
 import { EjeOnda } from "../../../content/types";
 import {
   alignWaSessionAfterModelTurn,
@@ -453,7 +452,7 @@ async function processWhatsAppMessage(_value: WaPayloadValue, msg: WaIncomingMes
     }
 
     if (await isFirstContact(from)) {
-      await guardedSendText(WA_FIRST_CONTACT_WELCOME);
+      await guardedSendText(resolveWaFirstContactWelcome(from, textBody));
       await markAsSeen(from);
     }
   }
