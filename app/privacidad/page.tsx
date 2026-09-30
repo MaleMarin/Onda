@@ -27,15 +27,8 @@ export default function PrivacidadPage() {
   return (
     <main
       style={{
-        // Root layout fija html/body con overflow:hidden (para el chat).
-        // Este main debe ser el contenedor con altura de viewport y scroll propio.
-        height: "100%",
-        maxHeight: "100dvh",
-        overflowY: "auto",
-        overflowX: "hidden",
-        WebkitOverflowScrolling: "touch",
-        overscrollBehavior: "contain",
-        padding: "32px 20px 48px",
+        minHeight: "100vh",
+        padding: "32px 20px max(48px, env(safe-area-inset-bottom))",
         fontFamily: 'var(--font-onda, "Avenir Next", Avenir, system-ui, sans-serif)',
         color: "#212121",
         background: "#f5f5f5",

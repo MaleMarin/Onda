@@ -40,7 +40,10 @@ const SEND_ORANGE = (typeof process !== "undefined" && process.env.NEXT_PUBLIC_O
 const GLOBAL_CSS = `
 :root{--font-onda:${FONT_ONDA_STACK}}
 .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border-width:0}
-html,body{height:100%;margin:0;pointer-events:auto;touch-action:manipulation;max-width:100%;overflow-x:hidden}
+html,body{margin:0;pointer-events:auto;touch-action:manipulation;max-width:100%;overflow-x:hidden}
+/* Chat: bloquea scroll del documento. Otras páginas (privacidad, etc.): scroll normal. */
+html:has(.onda-shell),body:has(.onda-shell){height:100%;overflow:hidden}
+html:not(:has(.onda-shell)),body:not(:has(.onda-shell)){height:auto;min-height:100%;overflow-y:auto;overflow-x:hidden}
 body{-webkit-font-smoothing:antialiased;font-family:var(--font-onda);line-height:1.6;outline:none}
 /* Shell aislado: clics siempre llegan a botones/inputs. No añadir overlays ni ::before/::after que tapen. */
 .onda-shell{position:relative;z-index:1;isolation:isolate;pointer-events:auto}
@@ -144,9 +147,6 @@ button[data-onda-send]:focus{background:${SEND_ORANGE} !important;color:#fff !im
 }
 /* Bajo consumo: menos sombras y animaciones en la carcasa del chat */
 .onda-shell[data-onda-low-bandwidth="1"] .bubble-in{animation:none!important}
-/* Páginas largas (privacidad): scroll propio aunque html/body tengan overflow:hidden */
-.onda-privacidad-scroll{height:100%;max-height:100dvh;overflow:hidden}
-.onda-privacidad-scroll>main{height:100%;max-height:100dvh;overflow-y:auto;-webkit-overflow-scrolling:touch}
 `;
 
 export default function RootLayout({
@@ -155,13 +155,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="es" style={{ height: "100%", overflow: "hidden" }}>
+    <html lang="es">
       <head>
         <style dangerouslySetInnerHTML={{ __html: GLOBAL_CSS }} />
       </head>
-      <body style={{ height: "100%", overflow: "hidden" }}>
-        {children}
-      </body>
+      <body>{children}</body>
     </html>
   );
 }
