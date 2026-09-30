@@ -58,7 +58,8 @@ export default function PrivacidadPage() {
           Última actualización: {updated}
         </p>
         <p style={{ margin: "0 0 6px", color: "#5a5d62", fontSize: "0.9375rem" }}>
-          Responsable: Fundación Democracia Abierta, organización que opera la marca Precisar.
+          Responsable: Fundación Democracia Abierta, RUT 65.198.517-K, Andrés Bello 2711, Of. 801,
+          Las Condes, Santiago, Chile. Precisar es una iniciativa de la Fundación.
         </p>
         <p style={{ margin: "0 0 6px", color: "#5a5d62", fontSize: "0.9375rem" }}>
           Sitio:{" "}
@@ -74,13 +75,18 @@ export default function PrivacidadPage() {
         <Section title="Qué es Onda">
           <p style={p}>
             Onda es un servicio de Precisar, iniciativa de Fundación Democracia Abierta. Es un
-            asistente educativo que ayuda a comprender mensajes, enlaces, audios, imágenes y
-            contenidos virales con más contexto, datos y criterio antes de compartir.
+            servicio de educación mediática que ayuda a comprender mensajes, enlaces, audios,
+            imágenes y contenidos virales con más contexto, datos y criterio antes de compartir.
           </p>
           <p style={p}>
             Onda no es una autoridad oficial, un tribunal ni un verificador automático de verdad. Sus
             respuestas son orientativas y educativas: ayudan a revisar señales, formular mejores
             preguntas y decidir con mayor autonomía.
+          </p>
+          <p style={p}>
+            Onda responde solo consultas sobre educación mediática, lectura crítica de información y
+            uso responsable de tecnología. No es un asistente de uso general ni reemplaza asesoría
+            profesional, legal, médica o financiera.
           </p>
         </Section>
 
@@ -213,8 +219,8 @@ export default function PrivacidadPage() {
 
         <Section title="Uso por WhatsApp">
           <p style={p}>
-            Cuando Onda esté disponible por WhatsApp, también aplicarán las condiciones y políticas
-            de WhatsApp y Meta.
+            Cuando usas Onda por WhatsApp, también aplicarán las condiciones y políticas de WhatsApp
+            y Meta.
           </p>
           <p style={p}>
             En ese canal, Meta puede tratar información asociada a la conversación, como tu número
@@ -239,6 +245,16 @@ export default function PrivacidadPage() {
             Nosotros no publicamos tu número de teléfono ni lo vendemos. Si activamos WhatsApp,
             usaremos tu número solo para operar la conversación, responder tus mensajes, gestionar
             opt-out/opt-in, prevenir abuso y cumplir obligaciones aplicables.
+          </p>
+          <h3 style={{ fontSize: "1.05rem", fontWeight: 600, marginTop: 20, marginBottom: 10 }}>
+            Cómo dejar de recibir mensajes
+          </h3>
+          <p style={p}>
+            Escribe STOP, PARAR, SALIR o BAJA en cualquier momento y Onda dejará de enviarte mensajes.
+            Para volver a usar el servicio, basta con escribir de nuevo. Para solicitar la
+            eliminación de tu número y del historial asociado, escribe a{" "}
+            <a href="mailto:contacto@precisar.net">contacto@precisar.net</a> indicando el número de
+            teléfono. Responderemos en un plazo máximo de 15 días hábiles.
           </p>
         </Section>
 
@@ -306,10 +322,16 @@ export default function PrivacidadPage() {
             Podemos actualizar esta política para reflejar cambios del servicio, nuevos canales como
             WhatsApp, nuevos proveedores o ajustes legales y técnicos.
           </p>
-          <p style={{ ...p, color: "#5a5d62", fontSize: "0.9375rem", marginBottom: 0 }}>
+          <p style={{ ...p, color: "#5a5d62", fontSize: "0.9375rem" }}>
             La fecha indicada arriba muestra la versión vigente.
           </p>
         </Section>
+
+        <p style={{ ...p, marginTop: 28, marginBottom: 0 }}>
+          <a href="https://precisar.net/legal/terminos" target="_blank" rel="noopener noreferrer">
+            Términos de uso
+          </a>
+        </p>
       </article>
     </main>
   );

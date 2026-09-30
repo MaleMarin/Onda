@@ -2540,9 +2540,46 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
                 padding: "0 12px",
               }}
             >
-              {mc.precisarFooterTagline}{" "}
+              {mc.precisarFooterTagline}
+            </p>
+            <p
+              style={{
+                margin: 0,
+                fontSize: compact ? "0.6875rem" : "0.75rem",
+                lineHeight: 1.35,
+                color: t.c.muted,
+                textAlign: "center",
+                maxWidth: 560,
+                padding: "0 12px",
+              }}
+            >
+              {mc.precisarFooterLegal.split("contacto@precisar.net")[0]}
+              <a href="mailto:contacto@precisar.net" style={{ color: "inherit", textDecoration: "underline" }}>
+                contacto@precisar.net
+              </a>
+            </p>
+            <p
+              style={{
+                margin: 0,
+                fontSize: compact ? "0.6875rem" : "0.75rem",
+                lineHeight: 1.35,
+                color: t.c.muted,
+                textAlign: "center",
+                maxWidth: 520,
+                padding: "0 12px",
+              }}
+            >
               <a href="/privacidad" style={{ color: "inherit", textDecoration: "underline" }}>
                 {mc.privacyPolicyLink}
+              </a>
+              {" · "}
+              <a
+                href="https://precisar.net/legal/terminos"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: "inherit", textDecoration: "underline" }}
+              >
+                {mc.termsOfUseLink}
               </a>
             </p>
           </div>

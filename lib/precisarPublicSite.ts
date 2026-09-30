@@ -1,5 +1,5 @@
 /**
- * Sitio institucional de Fundación Precisar (enlaces en la UI web del chat).
+ * Sitio institucional de Precisar, iniciativa de Fundación Democracia Abierta (enlaces en la UI web del chat).
  *
  * Vercel → Environment Variables → `NEXT_PUBLIC_PRECISAR_SITE_URL` = URL del sitio vigente
  * (por defecto https://www.precisar.net).

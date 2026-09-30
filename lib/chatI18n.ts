@@ -257,6 +257,10 @@ export type ChatUiMicrocopy = {
   precisarSiteLinkAria: string;
   /** Pie del chat: línea institucional bajo el logo de Precisar. */
   precisarFooterTagline: string;
+  /** Pie del chat: razón social, RUT, dirección y correo. */
+  precisarFooterLegal: string;
+  /** Pie / privacidad: enlace a términos de uso. */
+  termsOfUseLink: string;
   /** Tabs Onda (role=tablist). */
   ejeTablistAria: string;
   /** Picker grande: prefijo aria “Elegir …”. */
@@ -331,8 +335,11 @@ const CHAT_UI_ES: ChatUiMicrocopy = {
   menuWriteFreely: "✏️ Escribe lo que quieras",
   menuBackToMenu: "↩️ Volver al menú",
   menuViewMenu: "📋 Ver menú",
-  precisarSiteLinkAria: "Fundación Precisar, sitio web (se abre en una pestaña nueva)",
+  precisarSiteLinkAria: "Precisar, iniciativa de Fundación Democracia Abierta, sitio web (se abre en una pestaña nueva)",
   precisarFooterTagline: "Onda es un servicio de Precisar, iniciativa de Fundación Democracia Abierta.",
+  precisarFooterLegal:
+    "Fundación Democracia Abierta · RUT 65.198.517-K · Andrés Bello 2711, Of. 801, Las Condes, Santiago, Chile · contacto@precisar.net",
+  termsOfUseLink: "Términos",
   ejeTablistAria: "Elegir Onda: perfil de la conversación",
   ejePickerChoosePrefix: "Elegir",
   ejePickerContinuePrefix: "Continuar en",
@@ -394,8 +401,11 @@ const CHAT_UI_PT: ChatUiMicrocopy = {
   menuWriteFreely: "✏️ Escreva o que quiser",
   menuBackToMenu: "↩️ Voltar ao menu",
   menuViewMenu: "📋 Ver menu",
-  precisarSiteLinkAria: "Fundação Precisar, site oficial (abre em uma nova aba)",
+  precisarSiteLinkAria: "Precisar, iniciativa da Fundação Democracia Aberta, site oficial (abre em uma nova aba)",
   precisarFooterTagline: "Onda é um serviço da Precisar, iniciativa da Fundação Democracia Aberta.",
+  precisarFooterLegal:
+    "Fundação Democracia Aberta · RUT 65.198.517-K · Andrés Bello 2711, Of. 801, Las Condes, Santiago, Chile · contacto@precisar.net",
+  termsOfUseLink: "Termos",
   ejeTablistAria: "Escolher Onda: perfil da conversa",
   ejePickerChoosePrefix: "Escolher",
   ejePickerContinuePrefix: "Continuar em",
