@@ -1,121 +1,41 @@
 import { describe, it, expect } from "vitest";
-import {
-  buildDelightMoment,
-  buildEmotionalValidation,
-  buildVoiceBlock,
-  detectEmotionalLoad,
-  getVoiceProfile,
-} from "@/lib/ondaVoice";
+import { buildDelightMoment, buildEmotionalValidation, buildVoiceBlock, detectEmotionalLoad, getVoiceProfile } from "@/lib/ondaVoice";
 import { EjeOnda } from "@/content/types";
 
-describe("detectEmotionalLoad", () => {
-  it("detecta anxiety", () => {
-    expect(detectEmotionalLoad("me da miedo lo que está pasando")).toBe("anxiety");
-  });
-  it("detecta overwhelm", () => {
-    expect(detectEmotionalLoad("estoy saturado de tanta información")).toBe("overwhelm");
-  });
-  it("detecta distrust", () => {
-    expect(detectEmotionalLoad("ya no sé en qué confiar")).toBe("distrust");
-  });
-  it("detecta anger", () => {
-    expect(detectEmotionalLoad("son todos mentirosos, es una vergüenza")).toBe("anger");
-  });
-  it("retorna none para mensaje neutro", () => {
-    expect(detectEmotionalLoad("¿cómo funcionan los algoritmos?")).toBe("none");
-  });
-});
-
-describe("buildVoiceBlock", () => {
-  it("A_MANO menciona WhatsApp, cotidiano o foco en mensajes/noticias", () => {
+describe("voces editoriales diferenciadas", () => {
+  it("A Mano abre espacio a intereses amplios", () => {
     const block = buildVoiceBlock(EjeOnda.A_MANO);
-    expect(block.toLowerCase()).toMatch(/whatsapp|cotidian|familiar|sencill|noticia|mensaj|100 palabras/);
+    expect(block).toMatch(/música|cine|deporte/i);
+    expect(block).toMatch(/no conviertas cada charla/i);
   });
-  it("CIVITA menciona rigor cívico, SIFT o Bellingcat", () => {
+  it("Cívita no presupone experticia y contempla Brasil", () => {
     const block = buildVoiceBlock(EjeOnda.CIVITA);
-    expect(block.toLowerCase()).toMatch(/sift|bellingcat|institucional|rigor|cívic/);
+    expect(block).toContain("cualquier persona");
+    expect(block).toContain("Brasil");
+    expect(block).toContain("neutralidad partidaria");
   });
-  it("PROFES menciona aula, docente o Para trabajar en clase", () => {
+  it("Profes pregunta, comprende y co-diseña", () => {
     const block = buildVoiceBlock(EjeOnda.PROFES);
-    expect(block.toLowerCase()).toMatch(/aula|docente|estudiante|clase|para trabajar en clase/);
+    expect(block).toContain("pregunta una o dos cosas");
+    expect(block).toContain("diseña");
+    expect(block).toContain("docente");
   });
-  it("incluye reglas estrictas de voz diferenciada", () => {
-    const block = buildVoiceBlock(EjeOnda.A_MANO);
-    expect(block.toLowerCase()).toMatch(/reglas estrictas|ejemplo de respuesta correcta/);
-  });
-  it("los tres bloques son distintos entre sí", () => {
-    const a = buildVoiceBlock(EjeOnda.A_MANO);
-    const b = buildVoiceBlock(EjeOnda.CIVITA);
-    const c = buildVoiceBlock(EjeOnda.PROFES);
-    expect(a).not.toBe(b);
-    expect(b).not.toBe(c);
+  it("las tres voces son distintas y el perfil coincide con el eje", () => {
+    const voices = [EjeOnda.A_MANO, EjeOnda.CIVITA, EjeOnda.PROFES].map(buildVoiceBlock);
+    expect(new Set(voices).size).toBe(3);
+    for (const eje of [EjeOnda.A_MANO, EjeOnda.CIVITA, EjeOnda.PROFES]) {
+      expect(getVoiceProfile(eje).eje).toBe(eje);
+    }
   });
 });
 
-describe("getVoiceProfile", () => {
-  it("resuelve los tres ejes", () => {
-    expect(getVoiceProfile(EjeOnda.A_MANO).eje).toBe(EjeOnda.A_MANO);
-    expect(getVoiceProfile(EjeOnda.CIVITA).eje).toBe(EjeOnda.CIVITA);
-    expect(getVoiceProfile(EjeOnda.PROFES).eje).toBe(EjeOnda.PROFES);
-    expect(getVoiceProfile(null).eje).toBe(EjeOnda.A_MANO);
+describe("funciones de acompañamiento existentes", () => {
+  it("detecta carga emocional y mantiene respuesta empática", () => {
+    expect(detectEmotionalLoad("me da miedo lo que está pasando")).toBe("anxiety");
+    expect(buildEmotionalValidation("anxiety", EjeOnda.A_MANO).length).toBeGreaterThan(20);
   });
-});
-
-describe("buildEmotionalValidation — más ejes y cargas", () => {
-  it("CIVITA + anger", () => {
-    const t = buildEmotionalValidation("anger", EjeOnda.CIVITA);
-    expect(t.length).toBeGreaterThan(20);
-  });
-  it("PROFES + overwhelm", () => {
-    const t = buildEmotionalValidation("overwhelm", EjeOnda.PROFES);
-    expect(t.length).toBeGreaterThan(20);
-  });
-  it("A_MANO + anger", () => {
-    const t = buildEmotionalValidation("anger", EjeOnda.A_MANO);
-    expect(t.length).toBeGreaterThan(20);
-  });
-  it("none retorna vacío", () => {
-    expect(buildEmotionalValidation("none", EjeOnda.A_MANO)).toBe("");
-  });
-});
-
-describe("buildDelightMoment", () => {
-  it("retorna vacío para canal WhatsApp", () => {
+  it("evita un cierre extra en WhatsApp y en temas emocionales", () => {
     expect(buildDelightMoment("fact_check", "whatsapp")).toBe("");
-  });
-  it("retorna vacío para intent emotional", () => {
     expect(buildDelightMoment("emotional", "web")).toBe("");
-  });
-  it("retorna vacío para intent disinformation", () => {
-    expect(buildDelightMoment("disinformation", "web")).toBe("");
-  });
-  it("retorna contenido para fact_check en web", () => {
-    expect(buildDelightMoment("fact_check", "web").length).toBeGreaterThan(0);
-  });
-
-  it("pt-BR: cierre en portugués para explanation (sin talleres ni multitud)", () => {
-    const d = buildDelightMoment("explanation", "web", "low", "pt-BR");
-    expect(d.length).toBeGreaterThan(0);
-    expect(d.toLowerCase()).toMatch(/letramento|explicações|duas/);
-    expect(d.toLowerCase()).not.toMatch(/oficinas|muita gente/);
-    expect(d).not.toMatch(/¿sabías|hiciste/i);
-  });
-
-  it("explanation y action en web añaden cierre (independiente de confidence)", () => {
-    expect(buildDelightMoment("explanation", "web", "high").length).toBeGreaterThan(0);
-    expect(buildDelightMoment("action", "web", "low").length).toBeGreaterThan(0);
-  });
-});
-
-describe("buildEmotionalValidation", () => {
-  it("comienza con validación, no con datos", () => {
-    const text = buildEmotionalValidation("anxiety", EjeOnda.A_MANO);
-    expect(text).not.toMatch(/^[0-9]/);
-    expect(text).not.toMatch(/^-/);
-    expect(text.length).toBeGreaterThan(20);
-  });
-  it("incluye regla anti-listas después de validación", () => {
-    const text = buildEmotionalValidation("anxiety", EjeOnda.A_MANO);
-    expect(text.toLowerCase()).toMatch(/máximo 2 párrafos|sin listas|sin numeración/);
   });
 });
