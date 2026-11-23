@@ -2447,21 +2447,6 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
                 lineHeight: 1.35,
                 color: t.c.muted,
                 textAlign: "center",
-                maxWidth: 560,
-                padding: "0 12px",
-              }}
-            >
-              <a href={`mailto:${mc.precisarFooterLegal}`} style={{ color: "inherit", textDecoration: "underline" }}>
-                {mc.precisarFooterLegal}
-              </a>
-            </p>
-            <p
-              style={{
-                margin: 0,
-                fontSize: compact ? "0.6875rem" : "0.75rem",
-                lineHeight: 1.35,
-                color: t.c.muted,
-                textAlign: "center",
                 maxWidth: 520,
                 padding: "0 12px",
               }}
