@@ -10,7 +10,6 @@ import type {
   AudienceProfile,
   BandwidthMode,
   OndaChatLocale,
-  OutputMode,
   ReadingMode,
   ResponseDepth,
 } from "@/lib/userPreferences";
@@ -153,20 +152,6 @@ export function InclusionSettingsPanel({ open, onClose, prefs, setPrefs, strings
           >
             <option value="standard">{strings.readingStandard}</option>
             <option value="easy">{strings.readingEasy}</option>
-          </select>
-        </fieldset>
-
-        <fieldset style={{ border: "none", margin: 0, padding: 0 }}>
-          <legend style={labelStyle(t)}>{strings.outputMode}</legend>
-          <select
-            aria-label={strings.outputMode}
-            value={prefs.outputMode}
-            onChange={(e) => patch({ outputMode: e.target.value as OutputMode })}
-            style={selectStyle(t)}
-          >
-            <option value="text">{strings.outputText}</option>
-            <option value="audio">{strings.outputAudio}</option>
-            <option value="auto">{strings.outputAuto}</option>
           </select>
         </fieldset>
 
