@@ -813,10 +813,9 @@ const A_MANO_MENU_DEFS: ManoMenuDef[] = [
   { id: "A_M7", internalPrompt: "Recomienda música, cine, podcasts o libros que inspiren y ayuden a entrenar el criterio." },
   { id: "A_M8", internalPrompt: "Guía un ejercicio breve de respiración y bienestar digital. Recomendaciones de cine, música, artes." },
   { id: "A_M9", internalPrompt: "Escucha la opinión del usuario y ofrece herramientas o validación empática." },
-  { id: "A_M10", internalPrompt: "Facilita el compartir el bot con otros." },
 ];
 
-/** Opciones del menú Onda A Mano (10 opciones + submenú IA). Intro = solo las 3 preguntas de ese ítem (menuQuestions). */
+/** Opciones del menú Onda A Mano (9 opciones + submenú IA). Intro = solo las 3 preguntas de ese ítem (menuQuestions). */
 export const A_MANO_OPTIONS: MenuOption[] = A_MANO_MENU_DEFS.map((d) => {
   const item = menuItemById(MENU_MAO_ITEMS, d.id);
   return {
