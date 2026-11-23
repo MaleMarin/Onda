@@ -1,4 +1,5 @@
 import { classifyIntent } from "../../../../lib/intentClassifier";
+import { missingEvidenceContext, needsExternalEvidence } from "@/lib/evidenceRouting";
 import {
   classifyOrchestratorDepth,
   generateTemaFromExchange,
@@ -475,16 +476,12 @@ export async function POST(req: Request) {
     };
 
     /** Búsqueda web solo si el orquestador ve "deep/docs" o el intent conversacional pide RAG (p. ej. fact_check). */
-    const contextBundlePromise: Promise<StreamContextBundle> = image
-      ? Promise.resolve({ extraContext: undefined, rag_used: false, web_search_used: false })
-      : (async (): Promise<StreamContextBundle> => {
+    const contextBundlePromise: Promise<StreamContextBundle> = (async (): Promise<StreamContextBundle> => {
           const intentResult = classifyIntent(query);
-          const orch = await classifyOrchestratorDepth(query, ejeForModel, 0);
-          const isDeep = orch === "deep" || orch === "docs";
-          /** Modo Desinfo 360 o fact_check siempre disparan búsqueda web (si hay clave). */
-          const disinfoIntent =
-            intentResult.intent === "disinformation" || intentResult.intent === "fact_check";
-          const shouldSearch = isDeep || intentResult.ragNeeded || disinfoIntent || riskPipeline.disinfo360;
+          /** Buscar por necesidad factual y fuentes, no por el tamaño de la pregunta. */
+          const shouldSearch =
+            needsExternalEvidence(query, ejeForModel, Boolean(unified.sources || wantsSources(message))) ||
+            riskPipeline.disinfo360;
 
           const webP = shouldSearch
             ? Promise.race([
@@ -519,14 +516,10 @@ export async function POST(req: Request) {
               ? `\n\n--- NOTA DEL SISTEMA (RAG interno vacío, verificación) ---\nNo hay fragmentos recuperados de la base documental interna para esta consulta. Indica que te apoyas en el contexto web inyectado y en conocimiento general, no en documentos internos de Precisar.\n`
               : "";
 
-          const noExternalEvidenceFootnote =
-            shouldSearch && webEmpty
-              ? `\n\n--- NOTA DEL SISTEMA (sin evidencia externa) ---\n${
-                  isWebSearchConfigured()
-                    ? "La búsqueda web no devolvió resultados utilizables."
-                    : "No hay clave de búsqueda web configurada en este entorno."
-                } Di con transparencia, sin inventar fuentes consultadas: "No tengo evidencia externa disponible en este momento; puedo ayudarte a revisar señales y qué fuentes consultar." Si mencionas sitios, son sugerencias de consulta, no fuentes que hayas leído en este turno.\n`
-              : "";
+          const noExternalEvidenceFootnote = shouldSearch && webEmpty
+            ? "\n\n--- ESTADO DE EVIDENCIA EXTERNA ---\n" +
+              missingEvidenceContext(isWebSearchConfigured(), userPreferences.locale) + "\n"
+            : "";
 
           const base = [webContext, rag, privateDocs].filter(Boolean).join("\n\n");
           const combined = (base + factCheckFootnote + noExternalEvidenceFootnote).trim();
