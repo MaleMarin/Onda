@@ -365,9 +365,35 @@ export function ChatBubble({
           <div className="prose-onda">{formatContent(text)}</div>
         )}
         {showFuenteConsultada && !showAsMenuIntroButtons && (
-          <span style={{ marginTop: 6, fontSize: "0.8125rem", color: t.c.muted, display: "inline-block" }}>
-            {mc.fuenteVerificada}
-          </span>
+          <div style={{ marginTop: 9, fontSize: "0.8125rem", color: t.c.muted }}>
+            {message.sourceRefs && message.sourceRefs.length > 0 ? (
+              <details>
+                <summary style={{ cursor: "pointer", fontWeight: 600 }}>
+                  {uiLocale === "pt-BR" ? "Ver fontes encontradas" : "Ver fuentes encontradas"} ({message.sourceRefs.length})
+                </summary>
+                <p style={{ margin: "7px 0" }}>
+                  {uiLocale === "pt-BR"
+                    ? "Estes links foram recuperados na busca; isso não significa que comprovam cada afirmação."
+                    : "Estos enlaces se recuperaron en la búsqueda; no significa que respalden cada afirmación."}
+                </p>
+                <ul style={{ margin: "5px 0", paddingLeft: 18 }}>
+                  {message.sourceRefs.map((ref) => (
+                    <li key={ref.url} style={{ marginBottom: 6 }}>
+                      <a href={ref.url} target="_blank" rel="noopener noreferrer" style={{ color: "inherit", textDecoration: "underline" }}>
+                        {ref.title}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            ) : (
+              <span>
+                {uiLocale === "pt-BR"
+                  ? "Contexto documental usado; não há links públicos recuperados para mostrar."
+                  : "Se utilizó contexto documental; no hay enlaces públicos recuperados para mostrar."}
+              </span>
+            )}
+          </div>
         )}
         {message.ragUsed === false &&
           (message.conversationIntent === "fact_check" ||
