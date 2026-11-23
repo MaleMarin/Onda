@@ -324,7 +324,7 @@ export async function POST(req: Request) {
     // Evaluar solo el turno nuevo; mensajes anteriores sirven para detectar insistencia.
     const conduct = checkConversationConduct(message, {
       locale: inclusiveFromApi.locale,
-      recentUserMessages: history.filter((entry) => entry.role === "user").map((entry) => entry.content),
+      recentUserMessages: history.filter((entry: { role: string; content: string }) => entry.role === "user").map((entry: { role: string; content: string }) => entry.content),
     });
     if (!conduct.allowed) {
       return Response.json({ error: conduct.response, conductStage: conduct.stage }, { status: 400 });
