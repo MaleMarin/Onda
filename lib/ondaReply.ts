@@ -165,7 +165,7 @@ function classifyIntentFallback(
     return "docs";
   if (eje === EjeOnda.PROFES) return "deep";
   const deepKeywords =
-    /\b(etica|ética|periodismo|análisis profundo|analisis profundo|explícame bien|desarrolla|ensayo|reflexión|reflexion|debate|controversia|verificar en profundidad|fuentes y rigor)\b/i;
+    /\b(etica|ética|periodismo|análisis profundo|analisis profundo|explícame bien|desarrolla|ensayo|reflexión|reflexion|debate|controversia|verificar en profundidad|fuentes y rigor|comparación|compara|comparar|diferencias entre|legislación|leyes|normas vigentes|impacto|causas|consecuencias|políticas públicas|instituciones|currículum|curricular|atividade pedagógica|rubrica|rúbrica|planejamento)\b/i;
   if (deepKeywords.test(q) || q.length > 200) return "deep";
   const simpleGreeting =
     /^(hola|buenos?\s*dias|buenos?\s*días|buenas\s*tardes|buenas\s*noches|qué tal|que tal|hey|hi|saludos|gracias|chau|adios|adiós)\s*[!.]?$/i;
@@ -174,40 +174,16 @@ function classifyIntentFallback(
   return "simple";
 }
 
-const INTENT_CLASSIFIER_SYSTEM = `Eres un clasificador. Responde con UNA sola palabra: deep, simple o docs.
-Reglas:
-- docs: solo si te indican que extraContextLength>=12000 (mucho contexto inyectado).
-- deep: análisis complejo, ética, periodismo, educación/Profes, reflexión, ensayo, o mensaje largo (>200 caracteres).
-- simple: saludos, agradecimientos, preguntas cortas o factuales.
-Responde únicamente la palabra, en minúsculas.`;
-
 /**
- * Director de Orquesta — Clasificador deep/simple/docs por IA (low-latency).
- * Exportado para decidir búsqueda web en paralelo antes del stream.
+ * Clasificación local, sin realizar una segunda llamada a IA por cada mensaje.
+ * La selección de profundidad es heurística: la revisión humana y las pruebas
+ * comparativas permiten perfeccionarla sin aumentar costos por turno.
  */
 export async function classifyOrchestratorDepth(
   query: string,
   eje: EjeOnda | null | undefined,
   extraContextLength: number
 ): Promise<"deep" | "simple" | "docs"> {
-  if (extraContextLength >= EXTRA_CONTEXT_DOCS_THRESHOLD && getGoogleApiKey())
-    return "docs";
-  try {
-    const openai = getOpenAI();
-    const userPayload = `extraContextLength=${extraContextLength}. Eje=${eje ?? "null"}. Mensaje del usuario: "${(query ?? "").slice(0, 400)}"`;
-    const completion = await openai.chat.completions.create({
-      model: MODEL_DEFAULT,
-      messages: [
-        { role: "system", content: INTENT_CLASSIFIER_SYSTEM },
-        { role: "user", content: userPayload },
-      ],
-      max_tokens: 5,
-    });
-    const raw = (completion.choices[0]?.message?.content ?? "").trim().toLowerCase().replace(/\s+/g, "");
-    if (raw === "deep" || raw === "simple" || raw === "docs") return raw;
-  } catch (err) {
-    console.warn("[ondaReply] classifyOrchestratorDepth AI failed, using fallback:", err);
-  }
   return classifyIntentFallback(query, eje, extraContextLength);
 }
 
