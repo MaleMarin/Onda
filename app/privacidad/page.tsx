@@ -74,8 +74,8 @@ export default function PrivacidadPage() {
 
         <Section title="Qué es Onda">
           <p style={p}>
-            Onda es un servicio de Precisar, iniciativa de Fundación Democracia Abierta. Es un
-            servicio de educación mediática que ayuda a comprender mensajes, enlaces, audios,
+            Onda es una iniciativa de Precisar, impulsada por Fundación Democracia Abierta. Es una
+            herramienta de educación mediática que ayuda a comprender mensajes, enlaces, audios,
             imágenes y contenidos virales con más contexto, datos y criterio antes de compartir.
           </p>
           <p style={p}>
@@ -310,7 +310,7 @@ export default function PrivacidadPage() {
 
         <Section title="Menores de edad">
           <p style={p}>
-            Onda es un servicio educativo y de orientación. Si eres menor de edad, úsalo con
+            Onda es una iniciativa educativa y de orientación. Si eres menor de edad, úsala con
             acompañamiento de una persona adulta responsable, especialmente si vas a enviar
             imágenes, audios o información personal.
           </p>
