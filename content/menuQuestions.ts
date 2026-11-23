@@ -53,11 +53,6 @@ export const MENU_QUESTIONS: Record<string, MenuQuestionTriple> = {
     "¿Quieres que yo también dé mi punto de vista, o prefieres que te ayude a ordenar el tuyo?",
     "¿Te interesa saber qué piensan otras posturas sobre lo mismo?",
   ],
-  A_M10: [
-    "¿A quién quieres compartirle Onda — un familiar, un amigo, o alguien en particular?",
-    "¿Qué fue lo que más te sirvió de Onda para recomendárselo?",
-    "¿Quieres que te ayude a escribir un mensaje para presentárselo de forma natural?",
-  ],
 
   // ═══════════════════════════════ ONDA CIVITA ═══════════════════════════════
   C_N1: [
