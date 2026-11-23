@@ -25,6 +25,7 @@ import { infographicStreamAltPrefix } from "../../../../lib/infographicPayload";
 import { EjeOnda } from "../../../../content/types";
 import { checkRateLimit } from "../../../../lib/rateLimiter";
 import { checkUserMessage } from "../../../../lib/promptSafety";
+import { checkConversationConduct } from "@/lib/conversationConduct";
 import {
   AUDIO_VALIDATION_TOO_LARGE,
   AUDIO_VALIDATION_TOO_LONG,
@@ -317,6 +318,15 @@ export async function POST(req: Request) {
       if (!iv.valid) {
         return Response.json({ error: iv.error ?? "Imagen no válida." }, { status: 400 });
       }
+    }
+
+    // Evaluar solo el turno nuevo; mensajes anteriores sirven para detectar insistencia.
+    const conduct = checkConversationConduct(message, {
+      locale: inclusiveFromApi.locale,
+      recentUserMessages: history.filter((entry) => entry.role === "user").map((entry) => entry.content),
+    });
+    if (!conduct.allowed) {
+      return Response.json({ error: conduct.response, conductStage: conduct.stage }, { status: 400 });
     }
 
     const safetyMsg = checkUserMessage(message);
