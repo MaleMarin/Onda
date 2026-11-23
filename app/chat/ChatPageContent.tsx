@@ -39,7 +39,6 @@ import {
   isShortAcknowledgement,
   looksLikeNewStandaloneQuestion,
 } from "@/lib/onda/contributions/extractContributionMetadata";
-import { computeWebPlayAudioDecision } from "@/lib/playAudioContract";
 import { useOndaTheme } from "@/lib/useOndaTheme";
 import { ondaStyles } from "@/lib/ondaStyles";
 import { ChatBubble } from "./components/ChatBubble";
@@ -575,9 +574,6 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
   const embedWrapRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const inclusionOpenButtonRef = useRef<HTMLButtonElement>(null);
-  const ttsAudioContextRef = useRef<AudioContext | null>(null);
-  const ttsSourceRef = useRef<AudioBufferSourceNode | null>(null);
-  const [ttsPlaying, setTtsPlaying] = useState(false);
   const [healthStatus, setHealthStatus] = useState<HealthBannerStatus>("unknown");
 
   useEffect(() => {
@@ -600,16 +596,6 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
     const interval = setInterval(checkHealth, 2 * 60 * 1000);
     return () => clearInterval(interval);
   }, []);
-
-  /** Desbloquea el audio en Chrome/Mac: debe llamarse de forma síncrona en el gesto del usuario (click). */
-  function getTTSAudioContext(): AudioContext | null {
-    if (typeof window === "undefined") return null;
-    const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-    if (!Ctx) return null;
-    if (!ttsAudioContextRef.current) ttsAudioContextRef.current = new Ctx();
-    ttsAudioContextRef.current.resume();
-    return ttsAudioContextRef.current;
-  }
 
   /** Bajar al final: respuestas siempre ABAJO (orden cronológico: usuario → bot), como WhatsApp. Defensa: try/catch para evitar que un error de scroll fuerce full reload en Fast Refresh. */
   const scrollToBottom = useCallback(() => {
@@ -845,7 +831,7 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
       saveUnifiedPrefsToStorage(pinUnified);
     }
     const requestLocale = mapPrefsToOndaChatLocale(normalizePrefs(unifiedForSend), text);
-    const userPreferencesForApi = mergeOndaUserPreferences(userPrefs, { locale: requestLocale });
+    const userPreferencesForApi = mergeOndaUserPreferences(userPrefs, { locale: requestLocale, outputMode: "text" });
 
     setInput("");
     const imageToSend = attachmentImage;
@@ -941,7 +927,6 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
       const reader = res.body?.getReader();
       let fullContent = "";
       let receivedAnyText = false;
-      let serverPlayAudio: boolean | undefined;
       let streamMeta: ChatStreamMeta = { fullContent: "", receivedAnyText: false };
       let rawStreamAcc = "";
       if (reader) {
@@ -967,7 +952,6 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
         );
         receivedAnyText = receivedAnyText || streamMeta.receivedAnyText;
         fullContent = streamMeta.fullContent;
-        serverPlayAudio = streamMeta.serverPlayAudio;
       }
       if (receivedAnyText && fullContent) {
         const parsed = parseResponseFormat(fullContent);
@@ -1009,16 +993,7 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
         } else {
           contributionPendingRef.current = null;
         }
-        const fallbackAudio = computeWebPlayAudioDecision({
-          outputMode: userPrefs.outputMode,
-          userMessage: text,
-          parsed: { sendAudio: parsed.sendAudio },
-        });
-        const shouldPlay =
-          serverPlayAudio !== undefined ? serverPlayAudio : fallbackAudio.play;
-        if (shouldPlay) {
-          window.setTimeout(() => void playTTS(cleaned), 320);
-        }
+
         trackUsage("message_sent", ejeToUse, { responseTimeMs: Date.now() - sendStartMs });
       } else if (!receivedAnyText) {
         setMessages((m) =>
@@ -1143,7 +1118,7 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
       saveUnifiedPrefsToStorage(pinChip);
     }
     const requestLocaleChip = mapPrefsToOndaChatLocale(normalizePrefs(unifiedChip), t);
-    const userPreferencesChipApi = mergeOndaUserPreferences(userPrefs, { locale: requestLocaleChip });
+    const userPreferencesChipApi = mergeOndaUserPreferences(userPrefs, { locale: requestLocaleChip, outputMode: "text" });
 
     const history = messages
       .filter((m) => !m.isContributionInviteBubble)
@@ -1221,8 +1196,7 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
         const reader = res.body?.getReader();
         let fullContent = "";
         let receivedAnyText = false;
-        let serverPlayAudio: boolean | undefined;
-        let streamMetaChip: ChatStreamMeta = { fullContent: "", receivedAnyText: false };
+          let streamMetaChip: ChatStreamMeta = { fullContent: "", receivedAnyText: false };
         let rawStreamAccChip = "";
         if (reader) {
           streamMetaChip = await consumeChatNdjsonStream(
@@ -1247,8 +1221,7 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
           );
           receivedAnyText = receivedAnyText || streamMetaChip.receivedAnyText;
           fullContent = streamMetaChip.fullContent;
-          serverPlayAudio = streamMetaChip.serverPlayAudio;
-        }
+          }
         if (receivedAnyText && fullContent) {
           const parsed = parseResponseFormat(fullContent);
           const cleaned = stripListeningInviteEchoFromText(parsed.text, streamMetaChip.listeningInvite);
@@ -1290,16 +1263,7 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
           } else {
             contributionPendingRef.current = null;
           }
-          const fallbackAudio = computeWebPlayAudioDecision({
-            outputMode: userPrefs.outputMode,
-            userMessage: t,
-            parsed: { sendAudio: parsed.sendAudio },
-          });
-          const shouldPlay =
-            serverPlayAudio !== undefined ? serverPlayAudio : fallbackAudio.play;
-          if (shouldPlay) {
-            window.setTimeout(() => void playTTS(cleaned), 320);
-          }
+
           trackUsage("message_sent", ej, { responseTimeMs: Date.now() - sendStartMs });
         } else if (!receivedAnyText) {
           setMessages((m) =>
@@ -1410,67 +1374,6 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
       mediaRecorderRef.current = null;
     }
     setRecording(false);
-  }
-
-  async function playTTS(text: string) {
-    if (!text.trim()) return;
-    if (ttsPlaying) return;
-    // Desbloquear audio en Chrome/Mac: tiene que ser síncrono en el click
-    const ctx = getTTSAudioContext();
-    if (!ctx) {
-      console.warn("TTS: AudioContext no disponible");
-      return;
-    }
-    stopTTS();
-    setTtsPlaying(true);
-    try {
-      const res = await fetch("/api/tts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: text.slice(0, 2048) }),
-      });
-      if (!res.ok) {
-        setTtsPlaying(false);
-        return;
-      }
-      const blob = await res.blob();
-      const arrayBuffer = await blob.arrayBuffer();
-      ctx.decodeAudioData(
-        arrayBuffer,
-        (buffer) => {
-          const source = ctx.createBufferSource();
-          source.buffer = buffer;
-          source.connect(ctx.destination);
-          ttsSourceRef.current = source;
-          source.onended = () => {
-            ttsSourceRef.current = null;
-            setTtsPlaying(false);
-          };
-          source.start(0);
-        },
-        (err) => {
-          console.warn("TTS decode error", err);
-          setTtsPlaying(false);
-        }
-      );
-    } catch (err) {
-      console.error("TTS failed", err);
-      ttsSourceRef.current = null;
-      setTtsPlaying(false);
-    }
-  }
-
-  function stopTTS() {
-    try {
-      if (ttsSourceRef.current) {
-        ttsSourceRef.current.stop();
-        ttsSourceRef.current.disconnect();
-      }
-    } catch {
-      // ignore if already stopped
-    }
-    ttsSourceRef.current = null;
-    setTtsPlaying(false);
   }
 
   /* ── derived styles from S + overrides ── */
@@ -1681,7 +1584,7 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
     flexShrink: 0,
   };
 
-  /** Micrófono del composer: prominente y distinto del botón Escuchar (que está en las burbujas). Para grabar tu pregunta, no para escuchar al bot. */
+  /** Micrófono del composer para enviar una consulta por voz; no reproduce respuestas del bot. */
   const micBtnStyle: CSSProperties = {
     ...iconStyle,
     ...(compact ? {} : { width: 48, height: 48, fontSize: "1.25rem" }),
@@ -1702,7 +1605,7 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
     fontSize: "0.875rem",
   };
 
-  /** Saludo o mensaje de error: hideActions elimina Escuchar/Compartir/Feedback (limpieza forense de UI). */
+  /** Saludo o mensaje de error: oculta acciones secundarias (limpieza de UI). */
   const isWelcomeOrError = (m: Message): boolean => {
     if (m.role !== "model") return false;
     if (!m.isGenerated) return true;
@@ -1998,11 +1901,6 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
                 color={ejeColor}
                 compact={compact}
                 uiLocale={CHAT_UI_LOCALE}
-                onPlayTTS={
-                  msg.role === "model" && msg.content?.trim() && !msg.isContributionInviteBubble ? playTTS : undefined
-                }
-                onStopTTS={stopTTS}
-                isTTSPlaying={ttsPlaying}
                 theme={t}
                 onMenuIntroChipClick={handleMenuIntroChipClick}
                 onFeedback={handleFeedback}
