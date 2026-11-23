@@ -132,8 +132,8 @@ export type OrchestratorRoute = "claude" | "gpt-mini" | "gemini" | "gpt-4o";
 /** Contexto opcional para telemetría (request ID trazable + canal web/WhatsApp). */
 export type OndaTelemetryContext = { requestId: string; canal: TelemetryCanal };
 
-const MODEL_CLAUDE = "claude-3-5-sonnet-20241022";
-const MODEL_GEMINI = "gemini-1.5-pro";
+const MODEL_CLAUDE = process.env.ONDA_CLAUDE_MODEL?.trim() || "claude-3-5-sonnet-20241022";
+const MODEL_GEMINI = process.env.ONDA_GEMINI_MODEL?.trim() || "gemini-1.5-pro";
 /** Umbral de caracteres en extraContext para elegir Gemini (muchos documentos). */
 const EXTRA_CONTEXT_DOCS_THRESHOLD = 12_000;
 
@@ -217,22 +217,26 @@ export async function classifyOrchestratorDepth(
  * - Claude 3.5 Sonnet: análisis profundos, ética y eje Profes (deep).
  * - GPT-4o-mini: saludos y consultas simples (simple). Fallback si no hay key de Claude/Gemini.
  */
+/**
+ * Selección responsable: una pregunta compleja usa inicialmente el modelo
+ * profundo, no un mini que solo deriva tras un fallo. Los proveedores externos
+ * son opcionales y requieren IDs actuales definidos en variables de entorno.
+ */
 export function getOrchestratorRoute(
   intent: "deep" | "simple" | "docs"
 ): OrchestratorRoute {
-  if (intent === "docs" && getGoogleApiKey()) return "gemini";
-  if (intent === "deep" && process.env.ANTHROPIC_API_KEY) return "claude";
-  return "gpt-mini";
+  return intent === "simple" ? "gpt-mini" : "gpt-4o";
 }
 
-/**
- * Orden de intento con circuit breaker: mini → (Gemini o Claude según intent) → GPT-4o.
- */
-function buildFallbackRouteOrder(intent: "deep" | "simple" | "docs"): OrchestratorRoute[] {
-  const routes: OrchestratorRoute[] = ["gpt-mini"];
-  if (intent === "docs" && getGoogleApiKey()) routes.push("gemini");
-  else if (intent === "deep" && process.env.ANTHROPIC_API_KEY?.trim()) routes.push("claude");
-  routes.push("gpt-4o");
+export function buildFallbackRouteOrder(intent: "deep" | "simple" | "docs"): OrchestratorRoute[] {
+  if (intent === "simple") return ["gpt-mini", "gpt-4o"];
+  const routes: OrchestratorRoute[] = ["gpt-4o"];
+  if (intent === "docs" && getGoogleApiKey() && process.env.ONDA_GEMINI_MODEL?.trim()) {
+    routes.push("gemini");
+  } else if (intent === "deep" && process.env.ANTHROPIC_API_KEY?.trim() && process.env.ONDA_CLAUDE_MODEL?.trim()) {
+    routes.push("claude");
+  }
+  routes.push("gpt-mini");
   return routes;
 }
 
@@ -1125,6 +1129,14 @@ export async function* getOndaReplyStream(
         console.warn("[circuit]", err.provider, "abierto; siguiente ruta (stream)");
       } else {
         console.warn("[ondaReply] stream ruta falló:", route, err);
+      }
+      if (streamedAcc.length > 0) {
+        // Nunca añadir la respuesta de otro modelo tras texto ya entregado.
+        streamedAcc += "\n\nLa respuesta quedó incompleta por un problema de conexión. Puedes pedir que continúe.";
+        yield "\n\nLa respuesta quedó incompleta por un problema de conexión. Puedes pedir que continúe.";
+        streamOk = true;
+        usedEmergency = true;
+        break routeLoop;
       }
     }
   }
