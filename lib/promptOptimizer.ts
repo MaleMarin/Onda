@@ -5,9 +5,10 @@
 
 const MAX_CONTEXT_CHARS = 6000;
 
-const TRUNC_MEMORIA = 300;
-const TRUNC_ACTUALIDAD = 800;
-const TRUNC_NOTICIA = 600;
+// Preservar suficientes fragmentos y URLs para poder fundamentar la respuesta.
+const TRUNC_MEMORIA = 1200;
+const TRUNC_ACTUALIDAD = 6500;
+const TRUNC_NOTICIA = 3500;
 
 const MARK_MEMORIA = "--- MEMORIA DE INTERACCIONES PREVIAS";
 const MARK_ACTUALIDAD = "--- CONTEXTO_DE_ACTUALIDAD";
