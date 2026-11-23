@@ -5,7 +5,7 @@ import type { CSSProperties, ReactNode } from "react";
 export const metadata: Metadata = {
   title: "Privacidad — Onda, Precisar",
   description:
-    "Política de privacidad de Onda, servicio de Precisar (Fundación Democracia Abierta): qué datos tratamos, proveedores de IA, conservación y derechos.",
+    "Política de privacidad de Onda, iniciativa de Precisar impulsada por Fundación Democracia Abierta: datos, proveedores de IA, conservación y derechos.",
 };
 
 const updated = "30 de septiembre de 2026";
