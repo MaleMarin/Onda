@@ -2451,9 +2451,8 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
                 padding: "0 12px",
               }}
             >
-              {mc.precisarFooterLegal.split("contacto@precisar.net")[0]}
-              <a href="mailto:contacto@precisar.net" style={{ color: "inherit", textDecoration: "underline" }}>
-                contacto@precisar.net
+              <a href={`mailto:${mc.precisarFooterLegal}`} style={{ color: "inherit", textDecoration: "underline" }}>
+                {mc.precisarFooterLegal}
               </a>
             </p>
             <p
@@ -2478,6 +2477,10 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
                 style={{ color: "inherit", textDecoration: "underline" }}
               >
                 {mc.termsOfUseLink}
+              </a>
+              {" · "}
+              <a href="/convivencia" style={{ color: "inherit", textDecoration: "underline" }}>
+                {mc.termsOfUseLink === "Termos" ? "Convivência" : "Convivencia"}
               </a>
             </p>
           </div>
