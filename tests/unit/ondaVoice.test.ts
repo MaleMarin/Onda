@@ -21,7 +21,7 @@ describe("voces editoriales diferenciadas", () => {
     expect(block).toContain("docente");
   });
   it("las tres voces son distintas y el perfil coincide con el eje", () => {
-    const voices = [EjeOnda.A_MANO, EjeOnda.CIVITA, EjeOnda.PROFES].map(buildVoiceBlock);
+    const voices = [EjeOnda.A_MANO, EjeOnda.CIVITA, EjeOnda.PROFES].map((eje) => buildVoiceBlock(eje));
     expect(new Set(voices).size).toBe(3);
     for (const eje of [EjeOnda.A_MANO, EjeOnda.CIVITA, EjeOnda.PROFES]) {
       expect(getVoiceProfile(eje).eje).toBe(eje);
