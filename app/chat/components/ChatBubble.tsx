@@ -395,7 +395,7 @@ export function ChatBubble({
             )}
           </div>
         )}
-        {message.ragUsed === false &&
+        {message.ragUsed === false && message.webSearchUsed !== true &&
           (message.conversationIntent === "fact_check" ||
             message.conversationIntent === "disinformation") &&
           message.isGenerated &&
@@ -413,16 +413,9 @@ export function ChatBubble({
                 borderTop: `1px solid ${t.c.border}`,
               }}
             >
-              Esta respuesta se basa en conocimiento general. Para información verificada de Precisar,
-              visita{" "}
-              <a
-                href="https://precisar.net"
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ color: "inherit", textDecoration: "underline" }}
-              >
-                precisar.net
-              </a>
+              {uiLocale === "pt-BR"
+                ? "Nenhuma fonte externa foi recuperada nesta resposta. Para informações atuais, confira fontes primárias antes de compartilhar."
+                : "No se recuperaron fuentes externas en esta respuesta. Para hechos actuales, conviene comprobarlos en fuentes primarias antes de compartir."}
             </div>
           )}
         {showCopyDownload && showActionButtons && (
