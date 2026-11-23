@@ -969,6 +969,7 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
                     li && (li.expectingExperienceFollowUp || li.show) ? { ...li } : undefined,
                   ragUsed: streamMeta.ragUsed ?? null,
                   webSearchUsed: streamMeta.webSearchUsed ?? null,
+                  sourceRefs: streamMeta.sourceRefs ?? [],
                   conversationIntent: streamMeta.conversationIntent ?? null,
                 }
               : msg
@@ -1240,6 +1241,7 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
                         : undefined,
                     ragUsed: streamMetaChip.ragUsed ?? null,
                     webSearchUsed: streamMetaChip.webSearchUsed ?? null,
+                    sourceRefs: streamMetaChip.sourceRefs ?? [],
                     conversationIntent: streamMetaChip.conversationIntent ?? null,
                   }
                 : msg
