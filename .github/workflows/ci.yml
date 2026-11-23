@@ -49,7 +49,8 @@ jobs:
 
   validate-quick:
     needs: verify
-    runs-on: ubuntu-latest
+    # Firefox Playwright no está disponible en ubuntu-26.04 de GitHub Actions.
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
     env:
       NODE_OPTIONS: --max-old-space-size=6144
