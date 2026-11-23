@@ -40,6 +40,7 @@ import { withLock } from "../../../lib/waMessageQueue";
 import { checkRateLimit } from "../../../lib/rateLimiter";
 import { verifyWebhookSignature } from "../../../lib/verifyWebhookSignature";
 import { checkUserMessage } from "../../../lib/promptSafety";
+import { checkConversationConduct } from "@/lib/conversationConduct";
 import {
   AUDIO_VALIDATION_TOO_LONG,
   bufferFromDataUrl,
@@ -587,6 +588,16 @@ async function processWhatsAppMessage(_value: WaPayloadValue, msg: WaIncomingMes
         waUserTurn = rawAfter;
         nextWaState = session;
         return { ok: true };
+      }
+      const conduct = checkConversationConduct(userLine, {
+        locale: session.prefs.locale === "pt" ? "pt-BR" : "es-LATAM",
+        recentUserMessages: session.history.filter((entry) => entry.role === "user").map((entry) => entry.content),
+      });
+      if (!conduct.allowed && conduct.response) {
+        nextWaState = appendWaHistory(session, userLine, conduct.response);
+        waUserTurn = "";
+        response = conduct.response;
+        return { ok: false };
       }
       const safe = checkUserMessage(userLine);
       if (!safe.safe && safe.response) {
