@@ -4,6 +4,7 @@
 
 import type { ListeningInviteStreamPayload, ContributionType } from "./onda/contributions/types";
 import { STORAGE_KEY_ONDA_ULTIMO_TEMA } from "./userPreferences";
+import type { RetrievedSource } from "./sourceProvenance";
 
 export type ChatStreamMeta = {
   fullContent: string;
@@ -17,6 +18,8 @@ export type ChatStreamMeta = {
   ragUsed?: boolean | null;
   /** Primer chunk NDJSON: si la búsqueda web aportó contexto. */
   webSearchUsed?: boolean | null;
+  /** Resultados recuperados, mostrados con una aclaración de evidencia parcial. */
+  sourceRefs?: RetrievedSource[];
   /** Primer chunk NDJSON: intent conversacional clasificado en el servidor. */
   conversationIntent?: string | null;
 };
@@ -38,6 +41,7 @@ export async function consumeChatNdjsonStream(
   let listeningInvite: ListeningInviteStreamPayload | undefined;
   let ragUsed: boolean | null | undefined;
   let webSearchUsed: boolean | null | undefined;
+  let sourceRefs: RetrievedSource[] = [];
   let conversationIntent: string | null | undefined;
 
   while (true) {
@@ -69,6 +73,18 @@ export async function consumeChatNdjsonStream(
         }
         if (typeof obj.intent === "string") {
           conversationIntent = obj.intent;
+        }
+        if (Array.isArray(obj.source_refs)) {
+          sourceRefs = obj.source_refs
+            .filter((item): item is Record<string, unknown> => !!item && typeof item === "object")
+            .filter((item) => typeof item.title === "string" && typeof item.url === "string" &&
+              /^https?:\/\//i.test(String(item.url)) && item.kind === "web_result")
+            .slice(0, 6)
+            .map((item) => ({
+              title: String(item.title).slice(0, 180),
+              url: String(item.url),
+              kind: "web_result" as const,
+            }));
         }
         if (typeof obj.tema === "string" && obj.tema.trim() && typeof window !== "undefined") {
           localStorage.setItem(STORAGE_KEY_ONDA_ULTIMO_TEMA, obj.tema.trim());
@@ -138,6 +154,7 @@ export async function consumeChatNdjsonStream(
     listeningInvite,
     ragUsed: ragUsed ?? null,
     webSearchUsed: webSearchUsed ?? null,
+    sourceRefs,
     conversationIntent: conversationIntent ?? null,
   };
 }
