@@ -1,5 +1,6 @@
 import { classifyIntent } from "../../../../lib/intentClassifier";
 import { missingEvidenceContext, needsExternalEvidence } from "@/lib/evidenceRouting";
+import { extractRetrievedSources, type RetrievedSource } from "@/lib/sourceProvenance";
 import {
   classifyOrchestratorDepth,
   generateTemaFromExchange,
@@ -473,6 +474,7 @@ export async function POST(req: Request) {
       extraContext: string | undefined;
       rag_used: boolean;
       web_search_used: boolean;
+      source_refs: RetrievedSource[];
     };
 
     /** Búsqueda web solo si el orquestador ve "deep/docs" o el intent conversacional pide RAG (p. ej. fact_check). */
@@ -528,6 +530,7 @@ export async function POST(req: Request) {
             extraContext: combined || undefined,
             rag_used,
             web_search_used,
+            source_refs: web_search_used ? extractRetrievedSources(webContext) : [],
           };
         })();
 
@@ -564,6 +567,7 @@ export async function POST(req: Request) {
             extraContext: undefined,
             rag_used: false,
             web_search_used: false,
+            source_refs: [],
           };
           try {
             bundle = await contextBundlePromise;
@@ -595,6 +599,7 @@ export async function POST(req: Request) {
               JSON.stringify({
                 rag_used: bundle.rag_used,
                 web_search_used: bundle.web_search_used,
+                source_refs: bundle.source_refs,
                 intent: intentResultForLog.intent,
               }) + "\n"
             )
