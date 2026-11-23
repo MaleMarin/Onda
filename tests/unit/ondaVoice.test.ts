@@ -6,7 +6,7 @@ describe("voces editoriales diferenciadas", () => {
   it("A Mano abre espacio a intereses amplios", () => {
     const block = buildVoiceBlock(EjeOnda.A_MANO);
     expect(block).toMatch(/música|cine|deporte/i);
-    expect(block).toMatch(/no conviertas cada charla/i);
+    expect(block).toMatch(/no conviertas cada (charla|conversaci[oó]n)/i);
   });
   it("Cívita no presupone experticia y contempla Brasil", () => {
     const block = buildVoiceBlock(EjeOnda.CIVITA);
