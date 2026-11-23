@@ -25,7 +25,6 @@ export const ONDA_MAO_OPTIONS: MenuItem[] = [
   { id: "A_M7", emoji: "🎧", label_es: "Descubrir algo que valga la pena", label_pt: "Descobrir algo que vale a pena" },
   { id: "A_M8", emoji: "🌿", label_es: "Tomar aire — Cine, Música, Artes", label_pt: "Tomar um respiro — Cinema, Música, Artes" },
   { id: "A_M9", emoji: "💬", label_es: "Dar mi opinión", label_pt: "Dar minha opinião" },
-  { id: "A_M10", emoji: "✨", label_es: "Compartir Onda", label_pt: "Compartilhar ONDA" },
 ];
 
 export const IA_SUBMENU_OPTIONS: MenuItem[] = [
