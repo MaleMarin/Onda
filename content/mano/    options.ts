@@ -17,6 +17,5 @@ export const A_MANO_OPTIONS: MenuOption[] = [
   { id: 'A_M6', label: '🤖 Aprender a usar IA', intro: 'La IA puede ser una buena aliada si la usas con criterio. 🤖🧠 ¿En qué te gustaría usarla hoy?', isSubmenu: true },
   { id: 'A_M7', label: '🎧 Descubrir algo que valga la pena', intro: 'Dime cómo estás hoy: ¿Tranquilo, Motivante, Profundo o Sorprendente?', internalPrompt: 'Recomienda música, cine, podcasts o libros que inspiren y ayuden a entrenar el criterio.' },
   { id: 'A_M8', label: '🍃 Tomar aire', intro: 'Vamos a hacer una pequeña pausa digital. Cierra los ojos, inspira profundo... ¿Quieres volver al menú o ver otra opción tranquila?', internalPrompt: 'Guía un ejercicio breve de respiración y bienestar digital.' },
-  { id: 'A_M9', label: '💬 Dar mi opinión', intro: 'Tu opinión también construye este espacio. 🙌 ¿Qué es lo que más te preocupa o incomoda del mundo digital hoy?', internalPrompt: 'Escucha la opinión del usuario y ofrece herramientas o validación empática.' },
-  { id: 'A_M10', label: '✨ Compartir Onda', intro: 'Si quieres invitar a alguien más, aquí tienes un mensaje listo para reenviar:\n\n> "Prueba Onda, un asistente que ayuda a moverse con más criterio digital. Útil, simple y cero ruido."', internalPrompt: 'Facilita el compartir el bot con otros.' }
+  { id: 'A_M9', label: '💬 Dar mi opinión', intro: 'Tu opinión también construye este espacio. 🙌 ¿Qué es lo que más te preocupa o incomoda del mundo digital hoy?', internalPrompt: 'Escucha la opinión del usuario y ofrece herramientas o validación empática.' }
 ];
