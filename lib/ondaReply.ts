@@ -702,12 +702,12 @@ export function buildOndaSystemContent(options: {
       : "";
   const sourcesBlock =
     includeSourcesList === true
-      ? `\n\n📚 EL USUARIO PIDIÓ FUENTES. Cita al final en prosa las fuentes relevantes (nombre + URL) tomadas SOLO de las listas oficiales ONDA, sin listas ni bullets:\n\n--- Lista de 50 fuentes ---\n${FUENTES_ONDA_PARA_RESPUESTA}\n\n--- 50 fuentes Gobernanza LatAm, IA Docentes, Convivencia, AMI ---\n${FUENTES_ONDA_EJES_LATAM_AMI}\n\n--- Ecosistema digital LatAm/Caribe (medios nativos AMI) ---\n${ECOSISTEMA_DIGITAL_LATAM_MEDIOS}\n`
+      ? `\n\n📚 EL USUARIO PIDIÓ FUENTES. Distingue expresamente entre documentos o páginas consultados en este turno y sitios sugeridos para profundizar. La lista siguiente es un DIRECTORIO DE FUENTES RECOMENDADAS, NO evidencia consultada. Nunca atribuyas una afirmación concreta a una fuente de este directorio sin que su contenido haya sido recuperado mediante búsqueda web, documento o enlace. Si no hay evidencia accesible, reconócelo; ofrece fuentes como sugerencias, no citas verificadas:\n\n--- Lista de 50 fuentes ---\n${FUENTES_ONDA_PARA_RESPUESTA}\n\n--- 50 fuentes Gobernanza LatAm, IA Docentes, Convivencia, AMI ---\n${FUENTES_ONDA_EJES_LATAM_AMI}\n\n--- Ecosistema digital LatAm/Caribe (medios nativos AMI) ---\n${ECOSISTEMA_DIGITAL_LATAM_MEDIOS}\n`
       : "";
   const noticiaBlock = articleContext != null ? NOTICIA_SYSTEM_BLOCK(articleContext) : "";
   const ragWebBlock =
     extraContext && extraContext.trim()
-      ? `\n\n--- CONTEXTO_DE_ACTUALIDAD (búsqueda web + RAG) ---\nEl sistema ya ejecutó búsqueda en fuentes fiables. Si usas cualquier dato de este bloque, marca cada afirmación con un número correlativo [1], [2], [3]... en el cuerpo y al final incluye la sección ### 📚 Fuentes de Autoridad (única excepción anti-headers) con cada número en formato Nombre: "Título" (URL). PROHIBIDO decir "no tengo información en tiempo real".\n\n${sanitizeExternalContent(extraContext.trim())}\n`
+      ? `\n\n--- CONTEXTO_DE_ACTUALIDAD (búsqueda web + RAG) ---\nEste bloque puede contener fragmentos de búsqueda, documentos internos y notas sobre búsquedas fallidas: no todos equivalen a fuentes contrastadas. Cita únicamente títulos, URLs o documentos que aparezcan realmente en los resultados recuperados y que respalden una afirmación concreta. Si la recuperación solo devuelve un resumen, distingue evidencia parcial de lectura íntegra. No inventes referencias, fechas, vigencia ni números de fuentes. Si utilizas fuentes recuperadas, puedes señalar referencias al final y qué afirmaciones respaldan. PROHIBIDO decir "no tengo información en tiempo real".\n\n${sanitizeExternalContent(extraContext.trim())}\n`
       : "";
   return systemPromptFusionadoForCanal(canal) + ejeContext + sourcesBlock + noticiaBlock + ragWebBlock;
 }
@@ -887,7 +887,7 @@ export async function getOndaReply(
       : "";
   const sourcesBlock =
     includeSourcesList === true
-      ? `\n\n📚 EL USUARIO PIDIÓ FUENTES. Cita al final en prosa las fuentes relevantes (nombre + URL) tomadas SOLO de las listas oficiales ONDA, sin listas ni bullets:\n\n--- Lista de 50 fuentes (agencias, ciencia, política digital, datos, AMI) ---\n${FUENTES_ONDA_PARA_RESPUESTA}\n\n--- 50 fuentes Gobernanza LatAm, IA Docentes, Convivencia Escolar, AMI ---\n${FUENTES_ONDA_EJES_LATAM_AMI}\n\n--- Ecosistema digital LatAm/Caribe (medios nativos AMI) ---\n${ECOSISTEMA_DIGITAL_LATAM_MEDIOS}\n\nSi no pidió fuentes, no cites fuentes adicionales al final.\n`
+      ? `\n\n📚 EL USUARIO PIDIÓ FUENTES. Distingue expresamente entre documentos o páginas consultados en este turno y sitios sugeridos para profundizar. La lista siguiente es un DIRECTORIO DE FUENTES RECOMENDADAS, NO evidencia consultada. Nunca atribuyas una afirmación concreta a una fuente de este directorio sin que su contenido haya sido recuperado mediante búsqueda web, documento o enlace. Si no hay evidencia accesible, reconócelo; ofrece fuentes como sugerencias, no citas verificadas:\n\n--- Lista de 50 fuentes (agencias, ciencia, política digital, datos, AMI) ---\n${FUENTES_ONDA_PARA_RESPUESTA}\n\n--- 50 fuentes Gobernanza LatAm, IA Docentes, Convivencia Escolar, AMI ---\n${FUENTES_ONDA_EJES_LATAM_AMI}\n\n--- Ecosistema digital LatAm/Caribe (medios nativos AMI) ---\n${ECOSISTEMA_DIGITAL_LATAM_MEDIOS}\n\nSi no pidió fuentes, no cites fuentes adicionales al final.\n`
       : "";
   const noticiaBlock = articleContext != null ? NOTICIA_SYSTEM_BLOCK(articleContext) : "";
   const queryIntent = classifyIntent(userText);
@@ -895,7 +895,7 @@ export async function getOndaReply(
   const memoryBlock = memoryContext?.trim() ? `\n\n${memoryContext.trim()}\n` : "";
   const ragWebBlock =
     extraContext && extraContext.trim()
-      ? `\n\n--- CONTEXTO_DE_ACTUALIDAD (búsqueda web + RAG) ---\nEl sistema ya ejecutó búsqueda en fuentes fiables. Si usas cualquier dato de este bloque, marca cada afirmación con un número correlativo [1], [2], [3]... en el cuerpo y al final incluye la sección ### 📚 Fuentes de Autoridad (única excepción anti-headers) con cada número en formato Nombre: "Título" (URL). Si no tienes el dato en tu conocimiento, USA ESTE CONTEXTO. PROHIBIDO decir "no tengo información en tiempo real".\n\n${sanitizeExternalContent(extraContext.trim())}\n`
+      ? `\n\n--- CONTEXTO_DE_ACTUALIDAD (búsqueda web + RAG) ---\nEste bloque puede contener fragmentos de búsqueda, documentos internos y notas sobre búsquedas fallidas: no todos equivalen a fuentes contrastadas. Cita únicamente títulos, URLs o documentos que aparezcan realmente en los resultados recuperados y que respalden una afirmación concreta. Si la recuperación solo devuelve un resumen, distingue evidencia parcial de lectura íntegra. No inventes referencias, fechas, vigencia ni números de fuentes. Si utilizas fuentes recuperadas, puedes señalar referencias al final y qué afirmaciones respaldan. Si no tienes el dato en tu conocimiento, USA ESTE CONTEXTO. PROHIBIDO decir "no tengo información en tiempo real".\n\n${sanitizeExternalContent(extraContext.trim())}\n`
       : "";
   const transparencyForCache = effectiveTransparencyRequested(
     transparencyRequested,
@@ -1022,7 +1022,7 @@ export async function* getOndaReplyStream(
       : "";
   const sourcesBlock =
     includeSourcesList === true
-      ? `\n\n📚 EL USUARIO PIDIÓ FUENTES. Cita al final en prosa las fuentes relevantes (nombre + URL) tomadas SOLO de las listas oficiales ONDA, sin listas ni bullets:\n\n--- Lista de 50 fuentes ---\n${FUENTES_ONDA_PARA_RESPUESTA}\n\n--- 50 fuentes Gobernanza LatAm, IA Docentes, Convivencia, AMI ---\n${FUENTES_ONDA_EJES_LATAM_AMI}\n\n--- Ecosistema digital LatAm/Caribe (medios nativos AMI) ---\n${ECOSISTEMA_DIGITAL_LATAM_MEDIOS}\n`
+      ? `\n\n📚 EL USUARIO PIDIÓ FUENTES. Distingue expresamente entre documentos o páginas consultados en este turno y sitios sugeridos para profundizar. La lista siguiente es un DIRECTORIO DE FUENTES RECOMENDADAS, NO evidencia consultada. Nunca atribuyas una afirmación concreta a una fuente de este directorio sin que su contenido haya sido recuperado mediante búsqueda web, documento o enlace. Si no hay evidencia accesible, reconócelo; ofrece fuentes como sugerencias, no citas verificadas:\n\n--- Lista de 50 fuentes ---\n${FUENTES_ONDA_PARA_RESPUESTA}\n\n--- 50 fuentes Gobernanza LatAm, IA Docentes, Convivencia, AMI ---\n${FUENTES_ONDA_EJES_LATAM_AMI}\n\n--- Ecosistema digital LatAm/Caribe (medios nativos AMI) ---\n${ECOSISTEMA_DIGITAL_LATAM_MEDIOS}\n`
       : "";
   const noticiaBlock = articleContext != null ? NOTICIA_SYSTEM_BLOCK(articleContext) : "";
   const queryIntent = classifyIntent(userText);
@@ -1030,7 +1030,7 @@ export async function* getOndaReplyStream(
   const memoryBlock = memoryContext?.trim() ? `\n\n${memoryContext.trim()}\n` : "";
   const ragWebBlock =
     extraContext && extraContext.trim()
-      ? `\n\n--- CONTEXTO_DE_ACTUALIDAD (búsqueda web + RAG) ---\nEl sistema ya ejecutó búsqueda en fuentes fiables. Si usas cualquier dato de este bloque, marca cada afirmación con un número correlativo [1], [2], [3]... en el cuerpo y al final incluye la sección ### 📚 Fuentes de Autoridad (única excepción anti-headers) con cada número en formato Nombre: "Título" (URL). PROHIBIDO decir "no tengo información en tiempo real".\n\n${sanitizeExternalContent(extraContext.trim())}\n`
+      ? `\n\n--- CONTEXTO_DE_ACTUALIDAD (búsqueda web + RAG) ---\nEste bloque puede contener fragmentos de búsqueda, documentos internos y notas sobre búsquedas fallidas: no todos equivalen a fuentes contrastadas. Cita únicamente títulos, URLs o documentos que aparezcan realmente en los resultados recuperados y que respalden una afirmación concreta. Si la recuperación solo devuelve un resumen, distingue evidencia parcial de lectura íntegra. No inventes referencias, fechas, vigencia ni números de fuentes. Si utilizas fuentes recuperadas, puedes señalar referencias al final y qué afirmaciones respaldan. PROHIBIDO decir "no tengo información en tiempo real".\n\n${sanitizeExternalContent(extraContext.trim())}\n`
       : "";
   const transparencyForCache = effectiveTransparencyRequested(
     transparencyRequested,
@@ -1226,14 +1226,14 @@ export async function getOndaReplyWithImage(
       : "";
   const sourcesBlock =
     includeSourcesList === true
-      ? `\n\n📚 EL USUARIO PIDIÓ FUENTES. Cita al final en prosa las fuentes relevantes (nombre + URL) tomadas SOLO de las listas oficiales ONDA, sin listas ni bullets:\n\n--- Lista de 50 fuentes ---\n${FUENTES_ONDA_PARA_RESPUESTA}\n\n--- 50 fuentes Gobernanza LatAm, IA Docentes, Convivencia, AMI ---\n${FUENTES_ONDA_EJES_LATAM_AMI}\n\n--- Ecosistema digital LatAm/Caribe (medios nativos AMI) ---\n${ECOSISTEMA_DIGITAL_LATAM_MEDIOS}\n`
+      ? `\n\n📚 EL USUARIO PIDIÓ FUENTES. Distingue expresamente entre documentos o páginas consultados en este turno y sitios sugeridos para profundizar. La lista siguiente es un DIRECTORIO DE FUENTES RECOMENDADAS, NO evidencia consultada. Nunca atribuyas una afirmación concreta a una fuente de este directorio sin que su contenido haya sido recuperado mediante búsqueda web, documento o enlace. Si no hay evidencia accesible, reconócelo; ofrece fuentes como sugerencias, no citas verificadas:\n\n--- Lista de 50 fuentes ---\n${FUENTES_ONDA_PARA_RESPUESTA}\n\n--- 50 fuentes Gobernanza LatAm, IA Docentes, Convivencia, AMI ---\n${FUENTES_ONDA_EJES_LATAM_AMI}\n\n--- Ecosistema digital LatAm/Caribe (medios nativos AMI) ---\n${ECOSISTEMA_DIGITAL_LATAM_MEDIOS}\n`
       : "";
   const queryIntentImg = classifyIntent(userText);
   const intentContextBlockImg = buildIntentContextBlock(queryIntentImg);
   const memoryBlockImg = memoryContext?.trim() ? `\n\n${memoryContext.trim()}\n` : "";
   const ragWebBlock =
     extraContext && extraContext.trim()
-      ? `\n\n--- CONTEXTO_DE_ACTUALIDAD (búsqueda web + RAG) ---\nEl sistema ya ejecutó búsqueda en fuentes fiables. Si usas cualquier dato de este bloque, marca cada afirmación con un número correlativo [1], [2], [3]... en el cuerpo y al final incluye la sección ### 📚 Fuentes de Autoridad (única excepción anti-headers) con cada número en formato Nombre: "Título" (URL). PROHIBIDO decir "no tengo información en tiempo real".\n\n${sanitizeExternalContent(extraContext.trim())}\n`
+      ? `\n\n--- CONTEXTO_DE_ACTUALIDAD (búsqueda web + RAG) ---\nEste bloque puede contener fragmentos de búsqueda, documentos internos y notas sobre búsquedas fallidas: no todos equivalen a fuentes contrastadas. Cita únicamente títulos, URLs o documentos que aparezcan realmente en los resultados recuperados y que respalden una afirmación concreta. Si la recuperación solo devuelve un resumen, distingue evidencia parcial de lectura íntegra. No inventes referencias, fechas, vigencia ni números de fuentes. Si utilizas fuentes recuperadas, puedes señalar referencias al final y qué afirmaciones respaldan. PROHIBIDO decir "no tengo información en tiempo real".\n\n${sanitizeExternalContent(extraContext.trim())}\n`
       : "";
   const noticiaBlockImg = "";
   const systemContentCore =
