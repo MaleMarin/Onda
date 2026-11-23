@@ -257,7 +257,7 @@ export type ChatUiMicrocopy = {
   precisarSiteLinkAria: string;
   /** Pie del chat: línea institucional bajo el logo de Precisar. */
   precisarFooterTagline: string;
-  /** Pie del chat: nombre de la fundación y correo; sin dirección postal ni RUT. */
+  /** Pie del chat: solo correo; sin duplicar razón social, dirección ni RUT. */
   precisarFooterLegal: string;
   /** Pie / privacidad: enlace a términos de uso. */
   termsOfUseLink: string;
@@ -338,7 +338,7 @@ const CHAT_UI_ES: ChatUiMicrocopy = {
   precisarSiteLinkAria: "Precisar, iniciativa de Fundación Democracia Abierta, sitio web (se abre en una pestaña nueva)",
   precisarFooterTagline: "Onda es un servicio de Precisar, iniciativa de Fundación Democracia Abierta.",
   precisarFooterLegal:
-    "Fundación Democracia Abierta · contacto@precisar.net",
+    "contacto@precisar.net",
   termsOfUseLink: "Términos",
   ejeTablistAria: "Elegir Onda: perfil de la conversación",
   ejePickerChoosePrefix: "Elegir",
@@ -404,7 +404,7 @@ const CHAT_UI_PT: ChatUiMicrocopy = {
   precisarSiteLinkAria: "Precisar, iniciativa da Fundação Democracia Aberta, site oficial (abre em uma nova aba)",
   precisarFooterTagline: "Onda é um serviço da Precisar, iniciativa da Fundação Democracia Aberta.",
   precisarFooterLegal:
-    "Fundação Democracia Aberta · contacto@precisar.net",
+    "contacto@precisar.net",
   termsOfUseLink: "Termos",
   ejeTablistAria: "Escolher Onda: perfil da conversa",
   ejePickerChoosePrefix: "Escolher",
