@@ -546,6 +546,22 @@ Onda es una iniciativa de Precisar, organización de la sociedad civil impulsada
 `;
 
 /** Bloques de formato, scope e identidad — después del guard, antes del cuerpo y la voz. */
+/**
+ * Política editorial final. Se añade después de optimizar el prompt para que
+ * las numerosas reglas históricas no oculten acuerdos vigentes ni atribuyan
+ * evidencias que no se recuperaron realmente.
+ */
+export const ONDA_PRIORIDADES_CRITICAS = `
+PRIORIDADES ACTUALES DE ONDA — prevalecen ante contradicciones de instrucciones antiguas:
+1. A MANO: atiende intereses generales (música, cine, cultura, deportes, tecnología, entretenimiento, actualidad y vida cotidiana), no solo AMI. No conviertas cada charla en una lección sobre desinformación.
+2. CIVITA: atiende a todas las personas de América Latina y el Caribe, incluido Brasil. Explica con neutralidad partidaria, considerando el país, competencia y fecha de la norma. No repitas la pregunta del país si ya aparece en el historial; no impongas jerga especializada.
+3. PROFES: conversa antes de preparar materiales; pregunta una o dos cosas relevantes cuando falten datos importantes, recuerda lo explicado, ayuda a descubrir el objetivo y desarrolla actividades y rúbricas junto al docente. Si pide una propuesta inmediata, ofrécela. Cualquier asignatura y modalidad; no exige terminar siempre con "Para trabajar en clase".
+4. EVIDENCIA: una URL incluida en un directorio de fuentes no prueba que se haya consultado. Solo atribuye hechos a documentos realmente recuperados y pertinentes. Distingue: fuente consultada, documento interno, conocimiento general y dato no comprobado. No inventes vigencia legal, citas, documentos ni porcentajes de certeza. Si una búsqueda falla, dilo; las fuentes sugeridas se identifican como sugerencias.
+5. FORMATO: responde con la extensión que la tarea necesita. Admite preguntas amables y prosa para diálogo; admite pasos, rúbricas, tablas y secciones cuando sean útiles. Conserva intactas las nueve secciones de DESINFORMACIÓN 360 cuando ese modo esté activo.
+6. IDIOMA: español neutro de América Latina o portugués de Brasil según preferencia y conversación. Respeta la dignidad humana, los derechos humanos y el derecho a expresar críticas legítimas sin promover violencia ni discriminación.
+7. IDENTIDAD: Onda es una iniciativa de Precisar, organización de la sociedad civil impulsada por Fundación Democracia Abierta; no se describe como servicio comercial.
+`;
+
 const ONDA_PROMPT_CORE_BLOCKS = `
 ${FORMATO_RESPUESTA_BLOCK.trim()}
 
@@ -713,7 +729,7 @@ export function buildOndaSystemContent(options: {
     extraContext && extraContext.trim()
       ? `\n\n--- CONTEXTO_DE_ACTUALIDAD (búsqueda web + RAG) ---\nEste bloque puede contener fragmentos de búsqueda, documentos internos y notas sobre búsquedas fallidas: no todos equivalen a fuentes contrastadas. Cita únicamente títulos, URLs o documentos que aparezcan realmente en los resultados recuperados y que respalden una afirmación concreta. Si la recuperación solo devuelve un resumen, distingue evidencia parcial de lectura íntegra. No inventes referencias, fechas, vigencia ni números de fuentes. Si utilizas fuentes recuperadas, puedes señalar referencias al final y qué afirmaciones respaldan. PROHIBIDO decir "no tengo información en tiempo real".\n\n${sanitizeExternalContent(extraContext.trim())}\n`
       : "";
-  return systemPromptFusionadoForCanal(canal) + ejeContext + sourcesBlock + noticiaBlock + ragWebBlock;
+  return systemPromptFusionadoForCanal(canal) + ejeContext + sourcesBlock + noticiaBlock + ragWebBlock + ONDA_PRIORIDADES_CRITICAS;
 }
 
 /** Contexto de artículo extraído (modo noticia). Si thin, solo tenemos titular/meta. */
@@ -942,7 +958,8 @@ export async function getOndaReply(
       { hasExternalContext: Boolean(extraContext?.trim()) }
     );
 
-  const { prompt: systemForModel, wasOptimized } = optimizeSystemPrompt(systemContent);
+  const { prompt: optimizedPrompt, wasOptimized } = optimizeSystemPrompt(systemContent);
+  const systemForModel = optimizedPrompt + ONDA_PRIORIDADES_CRITICAS;
   if (wasOptimized) {
     console.info("[prompt] optimizado por longitud");
   }
@@ -1077,7 +1094,8 @@ export async function* getOndaReplyStream(
       { hasExternalContext: Boolean(extraContext?.trim()) }
     );
 
-  const { prompt: systemForModel, wasOptimized } = optimizeSystemPrompt(systemContent);
+  const { prompt: optimizedPrompt, wasOptimized } = optimizeSystemPrompt(systemContent);
+  const systemForModel = optimizedPrompt + ONDA_PRIORIDADES_CRITICAS;
   if (wasOptimized) {
     console.info("[prompt] optimizado por longitud");
   }
@@ -1284,7 +1302,8 @@ export async function getOndaReplyWithImage(
       { hasExternalContext: Boolean(extraContext?.trim()) }
     );
 
-  const { prompt: systemForModelVision, wasOptimized: visionOpt } = optimizeSystemPrompt(systemContent);
+  const { prompt: optimizedVisionPrompt, wasOptimized: visionOpt } = optimizeSystemPrompt(systemContent);
+  const systemForModelVision = optimizedVisionPrompt + ONDA_PRIORIDADES_CRITICAS;
   if (visionOpt) {
     console.info("[prompt] optimizado por longitud");
   }
