@@ -41,11 +41,6 @@ interface ChatBubbleProps {
   message: Message;
   color: string;
   compact?: boolean;
-  onPlayTTS?: (text: string) => void;
-  /** Llamado para parar el audio (cuando isTTSPlaying es true). */
-  onStopTTS?: () => void;
-  /** true mientras se genera o reproduce el audio (evita doble clic y segunda voz). */
-  isTTSPlaying?: boolean;
   theme: OndaTheme;
   /** Idioma de microcopy (compartir, menú intro, etc.). */
   uiLocale?: OndaChatLocale;
@@ -66,17 +61,6 @@ interface ChatBubbleProps {
 }
 
 const LINK_REGEX = /\[([^\]]*)\]\((https?:\/\/[^)\s]+)\)/g;
-
-/** Mensajes sin evidencias útiles: no mostrar botón Compartir (no aporta valor). */
-function isNoUsefulEvidenceMessage(content: string): boolean {
-  const t = (content || "").trim();
-  if (!t) return true;
-  return (
-    /no tengo información en tiempo real/i.test(t) ||
-    /no he hallado evidencias verificables en mis registros oficiales/i.test(t) ||
-    /no tengo acceso (a|en) tiempo real/i.test(t)
-  );
-}
 
 /** Parsea el contenido de intro de menú (formato "1. Pregunta\n\n2. Pregunta\n\n3. Pregunta") para extraer las 3 preguntas como botones. Acepta \n, \r\n y bloques por número. */
 function parseMenuIntroQuestions(content: string): [string, string, string] | null {
@@ -137,9 +121,6 @@ export function ChatBubble({
   message,
   color,
   compact,
-  onPlayTTS,
-  onStopTTS,
-  isTTSPlaying,
   theme: t,
   uiLocale = "es-LATAM",
   fillHeight,
@@ -167,10 +148,8 @@ export function ChatBubble({
   const consultedSource = message.ragUsed === true || message.webSearchUsed === true;
   const showFuenteConsultada =
     message.role === "model" && Boolean(message.content) && consultedSource;
-  /** Escuchar, Compartir, Copiar/Descargar y Feedback: solo en respuestas generadas y cuando hideActions es false (saludo/error = sin acciones). */
+  /** Copiar/descargar tablas: solo en respuestas generadas (sin saludo o error). */
   const showActionButtons = !hideActions && message.role === "model" && message.content && !isEmpty && message.isGenerated === true && !message.isMenuIntro;
-  const showEscuchar = showActionButtons && !!onPlayTTS;
-  const showCompartir = message.role === "model" && message.isGenerated === true && message.content !== "";
 
   const handleCopy = useCallback(async () => {
     if (!message.content) return;
@@ -252,20 +231,6 @@ export function ChatBubble({
     overflow: "hidden",
     border: `1px solid ${t.c.border}`,
     boxShadow: t.shadow.s3,
-  };
-
-  const ttsStyle: CSSProperties = {
-    marginTop: 8,
-    padding: "5px 12px",
-    borderRadius: t.r.sm,
-    border: `1px solid ${t.c.border}`,
-    background: t.isDark ? "rgba(255,255,255,.08)" : t.glass.bg,
-    fontSize: "0.9375rem",
-    color: t.c.muted,
-    cursor: "pointer",
-    display: "inline-flex",
-    alignItems: "center",
-    gap: 5,
   };
 
   const metaStyle: CSSProperties = {
@@ -398,24 +363,6 @@ export function ChatBubble({
           </div>
         ) : (
           <div className="prose-onda">{formatContent(text)}</div>
-        )}
-        {message.isGenerated && !message.isMenuIntro && !hideActions && (
-          <>
-            {onPlayTTS && message.content && (
-              <button
-                type="button"
-                onClick={() => (isTTSPlaying && onStopTTS ? onStopTTS() : onPlayTTS!(message.content))}
-                style={{ ...ttsStyle, opacity: isTTSPlaying ? 0.9 : 1, cursor: "pointer" }}
-              >
-                {isTTSPlaying ? mc.stopAudio : mc.listenAudio}
-              </button>
-            )}
-            {showCompartir && (
-              <button type="button" onClick={handleCopy} style={{ ...ttsStyle, marginTop: 6 }}>
-                {copied ? mc.compartirCopiado : mc.compartir}
-              </button>
-            )}
-          </>
         )}
         {showFuenteConsultada && !showAsMenuIntroButtons && (
           <span style={{ marginTop: 6, fontSize: "0.8125rem", color: t.c.muted, display: "inline-block" }}>
