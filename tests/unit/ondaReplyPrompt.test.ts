@@ -27,8 +27,10 @@ describe("acuerdos editoriales Onda: regresiones", () => {
   });
   it("Profes hace preguntas pertinentes antes de diseñar", () => {
     const prompt = buildOndaSystemContent({ eje: EjeOnda.PROFES });
-    expect(prompt).toContain("pregunta una o dos cosas relevantes");
+    expect(prompt).toContain("primero ofrece una idea concreta");
+    expect(prompt).toContain("sin listar nivel, asignatura y tiempo como formulario");
     expect(buildVoiceBlock(EjeOnda.PROFES)).toContain("Antes de diseñar");
+    expect(buildVoiceBlock(EjeOnda.PROFES)).toContain("UNA sola pregunta importante");
   });
   it("no trata directorios como fuentes consultadas", () => {
     const prompt = buildOndaSystemContent({ eje: EjeOnda.CIVITA, includeSourcesList: true });
