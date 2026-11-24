@@ -35,6 +35,14 @@ describe("acuerdos editoriales Onda: regresiones", () => {
     expect(prompt).toContain("NO evidencia consultada");
     expect(prompt).toContain("Solo atribuye hechos a documentos realmente recuperados");
   });
+  it("las tres experiencias hacen una pregunta útil cuando falta contexto, sin cierres genéricos", () => {
+    for (const eje of [EjeOnda.A_MANO, EjeOnda.CIVITA, EjeOnda.PROFES]) {
+      const prompt = buildOndaSystemContent({ eje });
+      expect(prompt).toContain("UNA sola pregunta");
+      expect(prompt).toContain("no con un cierre genérico");
+      expect(prompt).toContain("No uses a la vez una pregunta directa y botones");
+    }
+  });
   it("mantiene Desinformación 360 intacto", () => {
     expect(ONDA_PRIORIDADES_CRITICAS).toContain("nueve secciones de DESINFORMACIÓN 360");
   });
