@@ -34,8 +34,11 @@ describe("funciones de acompañamiento existentes", () => {
     expect(detectEmotionalLoad("me da miedo lo que está pasando")).toBe("anxiety");
     expect(buildEmotionalValidation("anxiety", EjeOnda.A_MANO).length).toBeGreaterThan(20);
   });
-  it("evita un cierre extra en WhatsApp y en temas emocionales", () => {
-    expect(buildDelightMoment("fact_check", "whatsapp")).toBe("");
-    expect(buildDelightMoment("emotional", "web")).toBe("");
+  it("no añade cierres automáticos que desvíen la conversación", () => {
+    for (const canal of ["web", "whatsapp"] as const) {
+      for (const intent of ["fact_check", "explanation", "action", "emotional", "disinformation"] as const) {
+        expect(buildDelightMoment(intent, canal)).toBe("");
+      }
+    }
   });
 });
