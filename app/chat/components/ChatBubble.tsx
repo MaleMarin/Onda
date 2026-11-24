@@ -173,8 +173,8 @@ export function ChatBubble({
     URL.revokeObjectURL(url);
   }, [message.content]);
 
-  const padding = compact ? "10px 14px" : "12px 16px";
-  const fontSize = compact ? "1rem" : "1.125rem";
+  const padding = compact ? "10px 14px" : "14px 18px";
+  const fontSize = compact ? "1rem" : "1rem";
 
   const wrapStyle: CSSProperties = {
     display: "flex",
@@ -185,7 +185,7 @@ export function ChatBubble({
   };
 
   const bubbleBase: CSSProperties = {
-    maxWidth: "92%",
+    maxWidth: "min(100%, 78ch)",
     padding,
     borderRadius: t.r.lg,
     lineHeight: 1.6,
@@ -196,9 +196,9 @@ export function ChatBubble({
 
   const botBubbleStyle: CSSProperties = {
     ...bubbleBase,
-    background: t.glass.bg,
-    border: `2px solid ${t.glass.border}`,
-    boxShadow: t.shadow.neuRaisedExtra,
+    background: t.isDark ? t.glass.bg : "#ffffff",
+    border: `1px solid ${t.glass.borderSoft}`,
+    boxShadow: t.isDark ? "0 3px 12px rgba(0,0,0,0.20)" : "0 2px 9px rgba(38,45,54,0.09)",
     color: t.c.ink,
     borderRadius: t.isDark ? 6 : "0 22px 22px 22px",
     borderTopLeftRadius: t.isDark ? 6 : 0,
@@ -215,9 +215,7 @@ export function ChatBubble({
     background: color
       ? `linear-gradient(135deg, ${color}, ${color}dd)`
       : t.grad.userBubble,
-    boxShadow: color
-      ? `0 8px 24px ${color}55, inset 0 1px 0 rgba(255,255,255,0.25)`
-      : "0 8px 24px rgba(255,109,77,0.2), inset 0 1px 0 rgba(255,255,255,0.25)",
+    boxShadow: "0 2px 8px rgba(30,35,45,0.12)",
     borderTopRightRadius: 22,
     ...(isUser && message.interpretedAsCommunityContribution
       ? { borderLeft: "3px solid rgba(255,255,255,0.65)", paddingLeft: 13 }
