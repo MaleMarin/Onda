@@ -18,7 +18,6 @@ interface EjeSelectorProps {
 
 export function EjeSelector({ currentEje, onSelect, compact, theme, locale }: EjeSelectorProps) {
   const S = ondaStyles(theme);
-  const t = theme;
   const mc = getChatMicrocopy(locale);
 
   return (
@@ -26,7 +25,7 @@ export function EjeSelector({ currentEje, onSelect, compact, theme, locale }: Ej
       id="onda-eje-tablist"
       role="tablist"
       aria-label={mc.ejeTablistAria}
-      style={{ ...S.tabs, marginBottom: 6 }}
+      style={{ ...S.tabs, marginBottom: 0, padding: 0, borderBottom: "none", background: "transparent", gap: 8 }}
     >
       {ORDERED_EJES.map((eje) => {
         const isActive = currentEje === eje;
@@ -51,23 +50,15 @@ export function EjeSelector({ currentEje, onSelect, compact, theme, locale }: Ej
               justifyContent: "center",
               gap: 4,
               textAlign: "center",
-              minHeight: compact ? 52 : 56,
-              ...(compact ? { padding: "8px 6px", fontSize: "0.9375rem" } : {}),
+              minHeight: 42,
+              padding: "8px 12px",
+              borderRadius: 12,
+              fontSize: "0.875rem",
+              boxShadow: isActive ? "inset 0 1px 4px rgba(30,36,45,0.1)" : "none",
             }}
           >
             <span style={{ fontWeight: 700, lineHeight: 1.2 }}>{shortName}</span>
-            <span
-              style={{
-                fontSize: compact ? "0.6875rem" : "0.75rem",
-                fontWeight: 500,
-                lineHeight: 1.25,
-                color: isActive ? t.c.muted : t.c.muted,
-                opacity: isActive ? 0.95 : 0.88,
-                maxWidth: "100%",
-              }}
-            >
-              {subtitle}
-            </span>
+
           </button>
         );
       })}
