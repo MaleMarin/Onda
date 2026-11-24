@@ -65,7 +65,7 @@ export type VoiceProfile = {
 
 const VOICE_A_MANO = `VOZ — ONDA A MANO:
 Escucha a la persona y responde en español latinoamericano claro o portugués brasileño cuando corresponda. Su interés puede ser cultura, cine, música, deporte, novedades, actualidad, vida diaria, tecnología o seguridad: no reduzcas la conversación a alfabetización mediática ni impongas moralejas.
-Sé cercano y respetuoso, sin infantilizar. Da información útil, recomendaciones con criterio y ejemplos relevantes. No inventes hechos ni recomiendes contenido inexistente. Cuando haga falta, pregunta para descubrir gustos y necesidades, sin repetir lo que ya sabe el sistema.
+Sé cercano y respetuoso, sin infantilizar. Da información útil, recomendaciones con criterio y ejemplos relevantes. En recomendaciones culturales, explica por qué elegiste una obra a partir de sus características concretas; si desconoces los gustos de la persona, señala brevemente esa limitación y ofrece refinar la sugerencia sin interrogar antes de responder. Evita adjetivos grandilocuentes, frases genéricas, fórmulas promocionales y palabras inglesas innecesarias como "relatable"; cuida la concordancia y la ortografía. No inventes hechos ni recomiendes contenido inexistente. Cuando haga falta, pregunta para descubrir gustos y necesidades, sin repetir lo que ya sabe el sistema.
 En seguridad digital, orienta con pasos prácticos, evitando dramatizar. No fuerces una pregunta de cierre si ya resolviste la consulta.
 `;
 
@@ -188,62 +188,16 @@ function pick<T>(items: readonly T[]): T {
 }
 
 /**
- * Cierre opcional para web: no aplica en WhatsApp ni con intents sensibles.
- * Con `locale === "pt-BR"` el cierre va en portugués (sin mezclar con español).
+ * No añadir cierres automáticos: una coletilla fija sobre alfabetización
+ * mediática puede arruinar una conversación sobre cine, música o ciudadanía.
+ * Los seguimientos relevantes deben nacer de la respuesta, no del intent.
+ * Se conserva la firma para los consumidores existentes.
  */
 export function buildDelightMoment(
-  intent: ConversationIntent,
-  canal?: CanalReply | null,
-  confidence?: "high" | "low",
-  locale?: DelightLocale | null
+  _intent: ConversationIntent,
+  _canal?: CanalReply | null,
+  _confidence?: "high" | "low",
+  _locale?: DelightLocale | null
 ): string {
-  if (canal === "whatsapp") return "";
-  if (intent === "emotional" || intent === "disinformation") return "";
-
-  const pt = locale === "pt-BR";
-
-  if (intent === "fact_check") {
-    return pick(
-      pt
-        ? ([
-            "\n\n💡 *Dado para o seu kit mental:* Os verificadores de factos usam a mesma lógica que você acabou de aplicar. Você já tem o instinto; faltava o método.",
-            "\n\n💡 *Dado para o seu kit mental:* Perguntar, contrastar e não ficar só na manchete é o hábito que equipes de verificação treinam o tempo todo.",
-          ] as const)
-        : ([
-            "\n\n💡 *Dato para tu kit mental:* Los verificadores de hechos usan esta misma lógica que acabas de aplicar. Ya tienes el instinto, solo faltaba el método.",
-            "\n\n💡 *Dato para tu kit mental:* Preguntar, contrastar y no quedarte con el titular es exactamente el hábito que entrenan los equipos de verificación.",
-          ] as const)
-    );
-  }
-
-  if (intent === "explanation") {
-    return pick(
-      pt
-        ? ([
-            "\n\n🔍 *Você sabia...?* Formular a dúvida com clareza já é letramento: nomear o que você não entende é metade do caminho.",
-            "\n\n🔍 *Você sabia...?* Comparar duas explicações do mesmo tema ajuda a ver o que muda com o enfoque — é um hábito que vale treinar.",
-          ] as const)
-        : ([
-            "\n\n🔍 *¿Sabías que...?* Formular la duda con claridad ya es un paso de alfabetización: nombrar lo que no entiendes es la mitad del camino.",
-            "\n\n🔍 *¿Sabías que...?* Comparar dos explicaciones del mismo tema ayuda a ver qué cambia con el enfoque; es un hábito que vale entrenar.",
-          ] as const)
-    );
-  }
-
-  if (intent === "action") {
-    return pick(
-      pt
-        ? ([
-            "\n\n✅ *Próximo nível:* Se isso foi útil, a Precisar tem materiais para aprofundar. Visite precisar.net/saberes",
-            "\n\n✅ *Próximo nível:* Dar passos concretos é o que separa o pânico do critério; se quiser mais ferramentas, explore precisar.net/saberes",
-          ] as const)
-        : ([
-            "\n\n✅ *Siguiente nivel:* Si esto te resultó útil, en Precisar tenemos recursos para profundizar. Visita precisar.net/saberes",
-            "\n\n✅ *Siguiente nivel:* Dar pasos concretos es lo que diferencia el pánico del criterio; si quieres más herramientas, explora precisar.net/saberes",
-          ] as const)
-    );
-  }
-
-  if (confidence === "high") return "";
   return "";
 }
