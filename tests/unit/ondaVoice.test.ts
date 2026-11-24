@@ -16,7 +16,7 @@ describe("voces editoriales diferenciadas", () => {
   });
   it("Profes pregunta, comprende y co-diseña", () => {
     const block = buildVoiceBlock(EjeOnda.PROFES);
-    expect(block).toContain("pregunta una o dos cosas");
+    expect(block).toContain("UNA sola pregunta importante");
     expect(block).toContain("diseña");
     expect(block).toContain("docente");
   });
