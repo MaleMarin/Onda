@@ -331,8 +331,16 @@ export function loadUnifiedPrefsFromStorage(): UserPrefs {
   if (typeof window === "undefined") return { ...DEFAULT_USER_PREFS };
   try {
     const s = localStorage.getItem(STORAGE_KEY_ONDA_PREFS_V1);
-    if (!s) return { ...DEFAULT_USER_PREFS };
-    return normalizePrefs(JSON.parse(s) as unknown);
+    if (s) return normalizePrefs(JSON.parse(s) as unknown);
+    // Compatibilidad: Onda guardaba antes el idioma bajo onda_user_preferences.
+    // Respetar pt-BR si todavía no existe la preferencia unificada.
+    // No fijar español por defecto: conservar detección automática del idioma.
+    const oldPrefs = localStorage.getItem("onda_user_preferences");
+    if (oldPrefs) {
+      const old = JSON.parse(oldPrefs) as { locale?: unknown };
+      if (old?.locale === "pt-BR") return { ...DEFAULT_USER_PREFS, locale: "pt" };
+    }
+    return { ...DEFAULT_USER_PREFS };
   } catch {
     return { ...DEFAULT_USER_PREFS };
   }

@@ -7,24 +7,24 @@
 import { EjeOnda } from "@/content/types";
 import type { OndaChatLocale } from "./userPreferences";
 
-const MAIN_WELCOME_CLOSING_ES = "¿Con qué Onda quieres empezar hoy? ✨";
-const MAIN_WELCOME_CLOSING_PT = "Com qual Onda você quer começar hoje? ✨";
+const MAIN_WELCOME_CLOSING_ES = "Elige una Onda para comenzar.";
+const MAIN_WELCOME_CLOSING_PT = "Escolha uma Onda para começar.";
 
-const MAIN_WELCOME_BODY_ES = `Te doy la bienvenida a Onda 🌊, un espacio diseñado para navegar el mundo digital con menos ruido 🔊 y mucho más criterio 🧠.
+const MAIN_WELCOME_BODY_ES = `¡Hola! 👋 Soy Onda, el asistente de IA de Precisar.
 
-Mi objetivo es acompañarte a entender mejor todo lo que ves, escuchas y recibes a diario. Aquí exploramos la información de forma simple y objetiva, con criterios claros, contexto y fuentes cuando estén disponibles.
+¿Algo que leíste, viste o escuchaste te dejó pensando? ¿O hay un tema que te da curiosidad?
 
-Puedes enviarme lo que necesites analizar en el formato que prefieras: 📜 Textos · 🎙️ Audios · 🖼️ Imágenes · 🔗 Links
+Aquí podemos comprender mejor la información, ponerla en contexto y encontrar fuentes cuando hagan falta.
 
-${MAIN_WELCOME_CLOSING_ES}`;
+**${MAIN_WELCOME_CLOSING_ES}**`;
 
-const MAIN_WELCOME_BODY_PT = `Dou as boas-vindas à Onda 🌊, um espaço para navegar o mundo digital com menos ruído 🔊 e muito mais critério 🧠.
+const MAIN_WELCOME_BODY_PT = `Olá! 👋 Sou a Onda, assistente de IA da Precisar.
 
-Meu objetivo é te acompanhar a entender melhor o que você vê, ouve e recebe no dia a dia. Aqui exploramos a informação de forma simples e objetiva, com critérios claros, contexto e fontes quando estiverem disponíveis.
+Algo que você leu, viu ou ouviu fez você pensar? Ou tem algum assunto que desperta sua curiosidade?
 
-Você pode me enviar o que precisar analisar no formato que preferir: 📜 Textos · 🎙️ Áudios · 🖼️ Imagens · 🔗 Links
+Aqui podemos compreender melhor as informações, colocá-las em contexto e encontrar fontes quando forem úteis.
 
-${MAIN_WELCOME_CLOSING_PT}`;
+**${MAIN_WELCOME_CLOSING_PT}**`;
 
 const EJE_PRESENTATION: Record<
   EjeOnda,
@@ -79,10 +79,8 @@ function getTimeGreeting(locale: OndaChatLocale): string {
 }
 
 export function getLocalizedMainWelcome(locale: OndaChatLocale): string {
-  const greeting = getTimeGreeting(locale);
-  const body = locale === "pt-BR" ? MAIN_WELCOME_BODY_PT : MAIN_WELCOME_BODY_ES;
-  const open = locale === "pt-BR" ? "Olá!" : "¡Hola!";
-  return `${open} ${greeting}\n\n${body}`;
+  // Bienvenida breve y una sola invitación a elegir; evitar doble saludo horario.
+  return locale === "pt-BR" ? MAIN_WELCOME_BODY_PT : MAIN_WELCOME_BODY_ES;
 }
 
 export function getLocalizedShortWelcome(locale: OndaChatLocale): string {

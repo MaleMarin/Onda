@@ -1,4 +1,5 @@
 import type { ListeningInviteStreamPayload } from "@/lib/onda/contributions/types";
+import type { RetrievedSource } from "@/lib/sourceProvenance";
 
 export enum EjeOnda {
   A_MANO = "A_MANO",
@@ -44,6 +45,8 @@ export interface Message {
   ragUsed?: boolean | null;
   /** Metadata del stream: búsqueda web (Tavily/Serper) aportó contexto. */
   webSearchUsed?: boolean | null;
+  /** Resultados de búsqueda recuperados (no equivalen a verificación de cada afirmación). */
+  sourceRefs?: RetrievedSource[];
   /** Intent clasificado en servidor para este turno (fact_check, disinformation, etc.). */
   conversationIntent?: string | null;
 }

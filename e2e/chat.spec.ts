@@ -48,7 +48,8 @@ test.describe("/chat calidad mínima", () => {
     await page.keyboard.press("Enter");
     await expect(page.locator("#onda-main-input")).toBeFocused();
 
-    await expect(page.getByRole("region", { name: /Rutas guiadas|Caminhos guiados/i })).toBeVisible();
+    // Las rutas se integraron al menú: en la vista de chat no hay barra independiente.
+    await expect(page.getByRole("tablist", { name: /Onda|experiencias/i })).toBeVisible();
     await expect(page.getByRole("button", { name: /Acceso e inclusión|Acesso e inclusão/i })).toBeVisible();
 
     await page.getByRole("button", { name: /Acceso e inclusión|Acesso e inclusão/i }).click();

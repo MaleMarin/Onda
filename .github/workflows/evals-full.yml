@@ -1,13 +1,13 @@
 # Evaluaciones completas (~75 casos). Requiere OPENAI_API_KEY (u orquestador configurado en evals).
-# No corre en cada push: workflow_dispatch y/o cron nocturno.
+# No corre en cada push: manual o semanal. Evita llamadas diarias innecesarias a API de IA.
 
 name: Evals full
 
 on:
   workflow_dispatch:
   schedule:
-    # ~03:00 America/Santiago (invierno); ajustar si hace falta
-    - cron: "0 6 * * *"
+    # Una vez por semana: martes 09:00 UTC; la ejecución usa API de IA y puede generar costos.
+    - cron: "0 9 * * 2"
 
 jobs:
   evals-full:

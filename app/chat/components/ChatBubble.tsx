@@ -173,8 +173,8 @@ export function ChatBubble({
     URL.revokeObjectURL(url);
   }, [message.content]);
 
-  const padding = compact ? "10px 14px" : "12px 16px";
-  const fontSize = compact ? "1rem" : "1.125rem";
+  const padding = compact ? "10px 14px" : "14px 18px";
+  const fontSize = compact ? "1rem" : "1rem";
 
   const wrapStyle: CSSProperties = {
     display: "flex",
@@ -185,7 +185,7 @@ export function ChatBubble({
   };
 
   const bubbleBase: CSSProperties = {
-    maxWidth: "92%",
+    maxWidth: "min(100%, 78ch)",
     padding,
     borderRadius: t.r.lg,
     lineHeight: 1.6,
@@ -196,9 +196,9 @@ export function ChatBubble({
 
   const botBubbleStyle: CSSProperties = {
     ...bubbleBase,
-    background: t.glass.bg,
-    border: `2px solid ${t.glass.border}`,
-    boxShadow: t.shadow.neuRaisedExtra,
+    background: t.isDark ? t.glass.bg : "#ffffff",
+    border: `1px solid ${t.glass.borderSoft}`,
+    boxShadow: t.isDark ? "0 3px 12px rgba(0,0,0,0.20)" : "0 2px 9px rgba(38,45,54,0.09)",
     color: t.c.ink,
     borderRadius: t.isDark ? 6 : "0 22px 22px 22px",
     borderTopLeftRadius: t.isDark ? 6 : 0,
@@ -215,9 +215,7 @@ export function ChatBubble({
     background: color
       ? `linear-gradient(135deg, ${color}, ${color}dd)`
       : t.grad.userBubble,
-    boxShadow: color
-      ? `0 8px 24px ${color}55, inset 0 1px 0 rgba(255,255,255,0.25)`
-      : "0 8px 24px rgba(255,109,77,0.2), inset 0 1px 0 rgba(255,255,255,0.25)",
+    boxShadow: "0 2px 8px rgba(30,35,45,0.12)",
     borderTopRightRadius: 22,
     ...(isUser && message.interpretedAsCommunityContribution
       ? { borderLeft: "3px solid rgba(255,255,255,0.65)", paddingLeft: 13 }
@@ -365,11 +363,37 @@ export function ChatBubble({
           <div className="prose-onda">{formatContent(text)}</div>
         )}
         {showFuenteConsultada && !showAsMenuIntroButtons && (
-          <span style={{ marginTop: 6, fontSize: "0.8125rem", color: t.c.muted, display: "inline-block" }}>
-            {mc.fuenteVerificada}
-          </span>
+          <div style={{ marginTop: 9, fontSize: "0.8125rem", color: t.c.muted }}>
+            {message.sourceRefs && message.sourceRefs.length > 0 ? (
+              <details>
+                <summary style={{ cursor: "pointer", fontWeight: 600 }}>
+                  {uiLocale === "pt-BR" ? "Ver fontes encontradas" : "Ver fuentes encontradas"} ({message.sourceRefs.length})
+                </summary>
+                <p style={{ margin: "7px 0" }}>
+                  {uiLocale === "pt-BR"
+                    ? "Estes links foram recuperados na busca; isso não significa que comprovam cada afirmação."
+                    : "Estos enlaces se recuperaron en la búsqueda; no significa que respalden cada afirmación."}
+                </p>
+                <ul style={{ margin: "5px 0", paddingLeft: 18 }}>
+                  {message.sourceRefs.map((ref) => (
+                    <li key={ref.url} style={{ marginBottom: 6 }}>
+                      <a href={ref.url} target="_blank" rel="noopener noreferrer" style={{ color: "inherit", textDecoration: "underline" }}>
+                        {ref.title}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            ) : (
+              <span>
+                {uiLocale === "pt-BR"
+                  ? "Contexto documental usado; não há links públicos recuperados para mostrar."
+                  : "Se utilizó contexto documental; no hay enlaces públicos recuperados para mostrar."}
+              </span>
+            )}
+          </div>
         )}
-        {message.ragUsed === false &&
+        {message.ragUsed === false && message.webSearchUsed !== true &&
           (message.conversationIntent === "fact_check" ||
             message.conversationIntent === "disinformation") &&
           message.isGenerated &&
@@ -387,16 +411,9 @@ export function ChatBubble({
                 borderTop: `1px solid ${t.c.border}`,
               }}
             >
-              Esta respuesta se basa en conocimiento general. Para información verificada de Precisar,
-              visita{" "}
-              <a
-                href="https://precisar.net"
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ color: "inherit", textDecoration: "underline" }}
-              >
-                precisar.net
-              </a>
+              {uiLocale === "pt-BR"
+                ? "Nenhuma fonte externa foi recuperada nesta resposta. Para informações atuais, confira fontes primárias antes de compartilhar."
+                : "No se recuperaron fuentes externas en esta respuesta. Para hechos actuales, conviene comprobarlos en fuentes primarias antes de compartir."}
             </div>
           )}
         {showCopyDownload && showActionButtons && (

@@ -969,6 +969,7 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
                     li && (li.expectingExperienceFollowUp || li.show) ? { ...li } : undefined,
                   ragUsed: streamMeta.ragUsed ?? null,
                   webSearchUsed: streamMeta.webSearchUsed ?? null,
+                  sourceRefs: streamMeta.sourceRefs ?? [],
                   conversationIntent: streamMeta.conversationIntent ?? null,
                 }
               : msg
@@ -1240,6 +1241,7 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
                         : undefined,
                     ragUsed: streamMetaChip.ragUsed ?? null,
                     webSearchUsed: streamMetaChip.webSearchUsed ?? null,
+                    sourceRefs: streamMetaChip.sourceRefs ?? [],
                     conversationIntent: streamMetaChip.conversationIntent ?? null,
                   }
                 : msg
@@ -1485,8 +1487,8 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
     flexDirection: "column",
     justifyContent: "flex-start",
     alignContent: "flex-start",
-    gap: compact ? 6 : 8,
-    padding: currentEje === null ? "8px 14px 32px 14px" : "8px 14px 32px 14px",
+    gap: compact ? 6 : 10,
+    padding: currentEje === null ? "12px 16px 22px" : "14px clamp(14px, 3vw, 34px) 24px",
   };
 
   const disabledCursor = loading ? "not-allowed" : "pointer";
@@ -1711,11 +1713,11 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
             <img
               src="/favicon-onda.png?v=8"
               alt=""
-              width={compact ? 80 : 104}
-              height={compact ? 80 : 104}
+              width={compact ? 54 : 64}
+              height={compact ? 54 : 64}
               style={{ display: "block", objectFit: "contain", flexShrink: 0 }}
             />
-            <div aria-hidden="true" style={{ fontWeight: 600, fontSize: compact ? "1.0625rem" : "1.25rem", letterSpacing: ".04em", color: t.c.ink }}>
+            <div aria-hidden="true" style={{ fontWeight: 600, fontSize: compact ? "1rem" : "1.125rem", letterSpacing: ".04em", color: t.c.ink }}>
               Onda de Precisar
             </div>
           </a>
@@ -1982,45 +1984,34 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
 
         {/* Tabs, menu, chips, composer: capa con z-index alto para que todos los botones reciban clics */}
         <div className="onda-composer-layer" style={{ flexShrink: 0, display: "flex", flexDirection: "column", minHeight: 0 }}>
-        {/* Tabs + Volver al inicio siempre visible cuando hay Onda elegida */}
-        {currentEje !== null && !stripBottomChrome && (
-          <>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 4 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                <EjeSelector
-                  currentEje={currentEje}
-                  onSelect={confirmEjeSwitch}
-                  compact={compact}
-                  theme={t}
-                  locale={CHAT_UI_LOCALE}
-                />
-                {justSwitchedEje !== null && (
-                  <p style={{ margin: 0, fontSize: compact ? "0.8125rem" : "0.875rem", color: neuPickerColorDarkMap[justSwitchedEje], fontWeight: 600 }}>
-                    {mc.switchEjePrefix} {EJE_CONFIGS[justSwitchedEje].name}
-                  </p>
-                )}
-              </div>
-              <button
-                type="button"
-                onClick={goToInicio}
-                title={mc.backHomeTitle}
-                style={{
-                  flexShrink: 0,
-                  padding: "6px 12px",
-                  fontSize: "0.875rem",
-                  fontWeight: 600,
-                  color: t.c.muted,
-                  background: t.c.surface,
-                  border: `1px solid ${t.c.border}`,
-                  borderRadius: t.r.sm,
-                  cursor: "pointer",
-                  boxShadow: t.shadow?.neuRaised ?? "none",
-                }}
-              >
+        {/* Selector de Onda y navegación únicos: no duplicar en el compositor. */}
+        {currentEje !== null && (
+          <div className="onda-chat-toolbar" style={{ display: "flex", alignItems: "center", gap: 12, padding: "8px 18px", flexWrap: "wrap" }}>
+            <div style={{ flex: "1 1 310px", minWidth: 0 }}>
+              <EjeSelector
+                currentEje={currentEje}
+                onSelect={confirmEjeSwitch}
+                compact={compact}
+                theme={t}
+                locale={CHAT_UI_LOCALE}
+              />
+            </div>
+            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+              {justSwitchedEje !== null && (
+                <span style={{ fontSize: "0.8125rem", color: neuPickerColorDarkMap[justSwitchedEje] }}>
+                  {mc.switchEjePrefix} {EJE_CONFIGS[justSwitchedEje].name}
+                </span>
+              )}
+              <button type="button" data-onda-action="show-menu" onClick={() => { setShowMenu(true); setShowIASubmenu(false); }}
+                style={{ padding: "8px 12px", border: `1px solid ${t.c.border}`, borderRadius: t.r.sm, background: "#fff", color: t.c.ink, cursor: "pointer" }}>
+                {mc.menuViewMenu}
+              </button>
+              <button type="button" data-onda-action="go-inicio" onClick={goToInicio}
+                style={{ padding: "8px 12px", border: `1px solid ${t.c.border}`, borderRadius: t.r.sm, background: "#fff", color: t.c.muted, cursor: "pointer" }}>
                 {VOLVER_AL_INICIO}
               </button>
             </div>
-          </>
+          </div>
         )}
 
         {/* Menu options */}
@@ -2087,142 +2078,28 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
           </div>
         )}
 
-        {/* Regla 3 Ondas: no mostrar preguntas de otros temas (Congreso, diputado, inflación, etc.) — provocan ruido informacional. Solo "Ver menú" y, en A Mano, el atajo a Modo Desinformación 360. */}
-        {currentEje !== null && !showMenu && !showIASubmenu && !stripBottomChrome && (
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 6, padding: "0 4px", alignItems: "center" }}>
-            <button
-              type="button"
-              data-onda-action="show-menu"
-              onClick={() => { setShowMenu(true); setShowIASubmenu(false); }}
-              style={chipMuted}
+        {/* Modo Desinformación 360, disponible solo en A Mano. */}
+        {currentEje === EjeOnda.A_MANO && !showMenu && !showIASubmenu && !stripBottomChrome && (
+          <div style={{ display: "flex", padding: "0 18px 4px" }}>
+            <button type="button" data-onda-action="disinfo360" data-onda-chip="disinfo360"
+              onClick={() => {
+                const starter = unifiedPrefs.locale === "pt"
+                  ? "Tenho uma dúvida sobre algo que me chegou (notícia, áudio, mensagem ou link). É verdade? "
+                  : "Tengo una duda sobre algo que me llegó (noticia, audio, mensaje o link). ¿Es verdad? ";
+                setInput(starter);
+                setShowPickOndaNotice(false);
+                inputRef.current?.focus();
+              }}
+              disabled={loading}
+              style={{ ...chipBase, padding: "6px 12px", fontSize: "0.8125rem" }}
             >
-              {mc.menuViewMenu}
+              🔎 {unifiedPrefs.locale === "pt" ? "Revisar notícia" : "Revisar noticia"}
             </button>
-            {currentEje === EjeOnda.A_MANO && (
-              <button
-                type="button"
-                data-onda-action="disinfo360"
-                data-onda-chip="disinfo360"
-                onClick={() => {
-                  const starter =
-                    unifiedPrefs.locale === "pt"
-                      ? "Tenho uma dúvida sobre algo que me chegou (notícia, áudio, mensagem ou link). É verdade? "
-                      : "Tengo una duda sobre algo que me llegó (noticia, audio, mensaje o link). ¿Es verdad? ";
-                  setInput(starter);
-                  setShowPickOndaNotice(false);
-                  inputRef.current?.focus();
-                }}
-                disabled={loading}
-                style={chipBase}
-                title={
-                  unifiedPrefs.locale === "pt"
-                    ? "Modo Desinformação 360: cole o texto, link, áudio ou descreva o que recebeu"
-                    : "Modo Desinformación 360: pega el texto, link, audio o describe lo que te llegó"
-                }
-              >
-                🔎 {unifiedPrefs.locale === "pt" ? "Tenho uma dúvida / Revisar notícia" : "Tengo una duda / Revisar noticia"}
-              </button>
-            )}
           </div>
         )}
 
-        {/* Composer */}
+        {/* Composer: una sola barra para escribir, sin enlaces de navegación repetidos. */}
         <div style={S.composer}>
-          {stripBottomChrome && (
-            <div
-              style={{
-                marginBottom: 8,
-                display: "flex",
-                flexWrap: "wrap",
-                gap: "10px 16px",
-                alignItems: "center",
-                fontSize: "0.875rem",
-              }}
-            >
-              <button
-                type="button"
-                data-onda-action="show-menu"
-                onClick={() => {
-                  setShowMenu(true);
-                  setShowIASubmenu(false);
-                }}
-                title={mc.composerShowMenuTitle}
-                style={{
-                  color: ejeColor,
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  padding: "4px 0",
-                  fontWeight: 600,
-                  textDecoration: "underline",
-                  textUnderlineOffset: 3,
-                }}
-              >
-                {mc.menuViewMenu}
-              </button>
-              <button
-                type="button"
-                data-onda-action="go-inicio"
-                onClick={goToInicio}
-                title={mc.composerGoInicioTitle}
-                style={{
-                  color: t.c.muted,
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  padding: "4px 0",
-                  fontWeight: 500,
-                  textDecoration: "underline",
-                  textUnderlineOffset: 3,
-                }}
-              >
-                {VOLVER_AL_INICIO}
-              </button>
-            </div>
-          )}
-          {/* Volver al menú / Volver al inicio (cuando no estás en el menú) */}
-          {currentEje !== null && !showMenu && !stripBottomChrome && (
-            <div style={{ marginBottom: 10, display: "flex", flexWrap: "wrap", gap: "12px 16px", alignItems: "center" }}>
-              <button
-                type="button"
-                data-onda-action="show-menu"
-                onClick={() => { setShowMenu(true); setShowIASubmenu(false); }}
-                title={mc.composerShowMenuTitle}
-                style={{
-                  fontSize: "0.9375rem",
-                  color: ejeColor,
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  padding: "4px 0",
-                  fontWeight: 500,
-                  textDecoration: "underline",
-                  textUnderlineOffset: 3,
-                }}
-              >
-                {mc.composerBackToMenuLink}
-              </button>
-              <button
-                type="button"
-                data-onda-action="go-inicio"
-                onClick={goToInicio}
-                title={mc.composerGoInicioTitle}
-                style={{
-                  fontSize: "0.9375rem",
-                  color: ejeColor,
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  padding: "4px 0",
-                  fontWeight: 500,
-                  textDecoration: "underline",
-                  textUnderlineOffset: 3,
-                }}
-              >
-                {VOLVER_AL_INICIO}
-              </button>
-            </div>
-          )}
           {audioTooShortHint && (
             <div style={{ marginBottom: 8, fontSize: "0.875rem", color: t.c.muted }}>
               {mc.audioTooShortHint}
@@ -2447,22 +2324,6 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
                 lineHeight: 1.35,
                 color: t.c.muted,
                 textAlign: "center",
-                maxWidth: 560,
-                padding: "0 12px",
-              }}
-            >
-              {mc.precisarFooterLegal.split("contacto@precisar.net")[0]}
-              <a href="mailto:contacto@precisar.net" style={{ color: "inherit", textDecoration: "underline" }}>
-                contacto@precisar.net
-              </a>
-            </p>
-            <p
-              style={{
-                margin: 0,
-                fontSize: compact ? "0.6875rem" : "0.75rem",
-                lineHeight: 1.35,
-                color: t.c.muted,
-                textAlign: "center",
                 maxWidth: 520,
                 padding: "0 12px",
               }}
@@ -2478,6 +2339,10 @@ export function ChatPageContent({ initialEje = null }: ChatPageContentProps) {
                 style={{ color: "inherit", textDecoration: "underline" }}
               >
                 {mc.termsOfUseLink}
+              </a>
+              {" · "}
+              <a href="/convivencia" style={{ color: "inherit", textDecoration: "underline" }}>
+                {mc.termsOfUseLink === "Termos" ? "Convivência" : "Convivencia"}
               </a>
             </p>
           </div>

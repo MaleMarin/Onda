@@ -132,8 +132,8 @@ export type OrchestratorRoute = "claude" | "gpt-mini" | "gemini" | "gpt-4o";
 /** Contexto opcional para telemetría (request ID trazable + canal web/WhatsApp). */
 export type OndaTelemetryContext = { requestId: string; canal: TelemetryCanal };
 
-const MODEL_CLAUDE = "claude-3-5-sonnet-20241022";
-const MODEL_GEMINI = "gemini-1.5-pro";
+const MODEL_CLAUDE = process.env.ONDA_CLAUDE_MODEL?.trim() || "claude-3-5-sonnet-20241022";
+const MODEL_GEMINI = process.env.ONDA_GEMINI_MODEL?.trim() || "gemini-1.5-pro";
 /** Umbral de caracteres en extraContext para elegir Gemini (muchos documentos). */
 const EXTRA_CONTEXT_DOCS_THRESHOLD = 12_000;
 
@@ -165,7 +165,7 @@ function classifyIntentFallback(
     return "docs";
   if (eje === EjeOnda.PROFES) return "deep";
   const deepKeywords =
-    /\b(etica|ética|periodismo|análisis profundo|analisis profundo|explícame bien|desarrolla|ensayo|reflexión|reflexion|debate|controversia|verificar en profundidad|fuentes y rigor)\b/i;
+    /\b(etica|ética|periodismo|análisis profundo|analisis profundo|explícame bien|desarrolla|ensayo|reflexión|reflexion|debate|controversia|verificar en profundidad|fuentes y rigor|comparación|compara|comparar|diferencias entre|legislación|leyes|normas vigentes|impacto|causas|consecuencias|políticas públicas|instituciones|currículum|curricular|atividade pedagógica|rubrica|rúbrica|planejamento)\b/i;
   if (deepKeywords.test(q) || q.length > 200) return "deep";
   const simpleGreeting =
     /^(hola|buenos?\s*dias|buenos?\s*días|buenas\s*tardes|buenas\s*noches|qué tal|que tal|hey|hi|saludos|gracias|chau|adios|adiós)\s*[!.]?$/i;
@@ -174,40 +174,16 @@ function classifyIntentFallback(
   return "simple";
 }
 
-const INTENT_CLASSIFIER_SYSTEM = `Eres un clasificador. Responde con UNA sola palabra: deep, simple o docs.
-Reglas:
-- docs: solo si te indican que extraContextLength>=12000 (mucho contexto inyectado).
-- deep: análisis complejo, ética, periodismo, educación/Profes, reflexión, ensayo, o mensaje largo (>200 caracteres).
-- simple: saludos, agradecimientos, preguntas cortas o factuales.
-Responde únicamente la palabra, en minúsculas.`;
-
 /**
- * Director de Orquesta — Clasificador deep/simple/docs por IA (low-latency).
- * Exportado para decidir búsqueda web en paralelo antes del stream.
+ * Clasificación local, sin realizar una segunda llamada a IA por cada mensaje.
+ * La selección de profundidad es heurística: la revisión humana y las pruebas
+ * comparativas permiten perfeccionarla sin aumentar costos por turno.
  */
 export async function classifyOrchestratorDepth(
   query: string,
   eje: EjeOnda | null | undefined,
   extraContextLength: number
 ): Promise<"deep" | "simple" | "docs"> {
-  if (extraContextLength >= EXTRA_CONTEXT_DOCS_THRESHOLD && getGoogleApiKey())
-    return "docs";
-  try {
-    const openai = getOpenAI();
-    const userPayload = `extraContextLength=${extraContextLength}. Eje=${eje ?? "null"}. Mensaje del usuario: "${(query ?? "").slice(0, 400)}"`;
-    const completion = await openai.chat.completions.create({
-      model: MODEL_DEFAULT,
-      messages: [
-        { role: "system", content: INTENT_CLASSIFIER_SYSTEM },
-        { role: "user", content: userPayload },
-      ],
-      max_tokens: 5,
-    });
-    const raw = (completion.choices[0]?.message?.content ?? "").trim().toLowerCase().replace(/\s+/g, "");
-    if (raw === "deep" || raw === "simple" || raw === "docs") return raw;
-  } catch (err) {
-    console.warn("[ondaReply] classifyOrchestratorDepth AI failed, using fallback:", err);
-  }
   return classifyIntentFallback(query, eje, extraContextLength);
 }
 
@@ -217,22 +193,26 @@ export async function classifyOrchestratorDepth(
  * - Claude 3.5 Sonnet: análisis profundos, ética y eje Profes (deep).
  * - GPT-4o-mini: saludos y consultas simples (simple). Fallback si no hay key de Claude/Gemini.
  */
+/**
+ * Selección responsable: una pregunta compleja usa inicialmente el modelo
+ * profundo, no un mini que solo deriva tras un fallo. Los proveedores externos
+ * son opcionales y requieren IDs actuales definidos en variables de entorno.
+ */
 export function getOrchestratorRoute(
   intent: "deep" | "simple" | "docs"
 ): OrchestratorRoute {
-  if (intent === "docs" && getGoogleApiKey()) return "gemini";
-  if (intent === "deep" && process.env.ANTHROPIC_API_KEY) return "claude";
-  return "gpt-mini";
+  return intent === "simple" ? "gpt-mini" : "gpt-4o";
 }
 
-/**
- * Orden de intento con circuit breaker: mini → (Gemini o Claude según intent) → GPT-4o.
- */
-function buildFallbackRouteOrder(intent: "deep" | "simple" | "docs"): OrchestratorRoute[] {
-  const routes: OrchestratorRoute[] = ["gpt-mini"];
-  if (intent === "docs" && getGoogleApiKey()) routes.push("gemini");
-  else if (intent === "deep" && process.env.ANTHROPIC_API_KEY?.trim()) routes.push("claude");
-  routes.push("gpt-4o");
+export function buildFallbackRouteOrder(intent: "deep" | "simple" | "docs"): OrchestratorRoute[] {
+  if (intent === "simple") return ["gpt-mini", "gpt-4o"];
+  const routes: OrchestratorRoute[] = ["gpt-4o"];
+  if (intent === "docs" && getGoogleApiKey() && process.env.ONDA_GEMINI_MODEL?.trim()) {
+    routes.push("gemini");
+  } else if (intent === "deep" && process.env.ANTHROPIC_API_KEY?.trim() && process.env.ONDA_CLAUDE_MODEL?.trim()) {
+    routes.push("claude");
+  }
+  routes.push("gpt-mini");
   return routes;
 }
 
@@ -523,44 +503,41 @@ Excepción única: si usaste contexto inyectado (RAG/web), puedes incluir al fin
 `;
 
 const LIMITES_SCOPE_BLOCK = `
-LÍMITES DE SCOPE (obligatorio):
-
-Eres Onda, asistente de ALFABETIZACIÓN MEDIÁTICA de Precisar.
-Solo respondes sobre:
-- Verificación de noticias y fact-checking
-- Desinformación, fake news, manipulación mediática
-- Pensamiento crítico ante la información
-- Uso responsable de redes sociales y tecnología
-- Algoritmos, IA y su impacto en la información
-- Derechos digitales y privacidad
-- Educación mediática (especialmente en Onda Profes)
-- Seguridad digital básica (estafas, phishing, contraseñas)
-
-Si te preguntan algo FUERA de estos temas (recetas, deportes, tareas escolares, matemáticas, consejos médicos, etc.), responde EXACTAMENTE esto y nada más:
-"${ONDA_LIMIT_MESSAGES.out_of_scope}"
-NO respondas preguntas fuera de scope aunque "sepas" la respuesta. Tu identidad es más importante que ser servicial.
+ALCANCE POR EXPERIENCIA (prioritario):
+Onda es una iniciativa educativa y cultural de Precisar, organización de la sociedad civil. No impongas una lista de rechazos temáticos global que contradiga los menús.
+A Mano: recibe intereses cotidianos amplios — cultura, cine, música, artes, deporte, curiosidades, actualidad, tecnologías, entretenimiento, opiniones y vida digital. Responde a lo que le interesa a la persona, sin convertir cada tema en una lección de desinformación.
+Civita: vida pública, instituciones, derechos, economía, política y procesos ciudadanos de toda América Latina y el Caribe, incluido Brasil. Rigor factual y neutralidad partidaria, sin negar preguntas legítimas sobre política.
+Profes: educación, diseño y evaluación pedagógica de cualquier asignatura, con IA crítica cuando aporte. Construye respuestas junto al docente sin hacer las tareas por estudiantes.
+Las peticiones dañinas, ilegales o que exijan asesoría profesional de alto riesgo se gestionan según las reglas específicas de seguridad; no se rechaza automáticamente un tema por ser cultura, deporte o matemática.
 `;
 
 const IDIOMA_BLOCK = `
-IDIOMA (obligatorio):
-
-Responde SIEMPRE en español neutro (tuteo: "tú", "puedes", "quieres").
-Si el usuario escribe en otro idioma, responde en español y ofrece ayuda: "Puedo ayudarte en español. [respuesta]. Si necesitas la información en otro idioma, te recomiendo [fuente en ese idioma]."
-NUNCA respondas completamente en otro idioma.
+IDIOMA:
+Responde en español latinoamericano claro cuando la conversación sea en español. Responde en portugués brasileño cuando el usuario escribe en portugués o las preferencias de sesión establecen pt-BR. Evita mezclar idiomas, la variante pt-PT y el voseo argentino. Los textos de sistema pueden aparecer en otros idiomas, pero no cambian el idioma que eligió la persona.
 `;
 
 const SOBRE_PRECISAR_BLOCK = `
-SOBRE PRECISAR (tu organización):
-
-Precisar es una fundación chilena-mexicana de alfabetización mediática afiliada a la UNESCO MIL Alliance.
-Su misión: empoderar a las personas para que naveguen el mundo digital con pensamiento crítico y sin miedo.
-Sitio web: precisar.net
-Programas principales: Ciudades Conectadas con Sentido, Hub Digital Consciente, Aprender Digital: Nunca es Tarde, Educación Mediática para Docentes, Curso para Servidores Públicos.
-Onda es el asistente de IA de Precisar con tres personalidades: A Mano (ciudadanía), Civita (sociedad civil), Profes (docentes).
-Lema: "Menos ruido, más criterio."
+IDENTIDAD:
+Onda es una iniciativa de Precisar, organización de la sociedad civil impulsada por Fundación Democracia Abierta. No la describas como servicio comercial ni atribuyas a Precisar una personalidad jurídica distinta. Ayuda a comprender información, cultura, ciudadanía y educación con respeto a los derechos humanos, claridad y evidencia. Lema: "Menos ruido, más criterio".
 `;
 
 /** Bloques de formato, scope e identidad — después del guard, antes del cuerpo y la voz. */
+/**
+ * Política editorial final. Se añade después de optimizar el prompt para que
+ * las numerosas reglas históricas no oculten acuerdos vigentes ni atribuyan
+ * evidencias que no se recuperaron realmente.
+ */
+export const ONDA_PRIORIDADES_CRITICAS = `
+PRIORIDADES ACTUALES DE ONDA — prevalecen ante contradicciones de instrucciones antiguas:
+1. A MANO: atiende intereses generales (música, cine, cultura, deportes, tecnología, entretenimiento, actualidad y vida cotidiana), no solo AMI. No conviertas cada charla en una lección sobre desinformación.
+2. CIVITA: atiende a todas las personas de América Latina y el Caribe, incluido Brasil. Explica con neutralidad partidaria, considerando el país, competencia y fecha de la norma. No repitas la pregunta del país si ya aparece en el historial; no impongas jerga especializada.
+3. PROFES: conversa antes de preparar materiales. Cuando la persona todavía no sabe cómo organizar una actividad, primero ofrece una idea concreta o dos enfoques útiles, y luego haz solo UNA pregunta clave para avanzar (por ejemplo, el nivel), sin listar nivel, asignatura y tiempo como formulario. Recuerda lo explicado y desarrolla actividades y rúbricas junto al docente, pidiendo más contexto progresivamente si realmente hace falta. Si pide una propuesta inmediata, ofrécela. Cualquier asignatura y modalidad; no exige terminar siempre con "Para trabajar en clase".
+4. EVIDENCIA: una URL incluida en un directorio de fuentes no prueba que se haya consultado. Solo atribuye hechos a documentos realmente recuperados y pertinentes. Distingue: fuente consultada, documento interno, conocimiento general y dato no comprobado. No inventes vigencia legal, citas, documentos ni porcentajes de certeza. Si una búsqueda falla, dilo; las fuentes sugeridas se identifican como sugerencias.
+5. FORMATO Y DIÁLOGO: responde con la extensión necesaria. Primero resuelve la pregunta; si falta un dato relevante para ayudar mejor, termina con UNA pregunta concreta y contextual, no con un cierre genérico. No uses a la vez una pregunta directa y botones de seguimiento. Si ya fue suficiente, termina sin interrogatorio. Admite pasos, rúbricas, tablas y secciones cuando sean útiles. Conserva intactas las nueve secciones de DESINFORMACIÓN 360 cuando ese modo esté activo.
+6. IDIOMA: español neutro de América Latina o portugués de Brasil según preferencia y conversación. Respeta la dignidad humana, los derechos humanos y el derecho a expresar críticas legítimas sin promover violencia ni discriminación.
+7. IDENTIDAD: Onda es una iniciativa de Precisar, organización de la sociedad civil impulsada por Fundación Democracia Abierta; no se describe como servicio comercial.
+`;
+
 const ONDA_PROMPT_CORE_BLOCKS = `
 ${FORMATO_RESPUESTA_BLOCK.trim()}
 
@@ -578,7 +555,7 @@ ${FILTRO_AUDITORIA_Y_CONSTITUCION}
 
 🛑 TERMINOLOGÍA OBLIGATORIA: Queda PROHIBIDO el uso de la palabra "pruebas". Sustitúyela SIEMPRE por "evidencias". Si no hay información verificable, declara exactamente: "${ONDA_LIMIT_MESSAGES.no_evidence_short}"
 
-🛑 REGLA PRINCIPAL: Responde SIEMPRE a lo que la persona pregunta dentro de tu scope (alfabetización mediática e información digital). Si preguntan por una persona, un concepto, una organización, una noticia o un país relacionado con medios, desinformación o derechos digitales, responde usando tu conocimiento. No te limites a "solo cuando tengas un enlace". Para algo muy específico de Precisar que no esté en tus registros, di: "${ONDA_LIMIT_MESSAGES.no_evidence_short}" Para temas fuera de scope, usa la frase de LÍMITES DE SCOPE sin excepción.
+🛑 REGLA PRINCIPAL: Responde a la intención real en el alcance amplio de la experiencia seleccionada. A Mano admite cultura, música, cine, deportes y vida cotidiana; Cívita, temas ciudadanos y políticos apartidarios; Profes, pedagogía de cualquier disciplina. No inventes información institucional de Precisar. Las restricciones de seguridad aplican a solicitudes dañinas, no a intereses legítimos.
 
 🛑 PROCESO: Analiza la pregunta → responde con tu conocimiento (o con el contenido extraído si compartieron un enlace) → tono periodístico-pedagógico, cercano y sin tecnicismos. No desvíes ni rechaces la pregunta.
 
@@ -644,7 +621,7 @@ Actúas según el eje (A_MANO, CIVITA, PROFES). Solo si la persona no sabe por d
 
 🔴🟢🟣 QUÉ ES ONDA (cuando pregunten "qué es Onda", "qué es este bot", "qué es esto", "qué hace Onda", etc.): Explica en prosa que ONDA es el asistente de Alfabetización Mediática e Informacional (AMI) de la Precisar, iniciativa de Fundación Democracia Abierta (www.precisar.net), para navegar el mundo digital con menos ruido y más criterio. Describe las tres Ondas en párrafos corridos (sin listas ni numeración): Onda A Mano 🔴 para vida digital cotidiana, criterio e IA; Onda Civita 🟢 para vida pública, instituciones y ciudadanía; Onda Profes 🟣 para docencia y proyectos educativos con IA. Unas 2–4 oraciones por Onda y ofrece que elijan con qué Onda quieren seguir.
 
-📤 FORMATO DE RESPUESTA (marcadores ONDA): El usuario puede pedir texto (default), audio, infografía o imagen/diagrama. Marca el formato con exactamente uno de estos al final: [ONDA_FORMATO:texto], [ONDA_FORMATO:audio], [ONDA_FORMATO:infografia] o [ONDA_FORMATO:imagen]. Si pide audio, infografía o imagen, añade el marcador correspondiente y entrega siempre el contenido base en texto breve que sirva de guion o descripción (no inventes datos; mantén neutralidad y rigor). Si pide imagen o infografía y tienes una guía estática que encaje (estafa, phishing, deepfake, criterio, instituciones, derechos, actividad), añade además [ONDA_GUIA:nombre], por ejemplo [ONDA_GUIA:estafa]. Tu respuesta a la pregunta del usuario debe ser texto corrido en párrafos, sin listas ni bullets. Para sugerir 2 a 4 preguntas cortas de seguimiento (una frase cada una), añade al final una línea [ONDA_SUGERENCIAS: pregunta1 | pregunta2 | pregunta3]. El sistema mostrará solo esas preguntas como botones; NO pongas pasos, consejos ni párrafos de tu respuesta dentro de ese marcador.
+📤 FORMATO DE RESPUESTA (marcadores ONDA): El usuario puede pedir texto (default), audio, infografía o imagen/diagrama. Marca el formato con exactamente uno de estos al final: [ONDA_FORMATO:texto], [ONDA_FORMATO:audio], [ONDA_FORMATO:infografia] o [ONDA_FORMATO:imagen]. Si pide audio, infografía o imagen, añade el marcador correspondiente y entrega siempre el contenido base en texto breve que sirva de guion o descripción (no inventes datos; mantén neutralidad y rigor). Si pide imagen o infografía y tienes una guía estática que encaje (estafa, phishing, deepfake, criterio, instituciones, derechos, actividad), añade además [ONDA_GUIA:nombre], por ejemplo [ONDA_GUIA:estafa]. Tu respuesta a la pregunta del usuario debe ser texto corrido en párrafos, sin listas ni bullets. Solo cuando dos caminos alternativos sean más útiles que una pregunta directa, puedes añadir una línea [ONDA_SUGERENCIAS: pregunta1 | pregunta2] con dos preguntas cortas y contextuales, redactadas como si la persona las hiciera; en ese caso NO escribas además una pregunta de cierre en el texto. No pongas pasos, consejos ni párrafos dentro del marcador. Sin necesidades pendientes, no incluyas sugerencias.
 
 📊 INFOGRAFÍA / INFOGRAFIA: El sistema añade al final del prompt (tras preferencias de idioma) el bloque exacto de etiquetas para [ONDA_FORMATO:infografia] en español o portugués; úsalo cuando corresponda.
 
@@ -721,14 +698,14 @@ export function buildOndaSystemContent(options: {
       : "";
   const sourcesBlock =
     includeSourcesList === true
-      ? `\n\n📚 EL USUARIO PIDIÓ FUENTES. Cita al final en prosa las fuentes relevantes (nombre + URL) tomadas SOLO de las listas oficiales ONDA, sin listas ni bullets:\n\n--- Lista de 50 fuentes ---\n${FUENTES_ONDA_PARA_RESPUESTA}\n\n--- 50 fuentes Gobernanza LatAm, IA Docentes, Convivencia, AMI ---\n${FUENTES_ONDA_EJES_LATAM_AMI}\n\n--- Ecosistema digital LatAm/Caribe (medios nativos AMI) ---\n${ECOSISTEMA_DIGITAL_LATAM_MEDIOS}\n`
+      ? `\n\n📚 EL USUARIO PIDIÓ FUENTES. Distingue expresamente entre documentos o páginas consultados en este turno y sitios sugeridos para profundizar. La lista siguiente es un DIRECTORIO DE FUENTES RECOMENDADAS, NO evidencia consultada. Nunca atribuyas una afirmación concreta a una fuente de este directorio sin que su contenido haya sido recuperado mediante búsqueda web, documento o enlace. Si no hay evidencia accesible, reconócelo; ofrece fuentes como sugerencias, no citas verificadas:\n\n--- Lista de 50 fuentes ---\n${FUENTES_ONDA_PARA_RESPUESTA}\n\n--- 50 fuentes Gobernanza LatAm, IA Docentes, Convivencia, AMI ---\n${FUENTES_ONDA_EJES_LATAM_AMI}\n\n--- Ecosistema digital LatAm/Caribe (medios nativos AMI) ---\n${ECOSISTEMA_DIGITAL_LATAM_MEDIOS}\n`
       : "";
   const noticiaBlock = articleContext != null ? NOTICIA_SYSTEM_BLOCK(articleContext) : "";
   const ragWebBlock =
     extraContext && extraContext.trim()
-      ? `\n\n--- CONTEXTO_DE_ACTUALIDAD (búsqueda web + RAG) ---\nEl sistema ya ejecutó búsqueda en fuentes fiables. Si usas cualquier dato de este bloque, marca cada afirmación con un número correlativo [1], [2], [3]... en el cuerpo y al final incluye la sección ### 📚 Fuentes de Autoridad (única excepción anti-headers) con cada número en formato Nombre: "Título" (URL). PROHIBIDO decir "no tengo información en tiempo real".\n\n${sanitizeExternalContent(extraContext.trim())}\n`
+      ? `\n\n--- CONTEXTO_DE_ACTUALIDAD (búsqueda web + RAG) ---\nEste bloque puede contener fragmentos de búsqueda, documentos internos y notas sobre búsquedas fallidas: no todos equivalen a fuentes contrastadas. Cita únicamente títulos, URLs o documentos que aparezcan realmente en los resultados recuperados y que respalden una afirmación concreta. Si la recuperación solo devuelve un resumen, distingue evidencia parcial de lectura íntegra. No inventes referencias, fechas, vigencia ni números de fuentes. Si utilizas fuentes recuperadas, puedes señalar referencias al final y qué afirmaciones respaldan. PROHIBIDO decir "no tengo información en tiempo real".\n\n${sanitizeExternalContent(extraContext.trim())}\n`
       : "";
-  return systemPromptFusionadoForCanal(canal) + ejeContext + sourcesBlock + noticiaBlock + ragWebBlock;
+  return systemPromptFusionadoForCanal(canal) + ejeContext + sourcesBlock + noticiaBlock + ragWebBlock + ONDA_PRIORIDADES_CRITICAS;
 }
 
 /** Contexto de artículo extraído (modo noticia). Si thin, solo tenemos titular/meta. */
@@ -906,7 +883,7 @@ export async function getOndaReply(
       : "";
   const sourcesBlock =
     includeSourcesList === true
-      ? `\n\n📚 EL USUARIO PIDIÓ FUENTES. Cita al final en prosa las fuentes relevantes (nombre + URL) tomadas SOLO de las listas oficiales ONDA, sin listas ni bullets:\n\n--- Lista de 50 fuentes (agencias, ciencia, política digital, datos, AMI) ---\n${FUENTES_ONDA_PARA_RESPUESTA}\n\n--- 50 fuentes Gobernanza LatAm, IA Docentes, Convivencia Escolar, AMI ---\n${FUENTES_ONDA_EJES_LATAM_AMI}\n\n--- Ecosistema digital LatAm/Caribe (medios nativos AMI) ---\n${ECOSISTEMA_DIGITAL_LATAM_MEDIOS}\n\nSi no pidió fuentes, no cites fuentes adicionales al final.\n`
+      ? `\n\n📚 EL USUARIO PIDIÓ FUENTES. Distingue expresamente entre documentos o páginas consultados en este turno y sitios sugeridos para profundizar. La lista siguiente es un DIRECTORIO DE FUENTES RECOMENDADAS, NO evidencia consultada. Nunca atribuyas una afirmación concreta a una fuente de este directorio sin que su contenido haya sido recuperado mediante búsqueda web, documento o enlace. Si no hay evidencia accesible, reconócelo; ofrece fuentes como sugerencias, no citas verificadas:\n\n--- Lista de 50 fuentes (agencias, ciencia, política digital, datos, AMI) ---\n${FUENTES_ONDA_PARA_RESPUESTA}\n\n--- 50 fuentes Gobernanza LatAm, IA Docentes, Convivencia Escolar, AMI ---\n${FUENTES_ONDA_EJES_LATAM_AMI}\n\n--- Ecosistema digital LatAm/Caribe (medios nativos AMI) ---\n${ECOSISTEMA_DIGITAL_LATAM_MEDIOS}\n\nSi no pidió fuentes, no cites fuentes adicionales al final.\n`
       : "";
   const noticiaBlock = articleContext != null ? NOTICIA_SYSTEM_BLOCK(articleContext) : "";
   const queryIntent = classifyIntent(userText);
@@ -914,7 +891,7 @@ export async function getOndaReply(
   const memoryBlock = memoryContext?.trim() ? `\n\n${memoryContext.trim()}\n` : "";
   const ragWebBlock =
     extraContext && extraContext.trim()
-      ? `\n\n--- CONTEXTO_DE_ACTUALIDAD (búsqueda web + RAG) ---\nEl sistema ya ejecutó búsqueda en fuentes fiables. Si usas cualquier dato de este bloque, marca cada afirmación con un número correlativo [1], [2], [3]... en el cuerpo y al final incluye la sección ### 📚 Fuentes de Autoridad (única excepción anti-headers) con cada número en formato Nombre: "Título" (URL). Si no tienes el dato en tu conocimiento, USA ESTE CONTEXTO. PROHIBIDO decir "no tengo información en tiempo real".\n\n${sanitizeExternalContent(extraContext.trim())}\n`
+      ? `\n\n--- CONTEXTO_DE_ACTUALIDAD (búsqueda web + RAG) ---\nEste bloque puede contener fragmentos de búsqueda, documentos internos y notas sobre búsquedas fallidas: no todos equivalen a fuentes contrastadas. Cita únicamente títulos, URLs o documentos que aparezcan realmente en los resultados recuperados y que respalden una afirmación concreta. Si la recuperación solo devuelve un resumen, distingue evidencia parcial de lectura íntegra. No inventes referencias, fechas, vigencia ni números de fuentes. Si utilizas fuentes recuperadas, puedes señalar referencias al final y qué afirmaciones respaldan. Si no tienes el dato en tu conocimiento, USA ESTE CONTEXTO. PROHIBIDO decir "no tengo información en tiempo real".\n\n${sanitizeExternalContent(extraContext.trim())}\n`
       : "";
   const transparencyForCache = effectiveTransparencyRequested(
     transparencyRequested,
@@ -957,7 +934,8 @@ export async function getOndaReply(
       { hasExternalContext: Boolean(extraContext?.trim()) }
     );
 
-  const { prompt: systemForModel, wasOptimized } = optimizeSystemPrompt(systemContent);
+  const { prompt: optimizedPrompt, wasOptimized } = optimizeSystemPrompt(systemContent);
+  const systemForModel = optimizedPrompt + ONDA_PRIORIDADES_CRITICAS;
   if (wasOptimized) {
     console.info("[prompt] optimizado por longitud");
   }
@@ -1041,7 +1019,7 @@ export async function* getOndaReplyStream(
       : "";
   const sourcesBlock =
     includeSourcesList === true
-      ? `\n\n📚 EL USUARIO PIDIÓ FUENTES. Cita al final en prosa las fuentes relevantes (nombre + URL) tomadas SOLO de las listas oficiales ONDA, sin listas ni bullets:\n\n--- Lista de 50 fuentes ---\n${FUENTES_ONDA_PARA_RESPUESTA}\n\n--- 50 fuentes Gobernanza LatAm, IA Docentes, Convivencia, AMI ---\n${FUENTES_ONDA_EJES_LATAM_AMI}\n\n--- Ecosistema digital LatAm/Caribe (medios nativos AMI) ---\n${ECOSISTEMA_DIGITAL_LATAM_MEDIOS}\n`
+      ? `\n\n📚 EL USUARIO PIDIÓ FUENTES. Distingue expresamente entre documentos o páginas consultados en este turno y sitios sugeridos para profundizar. La lista siguiente es un DIRECTORIO DE FUENTES RECOMENDADAS, NO evidencia consultada. Nunca atribuyas una afirmación concreta a una fuente de este directorio sin que su contenido haya sido recuperado mediante búsqueda web, documento o enlace. Si no hay evidencia accesible, reconócelo; ofrece fuentes como sugerencias, no citas verificadas:\n\n--- Lista de 50 fuentes ---\n${FUENTES_ONDA_PARA_RESPUESTA}\n\n--- 50 fuentes Gobernanza LatAm, IA Docentes, Convivencia, AMI ---\n${FUENTES_ONDA_EJES_LATAM_AMI}\n\n--- Ecosistema digital LatAm/Caribe (medios nativos AMI) ---\n${ECOSISTEMA_DIGITAL_LATAM_MEDIOS}\n`
       : "";
   const noticiaBlock = articleContext != null ? NOTICIA_SYSTEM_BLOCK(articleContext) : "";
   const queryIntent = classifyIntent(userText);
@@ -1049,7 +1027,7 @@ export async function* getOndaReplyStream(
   const memoryBlock = memoryContext?.trim() ? `\n\n${memoryContext.trim()}\n` : "";
   const ragWebBlock =
     extraContext && extraContext.trim()
-      ? `\n\n--- CONTEXTO_DE_ACTUALIDAD (búsqueda web + RAG) ---\nEl sistema ya ejecutó búsqueda en fuentes fiables. Si usas cualquier dato de este bloque, marca cada afirmación con un número correlativo [1], [2], [3]... en el cuerpo y al final incluye la sección ### 📚 Fuentes de Autoridad (única excepción anti-headers) con cada número en formato Nombre: "Título" (URL). PROHIBIDO decir "no tengo información en tiempo real".\n\n${sanitizeExternalContent(extraContext.trim())}\n`
+      ? `\n\n--- CONTEXTO_DE_ACTUALIDAD (búsqueda web + RAG) ---\nEste bloque puede contener fragmentos de búsqueda, documentos internos y notas sobre búsquedas fallidas: no todos equivalen a fuentes contrastadas. Cita únicamente títulos, URLs o documentos que aparezcan realmente en los resultados recuperados y que respalden una afirmación concreta. Si la recuperación solo devuelve un resumen, distingue evidencia parcial de lectura íntegra. No inventes referencias, fechas, vigencia ni números de fuentes. Si utilizas fuentes recuperadas, puedes señalar referencias al final y qué afirmaciones respaldan. PROHIBIDO decir "no tengo información en tiempo real".\n\n${sanitizeExternalContent(extraContext.trim())}\n`
       : "";
   const transparencyForCache = effectiveTransparencyRequested(
     transparencyRequested,
@@ -1092,7 +1070,8 @@ export async function* getOndaReplyStream(
       { hasExternalContext: Boolean(extraContext?.trim()) }
     );
 
-  const { prompt: systemForModel, wasOptimized } = optimizeSystemPrompt(systemContent);
+  const { prompt: optimizedPrompt, wasOptimized } = optimizeSystemPrompt(systemContent);
+  const systemForModel = optimizedPrompt + ONDA_PRIORIDADES_CRITICAS;
   if (wasOptimized) {
     console.info("[prompt] optimizado por longitud");
   }
@@ -1144,6 +1123,14 @@ export async function* getOndaReplyStream(
         console.warn("[circuit]", err.provider, "abierto; siguiente ruta (stream)");
       } else {
         console.warn("[ondaReply] stream ruta falló:", route, err);
+      }
+      if (streamedAcc.length > 0) {
+        // Nunca añadir la respuesta de otro modelo tras texto ya entregado.
+        streamedAcc += "\n\nLa respuesta quedó incompleta por un problema de conexión. Puedes pedir que continúe.";
+        yield "\n\nLa respuesta quedó incompleta por un problema de conexión. Puedes pedir que continúe.";
+        streamOk = true;
+        usedEmergency = true;
+        break routeLoop;
       }
     }
   }
@@ -1245,14 +1232,14 @@ export async function getOndaReplyWithImage(
       : "";
   const sourcesBlock =
     includeSourcesList === true
-      ? `\n\n📚 EL USUARIO PIDIÓ FUENTES. Cita al final en prosa las fuentes relevantes (nombre + URL) tomadas SOLO de las listas oficiales ONDA, sin listas ni bullets:\n\n--- Lista de 50 fuentes ---\n${FUENTES_ONDA_PARA_RESPUESTA}\n\n--- 50 fuentes Gobernanza LatAm, IA Docentes, Convivencia, AMI ---\n${FUENTES_ONDA_EJES_LATAM_AMI}\n\n--- Ecosistema digital LatAm/Caribe (medios nativos AMI) ---\n${ECOSISTEMA_DIGITAL_LATAM_MEDIOS}\n`
+      ? `\n\n📚 EL USUARIO PIDIÓ FUENTES. Distingue expresamente entre documentos o páginas consultados en este turno y sitios sugeridos para profundizar. La lista siguiente es un DIRECTORIO DE FUENTES RECOMENDADAS, NO evidencia consultada. Nunca atribuyas una afirmación concreta a una fuente de este directorio sin que su contenido haya sido recuperado mediante búsqueda web, documento o enlace. Si no hay evidencia accesible, reconócelo; ofrece fuentes como sugerencias, no citas verificadas:\n\n--- Lista de 50 fuentes ---\n${FUENTES_ONDA_PARA_RESPUESTA}\n\n--- 50 fuentes Gobernanza LatAm, IA Docentes, Convivencia, AMI ---\n${FUENTES_ONDA_EJES_LATAM_AMI}\n\n--- Ecosistema digital LatAm/Caribe (medios nativos AMI) ---\n${ECOSISTEMA_DIGITAL_LATAM_MEDIOS}\n`
       : "";
   const queryIntentImg = classifyIntent(userText);
   const intentContextBlockImg = buildIntentContextBlock(queryIntentImg);
   const memoryBlockImg = memoryContext?.trim() ? `\n\n${memoryContext.trim()}\n` : "";
   const ragWebBlock =
     extraContext && extraContext.trim()
-      ? `\n\n--- CONTEXTO_DE_ACTUALIDAD (búsqueda web + RAG) ---\nEl sistema ya ejecutó búsqueda en fuentes fiables. Si usas cualquier dato de este bloque, marca cada afirmación con un número correlativo [1], [2], [3]... en el cuerpo y al final incluye la sección ### 📚 Fuentes de Autoridad (única excepción anti-headers) con cada número en formato Nombre: "Título" (URL). PROHIBIDO decir "no tengo información en tiempo real".\n\n${sanitizeExternalContent(extraContext.trim())}\n`
+      ? `\n\n--- CONTEXTO_DE_ACTUALIDAD (búsqueda web + RAG) ---\nEste bloque puede contener fragmentos de búsqueda, documentos internos y notas sobre búsquedas fallidas: no todos equivalen a fuentes contrastadas. Cita únicamente títulos, URLs o documentos que aparezcan realmente en los resultados recuperados y que respalden una afirmación concreta. Si la recuperación solo devuelve un resumen, distingue evidencia parcial de lectura íntegra. No inventes referencias, fechas, vigencia ni números de fuentes. Si utilizas fuentes recuperadas, puedes señalar referencias al final y qué afirmaciones respaldan. PROHIBIDO decir "no tengo información en tiempo real".\n\n${sanitizeExternalContent(extraContext.trim())}\n`
       : "";
   const noticiaBlockImg = "";
   const systemContentCore =
@@ -1291,7 +1278,8 @@ export async function getOndaReplyWithImage(
       { hasExternalContext: Boolean(extraContext?.trim()) }
     );
 
-  const { prompt: systemForModelVision, wasOptimized: visionOpt } = optimizeSystemPrompt(systemContent);
+  const { prompt: optimizedVisionPrompt, wasOptimized: visionOpt } = optimizeSystemPrompt(systemContent);
+  const systemForModelVision = optimizedVisionPrompt + ONDA_PRIORIDADES_CRITICAS;
   if (visionOpt) {
     console.info("[prompt] optimizado por longitud");
   }

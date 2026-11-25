@@ -5,7 +5,7 @@ import type { CSSProperties, ReactNode } from "react";
 export const metadata: Metadata = {
   title: "Privacidad — Onda, Precisar",
   description:
-    "Política de privacidad de Onda, servicio de Precisar (Fundación Democracia Abierta): qué datos tratamos, proveedores de IA, conservación y derechos.",
+    "Política de privacidad de Onda, iniciativa de Precisar impulsada por Fundación Democracia Abierta: datos, proveedores de IA, conservación y derechos.",
 };
 
 const updated = "30 de septiembre de 2026";
@@ -74,8 +74,8 @@ export default function PrivacidadPage() {
 
         <Section title="Qué es Onda">
           <p style={p}>
-            Onda es un servicio de Precisar, iniciativa de Fundación Democracia Abierta. Es un
-            servicio de educación mediática que ayuda a comprender mensajes, enlaces, audios,
+            Onda es una iniciativa de Precisar, impulsada por Fundación Democracia Abierta. Es una
+            herramienta de educación mediática que ayuda a comprender mensajes, enlaces, audios,
             imágenes y contenidos virales con más contexto, datos y criterio antes de compartir.
           </p>
           <p style={p}>
@@ -310,7 +310,7 @@ export default function PrivacidadPage() {
 
         <Section title="Menores de edad">
           <p style={p}>
-            Onda es un servicio educativo y de orientación. Si eres menor de edad, úsalo con
+            Onda es una iniciativa educativa y de orientación. Si eres menor de edad, úsala con
             acompañamiento de una persona adulta responsable, especialmente si vas a enviar
             imágenes, audios o información personal.
           </p>

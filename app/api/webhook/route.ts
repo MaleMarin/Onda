@@ -9,6 +9,8 @@ import {
 } from "../../../lib/infographicPayload";
 import { getGuideImageBuffer } from "../../../lib/guides";
 import { classifyIntent } from "../../../lib/intentClassifier";
+import { needsExternalEvidence, missingEvidenceContext } from "@/lib/evidenceRouting";
+import { searchWeb, isWebSearchConfigured } from "@/lib/searchWeb";
 import { getOndaReply, getOndaReplyWithImage } from "../../../lib/ondaReply";
 import { computeRiskPipelineFlags, detectEmergencyKeywords } from "../../../lib/riskModes";
 import {
@@ -18,7 +20,6 @@ import {
   saveSessionSummary,
 } from "../../../lib/sessionMemory";
 import { inferChatLocaleFromMessage } from "../../../lib/inferChatLocale";
-import { computeWebPlayAudioDecision } from "../../../lib/playAudioContract";
 import { parseResponseFormat, wantsSources } from "../../../lib/responseFormat";
 import { detectTransparencyRequest } from "../../../lib/transparencyMode";
 import {
@@ -29,10 +30,8 @@ import {
 } from "../../../lib/userPrefs";
 import { DEFAULT_ONDA_USER_PREFERENCES, mergeOndaUserPreferences } from "../../../lib/userPreferences";
 import { transcribeAudio } from "../../../lib/transcribe";
-import { generateSpeech } from "../../../lib/tts";
 import {
   getWhatsAppMediaAsBase64,
-  sendWhatsAppAudio,
   sendWhatsAppImage,
   splitForWhatsApp,
 } from "../../../lib/whatsapp";
@@ -40,6 +39,7 @@ import { withLock } from "../../../lib/waMessageQueue";
 import { checkRateLimit } from "../../../lib/rateLimiter";
 import { verifyWebhookSignature } from "../../../lib/verifyWebhookSignature";
 import { checkUserMessage } from "../../../lib/promptSafety";
+import { checkConversationConduct } from "@/lib/conversationConduct";
 import {
   AUDIO_VALIDATION_TOO_LONG,
   bufferFromDataUrl,
@@ -588,6 +588,16 @@ async function processWhatsAppMessage(_value: WaPayloadValue, msg: WaIncomingMes
         nextWaState = session;
         return { ok: true };
       }
+      const conduct = checkConversationConduct(userLine, {
+        locale: session.prefs.locale === "pt" ? "pt-BR" : "es-LATAM",
+        recentUserMessages: session.history.filter((entry) => entry.role === "user").map((entry) => entry.content),
+      });
+      if (!conduct.allowed && conduct.response) {
+        nextWaState = appendWaHistory(session, userLine, conduct.response);
+        waUserTurn = "";
+        response = conduct.response;
+        return { ok: false };
+      }
       const safe = checkUserMessage(userLine);
       if (!safe.safe && safe.response) {
         await guardedSendText(safe.response);
@@ -632,6 +642,21 @@ async function processWhatsAppMessage(_value: WaPayloadValue, msg: WaIncomingMes
       );
       const includeSources =
         session.prefs.sources || wantsSources(rawAfter) || wantsSources(userLine);
+      // WhatsApp usa el mismo criterio de fuentes que la web, solo si hace falta.
+      let externalEvidence = "";
+      if (needsExternalEvidence(userLine, waEjeToEnum(session.eje), includeSources)) {
+        try {
+          const found = await Promise.race([
+            searchWeb(userLine),
+            new Promise<string>((resolve) => setTimeout(() => resolve(""), 4500)),
+          ]);
+          externalEvidence = found?.trim() || ("--- ESTADO DE EVIDENCIA EXTERNA ---\n" +
+            missingEvidenceContext(isWebSearchConfigured(), prefsForModel.locale));
+        } catch {
+          externalEvidence = "--- ESTADO DE EVIDENCIA EXTERNA ---\n" +
+            missingEvidenceContext(isWebSearchConfigured(), prefsForModel.locale);
+        }
+      }
       waUserTurn = rawAfter;
       try {
         if (opts.imageDataUrl) {
@@ -642,7 +667,7 @@ async function processWhatsAppMessage(_value: WaPayloadValue, msg: WaIncomingMes
             waHistoryToOndaHistory(session),
             includeSources,
             "whatsapp",
-            undefined,
+            externalEvidence || undefined,
             memoryBlock || undefined,
             telemetryWa,
             prefsForModel,
@@ -658,7 +683,7 @@ async function processWhatsAppMessage(_value: WaPayloadValue, msg: WaIncomingMes
             includeSources,
             null,
             "whatsapp",
-            undefined,
+            externalEvidence || undefined,
             memoryBlock || undefined,
             telemetryWa,
             prefsForModel,
@@ -829,38 +854,6 @@ async function processWhatsAppMessage(_value: WaPayloadValue, msg: WaIncomingMes
         }
         if (parts.length > 1 && pi < parts.length - 1) {
           await new Promise((r) => setTimeout(r, 500));
-        }
-      }
-
-      const audioDecision = computeWebPlayAudioDecision({
-        outputMode: nextWaState?.ondaMerged?.outputMode ?? "text",
-        userMessage: waUserTurn || "",
-        parsed,
-      });
-      if (audioDecision.play && parsed.text.trim().length > 0) {
-        try {
-          // Fuera de ventana: NO enviamos audio/imagen (sólo plantilla permitida).
-          const windowOk = await isWindowActive(from);
-          if (!windowOk) {
-            logWaWarn("ventana cerrada; audio TTS omitido", { requestId, phone: from });
-          } else {
-            const ttsText = parsed.text.slice(0, WA_TTS_CHAR_LIMIT);
-            const audioBuffer = await generateSpeech(ttsText);
-            const audioResult = await sendWhatsAppAudio(from, audioBuffer);
-            if (!audioResult.ok) {
-              logWaError("error enviando audio", {
-                requestId,
-                phone: from,
-                extra: { err: audioResult.error },
-              });
-            }
-          }
-        } catch (voiceErr) {
-          logWaError("error generando voz", {
-            requestId,
-            phone: from,
-            extra: { err: voiceErr instanceof Error ? voiceErr.message : String(voiceErr) },
-          });
         }
       }
 

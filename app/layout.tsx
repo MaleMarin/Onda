@@ -9,16 +9,16 @@ export const metadata: Metadata = {
   metadataBase: new URL(resolveOndaMetadataBaseUrl()),
   title: "Onda de Precisar",
   description:
-    "Onda de Precisar es un servicio de educación mediática de Fundación Democracia Abierta para comprender mensajes, noticias y contenidos digitales con criterio antes de compartir.",
+    "Onda es una iniciativa de educación mediática de Precisar, impulsada por Fundación Democracia Abierta, para comprender mensajes, noticias y contenidos digitales con criterio antes de compartir.",
   openGraph: {
     title: "Onda de Precisar",
     description:
-      "Onda de Precisar es un servicio de educación mediática de Fundación Democracia Abierta para comprender mensajes, noticias y contenidos digitales con criterio antes de compartir.",
+      "Onda es una iniciativa de educación mediática de Precisar, impulsada por Fundación Democracia Abierta, para comprender mensajes, noticias y contenidos digitales con criterio antes de compartir.",
   },
   twitter: {
     title: "Onda de Precisar",
     description:
-      "Onda de Precisar es un servicio de educación mediática de Fundación Democracia Abierta para comprender mensajes, noticias y contenidos digitales con criterio antes de compartir.",
+      "Onda es una iniciativa de educación mediática de Precisar, impulsada por Fundación Democracia Abierta, para comprender mensajes, noticias y contenidos digitales con criterio antes de compartir.",
   },
   icons: {
     icon: [

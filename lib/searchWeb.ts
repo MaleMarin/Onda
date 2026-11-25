@@ -38,6 +38,9 @@ export async function searchWeb(query: string): Promise<string> {
 
   if (tavilyKey) {
     try {
+      // El directorio global de 50 dominios no cubre todas las instituciones
+      // nacionales de AL/Caribe. Abrir la búsqueda al contexto de país explícito.
+      const countrySpecific = /\b(brasil|brazil|chile|argentina|m[eé]xico|colombia|per[uú]|uruguay|paraguay|bolivia|ecuador|venezuela|panam[aá]|costa rica|guatemala|honduras|salvador|nicaragua|rep[uú]blica dominicana|hait[ií]|jamaica|barbados|trinidad|belize|belice|guyana|surinam|cuba|puerto rico|caribe)\b/i.test(q);
       const res = await fetch("https://api.tavily.com/search", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -47,7 +50,7 @@ export async function searchWeb(query: string): Promise<string> {
           search_depth: "advanced",
           max_results: MAX_SNIPPETS,
           include_answer: false,
-          include_domains: DOMINIOS_FIABLES_TAVILY.slice(0, 50),
+          ...(countrySpecific ? {} : { include_domains: DOMINIOS_FIABLES_TAVILY.slice(0, 50) }),
         }),
       });
       if (!res.ok) {
@@ -67,7 +70,7 @@ export async function searchWeb(query: string): Promise<string> {
         })
         .filter(Boolean);
       if (lines.length === 0) return "";
-      return "Búsqueda web (fuentes fiables — 50 nodos):\n" + lines.join("\n\n");
+      return "Resultados de búsqueda web (fragmentos, no equivalen a lectura completa del artículo; comprobar afirmaciones y vigencia):\n" + lines.join("\n\n");
     } catch (err) {
       console.error("[searchWeb] Tavily fetch failed:", err instanceof Error ? err.message : String(err));
       return "";
@@ -98,7 +101,7 @@ export async function searchWeb(query: string): Promise<string> {
         })
         .filter(Boolean);
       if (lines.length === 0) return "";
-      return "Búsqueda web:\n" + lines.join("\n\n");
+      return "Resultados de búsqueda web (fragmentos, no equivalen a lectura completa del artículo; comprobar afirmaciones y vigencia):\n" + lines.join("\n\n");
     } catch (err) {
       console.error("[searchWeb] Serper fetch failed:", err instanceof Error ? err.message : String(err));
       return "";
